@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7, verified official tag
@@ -65,7 +65,7 @@ jobs:
     # Native Render checksPass is the default. Enable this legacy alternative only
     # after disabling Render auto-deploy; see docs/operations.md.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.RENDER_DEPLOY_MODE == 'hook'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: Trigger optional Render deployment
