@@ -62,7 +62,7 @@ docker run --name agentpay --detach \
 
 ## Хостинг и первый клиент
 
-`render.yaml` задает сервис `agentpay-b2b`, тариф `0.5c-512mb`, постоянный диск 1 GB и нативный Render **After CI Checks Pass** (`checksPass`). Render публикует новый commit подключенной ветки после успешных проверок GitHub Actions. На стандартном `onrender.com` адрес берется из `RENDER_EXTERNAL_URL`; отдельный секрет URL не нужен. Для собственного домена задать `APP_URL`. Фактическую готовность публикации проверять по статусу Render и health.
+`render.yaml` подготовлен для необязательного будущего размещения: сервис `agentpay-b2b`, тариф `0.5c-512mb`, постоянный диск 1 GB и нативный Render **After CI Checks Pass** (`checksPass`). Публичный сервис сейчас не создан. После создания и подключения Render сможет публиковать новый commit ветки после успешных проверок GitHub Actions. На стандартном `onrender.com` адрес берется из `RENDER_EXTERNAL_URL`; отдельный секрет URL не нужен. Для собственного домена задать `APP_URL`. Фактическую готовность публикации проверять по статусу Render и health.
 
 Deploy-hook сохранен как альтернативный способ: сначала отключить нативный auto-deploy в Render/Blueprint, затем задать repository variable `RENDER_DEPLOY_MODE=hook` и secret `RENDER_DEPLOY_HOOK`. По умолчанию hook-job пропущен, поэтому он не дублирует нативный deploy. Подробнее — в [эксплуатации](docs/operations.md).
 
