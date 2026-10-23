@@ -1,0 +1,20 @@
+node_modules/
+web/dist/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.env.*
+!.env.example
+var/
+*.db
+*.sqlite*
+playwright-report/
+test-results/
+.DS_Store
+e2e/results/
+e2e/report/
+
+# Supplied business report stays local.
+AgentPay_B2B-debitorka_prorabotka.pdf

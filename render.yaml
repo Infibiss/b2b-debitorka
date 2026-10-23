@@ -1,0 +1,29 @@
+# Public/synthetic-data deployment by default. See docs/operations.md for RU customer data.
+services:
+  - type: web
+    name: agentpay
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    numInstances: 1
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/health
+    disk:
+      name: agentpay-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_TIMEZONE
+        value: Europe/Moscow
+      - key: APP_URL
+        sync: false
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: DATABASE_PATH
+        value: /var/data/agentpay.db
+      - key: PORT
+        value: "10000"

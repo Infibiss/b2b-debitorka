@@ -1,0 +1,90 @@
+name: Verify and optionally deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentpay-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7, verified official tag
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Audit runtime Python dependencies
+        run: python -m pip_audit -r requirements.txt --progress-spinner off
+      - name: Test API and operations
+        run: python -m pytest -q
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+      - name: Check TypeScript
+        run: npm run check
+      - name: Build production frontend
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test browser workflows
+        run: npm run test:e2e
+      - name: Build production container
+        run: docker build --tag agentpay:ci .
+      - name: Save browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: browser-diagnostics
+          path: |
+            e2e/report/
+            e2e/results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger optional Render deployment
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        shell: bash
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Deployment skipped: RENDER_DEPLOY_HOOK is not configured."
+            exit 0
+          fi
+          case "$RENDER_DEPLOY_HOOK" in
+            https://api.render.com/deploy/*) ;;
+            *) echo "Invalid Render deploy hook configuration."; exit 1 ;;
+          esac
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --fail --max-time 45 --get --data-urlencode "ref=$GITHUB_SHA" "$RENDER_DEPLOY_HOOK") || {
+            echo "Render deploy hook request failed."
+            exit 1
+          }
+          case "$status" in
+            2??) echo "Render accepted the deploy request. Check the service health before declaring it live." ;;
+            *) echo "Render deploy hook did not return a success status."; exit 1 ;;
+          esac
