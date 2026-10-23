@@ -42,4 +42,4 @@
 - [x] Run production site locally; browser inspect desktop/mobile screenshots and all core actions.
 - [x] Run full pytest/typecheck/build/e2e; inspect outputs and fix failures.
 - [x] Check git diff for secrets and unintended files. Record exact verification evidence.
-- [ ] Publish through the authenticated Render account; confirm cost/persistence, actual deploy status and live URL.
+- [x] Resolve hosting with the owner: on 24.10.2026 the owner chose to keep the release local. Cancelled the unsubmitted Render form; no paid service created. Local production frontend is served at http://127.0.0.1:8000 with persistent SQLite; Render configuration is retained for a later launch.
