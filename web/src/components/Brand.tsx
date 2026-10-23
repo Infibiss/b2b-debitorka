@@ -1,1 +1,16 @@
-export function Brand({light=false}:{light?:boolean}){return <a className={`brand ${light?'brand-light':''}`} href="/" aria-label="AgentPay — на главную"><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>agentpay<span className="brand-dot">®</span></a>;}
+export function Brand({ light = false }: { light?: boolean }) {
+  return (
+    <a
+      className={`brand ${light ? 'brand-light' : ''}`}
+      href="/"
+      aria-label="AgentPay — на главную"
+    >
+      <span className="brand-mark" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      agentpay<span className="brand-dot">®</span>
+    </a>
+  );
+}

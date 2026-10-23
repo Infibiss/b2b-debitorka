@@ -141,7 +141,7 @@ class PromiseInput(Input):
 
 class StatusInput(Input):
     status: Literal["open", "disputed", "paused"]
-    notes: str = Field(default="", max_length=5000)
+    notes: str | None = Field(default=None, max_length=5000)
 
 
 class ContactInput(Input):

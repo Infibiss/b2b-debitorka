@@ -562,11 +562,11 @@ def create_app():
             row = invoice_row(connection, user["tenant_id"], invoice_id)
             if row["paid_amount"] == row["amount"]:
                 problem(409, "Оплаченный счёт нельзя вернуть в работу")
-            connection.execute("UPDATE invoices SET status=?,notes=? WHERE id=? AND tenant_id=?", (data.status, data.notes, invoice_id, user["tenant_id"]))
+            connection.execute("UPDATE invoices SET status=?,notes=COALESCE(?,notes) WHERE id=? AND tenant_id=?", (data.status, data.notes, invoice_id, user["tenant_id"]))
             if data.status in ("disputed", "paused"):
                 connection.execute("UPDATE messages SET status='draft' WHERE invoice_id=? AND tenant_id=? AND status='approved'", (invoice_id, user["tenant_id"]))
             titles = {"open": "Счёт возвращён в работу", "disputed": "Открыт спор по счёту", "paused": "Контакт приостановлен"}
-            event(connection, user["tenant_id"], invoice_id, "status_changed", titles[data.status], data.notes)
+            event(connection, user["tenant_id"], invoice_id, "status_changed", titles[data.status], data.notes or "")
             return invoice_view(invoice_row(connection, user["tenant_id"], invoice_id))
 
     @application.get("/api/settings")

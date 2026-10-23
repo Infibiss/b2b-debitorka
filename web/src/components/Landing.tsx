@@ -1,33 +1,688 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ArrowRight, Check, Play, Pause, FileText, Mail, CheckCheck, ShieldCheck, Plus, Menu, X, MoveUpRight, CircleCheck } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowRight,
+  Check,
+  Play,
+  Pause,
+  FileText,
+  Mail,
+  CheckCheck,
+  ShieldCheck,
+  Plus,
+  Menu,
+  X,
+  MoveUpRight,
+  CircleCheck,
+} from 'lucide-react';
 import { Brand } from './Brand';
 import { Dialog } from './Dialog';
 import { money } from '../api';
 import './landing.css';
-const steps=[{label:'Видим задолженность',caption:'Загрузите реестр. Остатки, сроки и приоритеты уже на своих местах.',icon:FileText},{label:'Находим нужные слова',caption:'Письмо с точной суммой и понятным следующим шагом. Вы выбираете тон и согласуете текст.',icon:Mail},{label:'Фиксируем договорённость',caption:'Покупатель назвал дату? Обещание останется в карточке, а не потеряется в переписке.',icon:CheckCheck},{label:'Закрываем оплатой',caption:'Зарегистрируйте поступление. Остаток пересчитается, работа по оплаченному счёту остановится.',icon:CircleCheck}];
-const faqs=[['Кому подходит AgentPay?','Поставщикам, производителям и компаниям, которые работают с юридическими лицами с отсрочкой платежа. Особенно когда счетов уже много, а контроль всё ещё держится на таблицах и памяти менеджеров.'],['Как загрузить данные из 1С?','Выгрузите реестр в CSV и загрузите его в кабинет. Перед сохранением AgentPay проверит суммы, даты и повторяющиеся счета. Шаблон с нужными колонками есть в разделе «Реестр».'],['Покупатель получит письмо без нашего ведома?','Каждое письмо сначала попадает к вам на согласование. Можно изменить текст или отложить контакт. Для отправки нужно подключить почту компании.'],['Что делать, если покупатель оспаривает долг?','Переведите счёт в статус «Спор». Письма по нему будут приостановлены, пока вы не разберётесь в документах. Вся история останется в карточке.'],['AgentPay принимает деньги покупателей?','Нет. Покупатели платят напрямую вашей компании по вашим реквизитам. Вы отмечаете поступления в кабинете, и остатки автоматически пересчитываются.'],['Можно начать с небольшой части реестра?','Да. Загрузите несколько счетов, настройте правила и пройдите весь процесс с вашей командой. Вы сможете расширить реестр, когда убедитесь, что работа устроена удобно.']];
-export function Landing(){
- const [step,setStep]=useState(0),[playing,setPlaying]=useState(true),[menu,setMenu]=useState(false),[openFaq,setOpenFaq]=useState<number|null>(0),[amount,setAmount]=useState(3000000),[days,setDays]=useState(30),[rate,setRate]=useState(20),[legal,setLegal]=useState<'privacy'|'terms'|null>(null);
- const workflow=useRef<HTMLElement>(null);
- useEffect(()=>{if(!playing||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const timer=setInterval(()=>setStep(s=>(s+1)%4),5000);return()=>clearInterval(timer);},[playing]);
- useEffect(()=>{const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:.12});document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));return()=>obs.disconnect();},[]);
+const steps = [
+  {
+    label: 'Видим задолженность',
+    caption: 'Загрузите реестр. Остатки, сроки и приоритеты уже на своих местах.',
+    icon: FileText,
+  },
+  {
+    label: 'Находим нужные слова',
+    caption:
+      'Письмо с точной суммой и понятным следующим шагом. Вы выбираете тон и согласуете текст.',
+    icon: Mail,
+  },
+  {
+    label: 'Фиксируем договорённость',
+    caption: 'Покупатель назвал дату? Обещание останется в карточке, а не потеряется в переписке.',
+    icon: CheckCheck,
+  },
+  {
+    label: 'Закрываем оплатой',
+    caption:
+      'Зарегистрируйте поступление. Остаток пересчитается, работа по оплаченному счёту остановится.',
+    icon: CircleCheck,
+  },
+];
+const faqs = [
+  [
+    'Кому подходит AgentPay?',
+    'Поставщикам, производителям и компаниям, которые работают с юридическими лицами с отсрочкой платежа. Особенно когда счетов уже много, а контроль всё ещё держится на таблицах и памяти менеджеров.',
+  ],
+  [
+    'Как загрузить данные из 1С?',
+    'Выгрузите реестр в CSV и загрузите его в кабинет. Перед сохранением AgentPay проверит суммы, даты и повторяющиеся счета. Шаблон с нужными колонками есть в разделе «Реестр».',
+  ],
+  [
+    'Покупатель получит письмо без нашего ведома?',
+    'Каждое письмо сначала попадает к вам на согласование. Можно изменить текст или отложить контакт. Для отправки нужно подключить почту компании.',
+  ],
+  [
+    'Что делать, если покупатель оспаривает долг?',
+    'Переведите счёт в статус «Спор». Письма по нему будут приостановлены, пока вы не разберётесь в документах. Вся история останется в карточке.',
+  ],
+  [
+    'AgentPay принимает деньги покупателей?',
+    'Нет. Покупатели платят напрямую вашей компании по вашим реквизитам. Вы отмечаете поступления в кабинете, и остатки автоматически пересчитываются.',
+  ],
+  [
+    'Можно начать с небольшой части реестра?',
+    'Да. Загрузите несколько счетов, настройте правила и пройдите весь процесс с вашей командой. Вы сможете расширить реестр, когда убедитесь, что работа устроена удобно.',
+  ],
+];
+export function Landing() {
+  const [step, setStep] = useState(0),
+    [playing, setPlaying] = useState(true),
+    [menu, setMenu] = useState(false),
+    [openFaq, setOpenFaq] = useState<number | null>(0),
+    [amount, setAmount] = useState(3000000),
+    [days, setDays] = useState(30),
+    [rate, setRate] = useState(20),
+    [legal, setLegal] = useState<'privacy' | 'terms' | null>(null);
+  const workflow = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!playing || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setInterval(() => setStep((s) => (s + 1) % 4), 5000);
+    return () => clearInterval(timer);
+  }, [playing]);
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) e.target.classList.add('visible');
+        }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
- const scrollWorkflow=()=>workflow.current?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
- return <div className="landing">
-  <a href="#main" className="skip-link">К содержимому</a>
-  <header className="site-header"><Brand/><nav aria-label="Основная навигация" className={menu?'nav-open':''}><a href="#how" onClick={()=>setMenu(false)}>Как это работает</a><a href="#value" onClick={()=>setMenu(false)}>Для вашего бизнеса</a><a href="#pricing" onClick={()=>setMenu(false)}>Стоимость</a></nav><div className="header-actions"><a href="/app?mode=login" className="login-link">Войти <ArrowUpRight size={15}/></a><a href="/app" className="button button-dark small">Начать работу <ArrowUpRight size={16}/></a><button className="menu-toggle icon-button" aria-label={menu?'Закрыть меню':'Открыть меню'} aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></header>
-  <main id="main">
-   <section className="hero"><div className="hero-photo"/><div className="hero-shade"/><div className="hero-content"><div className="eyebrow hero-eyebrow"><span className="status-dot"/> ДЕБИТОРКА ПОД КОНТРОЛЕМ</div><h1>Деньги возвращаются<br/>в дело.</h1><div className="hero-bottom"><div><p>Вы выполнили свою работу.<br/>Мы поможем получить за неё оплату.</p><a href="/app" className="button button-lime">Вернуть деньги в оборот <ArrowUpRight size={20}/></a><button className="hero-watch" onClick={scrollWorkflow}><span><Play size={12} fill="currentColor"/></span>Посмотреть, как это работает</button></div><div className="hero-note"><span className="note-line"/><span>Меньше просрочки.<br/>Больше пространства для роста.</span><ArrowUpRight size={26}/></div></div></div><div className="hero-index"><span>01 — 04</span><span>ОТ ПОСТАВКИ ДО ОПЛАТЫ</span></div></section>
-   <div className="trust-line"><span>Для тех, кто двигает реальный бизнес</span><div><span>ОПТОВАЯ ТОРГОВЛЯ</span><i/><span>ПРОИЗВОДСТВО</span><i/><span>B2B-УСЛУГИ</span></div></div>
-   <section className="intro section-pad reveal" id="value"><div className="section-kicker"><span>01 / ВАША ОБОРОТКА</span><span>НЕ УПУСКАЙТЕ ГЛАВНОЕ</span></div><div className="intro-grid"><h2>Вы развиваете бизнес.<br/><span className="muted">Деньги не должны<br/>отставать.</span></h2><div className="intro-copy"><p className="large-copy">Каждый неоплаченный счёт — это ваши деньги, которые пока работают у кого-то другого.</p><p>AgentPay собирает дебиторку в понятный процесс: кому написать сегодня, что уже обещали оплатить и где требуется ваше решение.</p><a href="/app" className="text-link">Взять под контроль <ArrowUpRight size={18}/></a></div></div><div className="benefit-row"><div><span className="benefit-num">01</span><h3>Весь портфель. <br/>Один взгляд.</h3><p>Остатки, просрочки и поступления<br/>без ручной сборки таблиц.</p></div><div><span className="benefit-num">02</span><h3>Настойчиво. <br/>По-человечески.</h3><p>Уместный тон и согласование писем.<br/>Отношения с покупателем важны.</p></div><div><span className="benefit-num">03</span><h3>Договорились. <br/>Не забыли.</h3><p>Обещания оплаты и следующий шаг<br/>всегда перед глазами.</p></div></div></section>
-   <section className="workflow section-pad" id="how" ref={workflow}><div className="section-kicker"><span>02 / ОТ СЧЁТА ДО ДЕНЕГ</span><span>ВЫ КОНТРОЛИРУЕТЕ КАЖДЫЙ ШАГ</span></div><div className="workflow-heading"><h2>Хороший процесс.<br/>Понятный результат.</h2><p>Работа с дебиторкой без лишнего напряжения.<br/>Для вас и ваших покупателей.</p></div><div className="workflow-grid"><div className="step-list" role="tablist" aria-label="Этапы работы">{steps.map((s,i)=><button key={s.label} className={`step ${i===step?'active':''}`} role="tab" aria-selected={step===i} aria-controls="workflow-panel" id={`step-${i}`} onClick={()=>{setStep(i);setPlaying(false);}}><span className="step-number">0{i+1}</span><span><strong>{s.label}</strong><span className="step-caption">{s.caption}</span></span><ArrowUpRight size={19}/></button>)}<button className="playback" onClick={()=>setPlaying(!playing)} aria-label={playing?'Приостановить смену этапов':'Продолжить смену этапов'}>{playing?<Pause size={13}/>:<Play size={13}/>} {playing?'Остановить':'Продолжить'} просмотр</button></div><div className="scenario" role="tabpanel" id="workflow-panel" aria-labelledby={`step-${step}`}><div className="scenario-top"><Brand/><span><i className="status-dot"/> ВАШ РАБОЧИЙ ПРОЦЕСС</span></div><div className="scenario-body" key={step}><div className="scenario-doc"><div className="doc-label"><span><FileText size={15}/> СЧЁТ № 417</span><span className={`pill ${step===3?'green':'orange'}`}>{step===3?'Оплачен':step===2?'Обещание оплаты':'К оплате'}</span></div><h3>Северстрой</h3><span className="scenario-sub">Поставка материалов · 12 октября</span><div className="scenario-amount">480 000 <span>₽</span></div><div className="doc-divider"/><div className="scenario-state">{step===0?<><div className="state-icon"><FileText size={21}/></div><div><strong>Ничего не потеряется</strong><p>Счёт добавлен в реестр.<br/>Следующий шаг — связаться с покупателем.</p></div></>:step===1?<><div className="message-preview"><span><Mail size={15}/> ПИСЬМО ПОКУПАТЕЛЮ</span><p>Добрый день, Анна!<br/>По счёту № 417 ожидаем оплату 480 000 ₽. Подскажите, когда удобно провести платёж?</p><div><ShieldCheck size={14}/> На вашем согласовании <Check size={15}/></div></div></>:step===2?<><div className="promise-preview"><span>ДОГОВОРЁННОСТЬ ЗАФИКСИРОВАНА</span><strong>28 октября <span>среда</span></strong><p>480 000 ₽ · полная оплата</p><div><CheckCheck size={16}/> Следующий шаг сохранён</div></div></>:<><div className="paid-preview"><div><Check size={28}/></div><h4>Деньги снова в деле.</h4><p>Поступление учтено. Счёт закрыт.<br/>Напоминания остановлены.</p></div></>}</div></div></div><div className="scenario-footer"><span>Счёт</span><i className={step>=1?'done':''}/><span>Письмо</span><i className={step>=2?'done':''}/><span>Обещание</span><i className={step>=3?'done':''}/><span>Оплата <Check size={13}/></span></div></div></div></section>
-   <section className="calculator section-pad reveal"><div className="calc-copy"><div className="section-kicker">03 / ЦЕНА ОЖИДАНИЯ</div><h2>Пока деньги ждут,<br/>вы платите.</h2><p>Посчитайте, сколько стоит финансирование просрочки. Это деньги, которые могли бы оставаться в вашем бизнесе.</p><div className="calc-formula">Сумма × ставка × дни / 365</div></div><div className="calc-card"><div className="calc-input-label"><label htmlFor="amount">Сумма просроченных счетов</label><span>{money(amount*100)}</span></div><input id="amount" type="range" min="100000" max="15000000" step="100000" value={amount} onChange={e=>setAmount(+e.target.value)}/><div className="calc-fields"><label>Дней ожидания<div><input type="number" min="1" max="365" value={days} onChange={e=>setDays(Math.max(1,Math.min(365,+e.target.value)))}/><span>дней</span></div></label><label>Стоимость денег в год<div><input type="number" min="1" max="60" value={rate} onChange={e=>setRate(Math.max(1,Math.min(60,+e.target.value)))}/><span>%</span></div></label></div><div className="calc-result"><span>Стоимость ожидания</span><strong>{money(Math.round(amount*rate*days/365))}</strong><span>при ваших условиях финансирования</span></div></div></section>
-   <section className="control section-pad reveal"><div className="section-kicker"><span>ВАШИ КЛИЕНТЫ. ВАШИ ПРАВИЛА.</span><ShieldCheck size={20}/></div><h2>Технологии берут рутину.<br/><span>Решения остаются у вас.</span></h2><div className="control-bottom"><p>Письмо не уйдёт без согласования. Спорный долг можно поставить на паузу. Покупатель платит напрямую вам.</p><div className="zero"><strong>0</strong><span>писем без<br/>вашего согласия</span></div></div></section>
-   <section className="pricing section-pad reveal" id="pricing"><div className="section-kicker"><span>04 / НАЧНЁМ С ВАШЕЙ ЗАДАЧИ</span></div><div className="pricing-head"><h2>Порядок в дебиторке.<br/>Понятная стоимость.</h2><p>Выберите формат, который подходит<br/>вашей команде.</p></div><div className="pricing-grid"><article className="price-card"><div className="price-label">КОНТРОЛЬ <span>ДЛЯ ВАШЕЙ КОМАНДЫ</span></div><h3>14 900 ₽ <span>/ месяц</span></h3><p>Рабочий кабинет для регулярной<br/>работы с дебиторкой.</p><ul>{['Реестр счетов и приоритеты','Подготовка и согласование писем','Обещания оплаты и поступления','Импорт, экспорт и история действий'].map(t=><li key={t}><Check size={17}/>{t}</li>)}</ul><a href="/app" className="button button-dark">Начать работу <ArrowUpRight size={19}/></a></article><article className="price-card price-service"><div className="price-label">СОПРОВОЖДЕНИЕ <span>С ВАШИМИ ПРАВИЛАМИ</span></div><h3>Вместе с вами</h3><p>Для компаний, которым нужна помощь<br/>с организацией процесса.</p><ul>{['Разбор структуры задолженности','Настройка очереди и правил работы','Подготовка реестра для команды','Условия по объёму и задачам'].map(t=><li key={t}><Check size={17}/>{t}</li>)}</ul><a href="/app?intent=service" className="button button-outline">Обсудить задачу <ArrowUpRight size={19}/></a></article></div><p className="pricing-note">Начните с кабинета. Условия подключения и сопровождения согласуем до оплаты.</p></section>
-   <section className="faq section-pad reveal"><div><div className="section-kicker">ЕСТЬ ВОПРОСЫ?</div><h2>Разберёмся.</h2></div><div className="faq-list">{faqs.map(([q,a],i)=><div className="faq-item" key={q}><button aria-expanded={openFaq===i} aria-controls={`faq-${i}`} onClick={()=>setOpenFaq(openFaq===i?null:i)}>{q}<Plus size={20} className={openFaq===i?'rotated':''}/></button>{openFaq===i&&<p id={`faq-${i}`}>{a}</p>}</div>)}</div></section>
-   <section className="final-cta"><span className="section-kicker"><i className="status-dot"/> ВАШ СЛЕДУЮЩИЙ ШАГ</span><h2>Поставки завершены.<br/><span>Пора получать оплату.</span></h2><a href="/app" className="button button-lime">Начать с первого счёта <MoveUpRight size={20}/></a><div className="cta-decoration" aria-hidden="true">↗</div></section>
-  </main>
-  <footer className="site-footer"><div><Brand/><p>Деньги возвращаются в дело.</p></div><div className="footer-nav"><a href="#how">Как это работает <ArrowRight size={14}/></a><a href="#pricing">Стоимость <ArrowRight size={14}/></a><a href="/app?mode=login">Личный кабинет <ArrowUpRight size={14}/></a></div><div className="footer-bottom"><span>© {new Date().getFullYear()} AgentPay</span><button onClick={()=>setLegal('privacy')}>Конфиденциальность</button><button onClick={()=>setLegal('terms')}>Условия использования</button><span>Для бизнеса. По-человечески.</span></div></footer>
-  {legal&&<Dialog title={legal==='privacy'?'Конфиденциальность':'Условия использования'} onClose={()=>setLegal(null)}><div className="legal-modal">{legal==='privacy'?<><p>Для работы кабинета сохраняются данные аккаунта, компании, загруженных счетов, переписки и поступлений. Они используются для управления вашей дебиторской задолженностью.</p><p>Данные кабинета доступны после входа. Вы можете выгрузить реестр. Пароль хранится в защищённом виде. Отправка писем и передача текста внешней модели возможны только при подключённых сервисах.</p><p>Загружайте только сведения, которые ваша компания вправе обрабатывать. Доступ к рабочему пространству предназначен для уполномоченных сотрудников вашей компании.</p></>:<><p>AgentPay помогает вести реестр задолженности, готовить письма и учитывать оплаты. Доступ к кабинету не создаёт договор на юридическое представительство или взыскание.</p><p>Перед отправкой проверьте реквизиты, сумму, получателя и текст письма. Поступления отмечаются на основании ваших платёжных документов.</p><p>Стоимость и условия обслуживания согласуются отдельно до оплаты. Доступ к аккаунту предназначен для уполномоченного сотрудника вашей компании.</p></>}<button className="button button-dark" onClick={()=>setLegal(null)}>Понятно <Check size={16}/></button></div></Dialog>}
- </div>;
+  const scrollWorkflow = () =>
+    workflow.current?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+  return (
+    <div className="landing">
+      <a href="#main" className="skip-link">
+        К содержимому
+      </a>
+      <header className="site-header">
+        <Brand />
+        <nav aria-label="Основная навигация" className={menu ? 'nav-open' : ''}>
+          <a href="#how" onClick={() => setMenu(false)}>
+            Как это работает
+          </a>
+          <a href="#value" onClick={() => setMenu(false)}>
+            Для вашего бизнеса
+          </a>
+          <a href="#pricing" onClick={() => setMenu(false)}>
+            Стоимость
+          </a>
+        </nav>
+        <div className="header-actions">
+          <a href="/app?mode=login" className="login-link">
+            Войти <ArrowUpRight size={15} />
+          </a>
+          <a href="/app" className="button button-dark small">
+            Начать работу <ArrowUpRight size={16} />
+          </a>
+          <button
+            className="menu-toggle icon-button"
+            aria-label={menu ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={menu}
+            onClick={() => setMenu(!menu)}
+          >
+            {menu ? <X /> : <Menu />}
+          </button>
+        </div>
+      </header>
+      <main id="main">
+        <section className="hero">
+          <div className="hero-photo" />
+          <div className="hero-shade" />
+          <div className="hero-content">
+            <div className="eyebrow hero-eyebrow">
+              <span className="status-dot" /> ДЕБИТОРКА ПОД КОНТРОЛЕМ
+            </div>
+            <h1>
+              Деньги возвращаются
+              <br />в дело.
+            </h1>
+            <div className="hero-bottom">
+              <div>
+                <p>
+                  Вы выполнили свою работу.
+                  <br />
+                  Мы поможем получить за неё оплату.
+                </p>
+                <a href="/app" className="button button-lime">
+                  Вернуть деньги в оборот <ArrowUpRight size={20} />
+                </a>
+                <button className="hero-watch" onClick={scrollWorkflow}>
+                  <span>
+                    <Play size={12} fill="currentColor" />
+                  </span>
+                  Посмотреть, как это работает
+                </button>
+              </div>
+              <div className="hero-note">
+                <span className="note-line" />
+                <span>
+                  Меньше просрочки.
+                  <br />
+                  Больше пространства для роста.
+                </span>
+                <ArrowUpRight size={26} />
+              </div>
+            </div>
+          </div>
+          <div className="hero-index">
+            <span>01 — 04</span>
+            <span>ОТ ПОСТАВКИ ДО ОПЛАТЫ</span>
+          </div>
+        </section>
+        <div className="trust-line">
+          <span>Для тех, кто двигает реальный бизнес</span>
+          <div>
+            <span>ОПТОВАЯ ТОРГОВЛЯ</span>
+            <i />
+            <span>ПРОИЗВОДСТВО</span>
+            <i />
+            <span>B2B-УСЛУГИ</span>
+          </div>
+        </div>
+        <section className="intro section-pad reveal" id="value">
+          <div className="section-kicker">
+            <span>01 / ВАША ОБОРОТКА</span>
+            <span>НЕ УПУСКАЙТЕ ГЛАВНОЕ</span>
+          </div>
+          <div className="intro-grid">
+            <h2>
+              Вы развиваете бизнес.
+              <br />
+              <span className="muted">
+                Деньги не должны
+                <br />
+                отставать.
+              </span>
+            </h2>
+            <div className="intro-copy">
+              <p className="large-copy">
+                Каждый неоплаченный счёт — это ваши деньги, которые пока работают у кого-то другого.
+              </p>
+              <p>
+                AgentPay собирает дебиторку в понятный процесс: кому написать сегодня, что уже
+                обещали оплатить и где требуется ваше решение.
+              </p>
+              <a href="/app" className="text-link">
+                Взять под контроль <ArrowUpRight size={18} />
+              </a>
+            </div>
+          </div>
+          <div className="benefit-row">
+            <div>
+              <span className="benefit-num">01</span>
+              <h3>
+                Весь портфель. <br />
+                Один взгляд.
+              </h3>
+              <p>
+                Остатки, просрочки и поступления
+                <br />
+                без ручной сборки таблиц.
+              </p>
+            </div>
+            <div>
+              <span className="benefit-num">02</span>
+              <h3>
+                Настойчиво. <br />
+                По-человечески.
+              </h3>
+              <p>
+                Уместный тон и согласование писем.
+                <br />
+                Отношения с покупателем важны.
+              </p>
+            </div>
+            <div>
+              <span className="benefit-num">03</span>
+              <h3>
+                Договорились. <br />
+                Не забыли.
+              </h3>
+              <p>
+                Обещания оплаты и следующий шаг
+                <br />
+                всегда перед глазами.
+              </p>
+            </div>
+          </div>
+        </section>
+        <section className="workflow section-pad" id="how" ref={workflow}>
+          <div className="section-kicker">
+            <span>02 / ОТ СЧЁТА ДО ДЕНЕГ</span>
+            <span>ВЫ КОНТРОЛИРУЕТЕ КАЖДЫЙ ШАГ</span>
+          </div>
+          <div className="workflow-heading">
+            <h2>
+              Хороший процесс.
+              <br />
+              Понятный результат.
+            </h2>
+            <p>
+              Работа с дебиторкой без лишнего напряжения.
+              <br />
+              Для вас и ваших покупателей.
+            </p>
+          </div>
+          <div className="workflow-grid">
+            <div className="step-list" role="tablist" aria-label="Этапы работы">
+              {steps.map((s, i) => (
+                <button
+                  key={s.label}
+                  className={`step ${i === step ? 'active' : ''}`}
+                  role="tab"
+                  aria-selected={step === i}
+                  aria-controls="workflow-panel"
+                  id={`step-${i}`}
+                  onClick={() => {
+                    setStep(i);
+                    setPlaying(false);
+                  }}
+                >
+                  <span className="step-number">0{i + 1}</span>
+                  <span>
+                    <strong>{s.label}</strong>
+                    <span className="step-caption">{s.caption}</span>
+                  </span>
+                  <ArrowUpRight size={19} />
+                </button>
+              ))}
+              <button
+                className="playback"
+                onClick={() => setPlaying(!playing)}
+                aria-label={playing ? 'Приостановить смену этапов' : 'Продолжить смену этапов'}
+              >
+                {playing ? <Pause size={13} /> : <Play size={13} />}{' '}
+                {playing ? 'Остановить' : 'Продолжить'} просмотр
+              </button>
+            </div>
+            <div
+              className="scenario"
+              role="tabpanel"
+              id="workflow-panel"
+              aria-labelledby={`step-${step}`}
+            >
+              <div className="scenario-top">
+                <Brand />
+                <span>
+                  <i className="status-dot" /> ВАШ РАБОЧИЙ ПРОЦЕСС
+                </span>
+              </div>
+              <div className="scenario-body" key={step}>
+                <div className="scenario-doc">
+                  <div className="doc-label">
+                    <span>
+                      <FileText size={15} /> СЧЁТ № 417
+                    </span>
+                    <span className={`pill ${step === 3 ? 'green' : 'orange'}`}>
+                      {step === 3 ? 'Оплачен' : step === 2 ? 'Обещание оплаты' : 'К оплате'}
+                    </span>
+                  </div>
+                  <h3>Северстрой</h3>
+                  <span className="scenario-sub">Поставка материалов · 12 октября</span>
+                  <div className="scenario-amount">
+                    480 000 <span>₽</span>
+                  </div>
+                  <div className="doc-divider" />
+                  <div className="scenario-state">
+                    {step === 0 ? (
+                      <>
+                        <div className="state-icon">
+                          <FileText size={21} />
+                        </div>
+                        <div>
+                          <strong>Ничего не потеряется</strong>
+                          <p>
+                            Счёт добавлен в реестр.
+                            <br />
+                            Следующий шаг — связаться с покупателем.
+                          </p>
+                        </div>
+                      </>
+                    ) : step === 1 ? (
+                      <>
+                        <div className="message-preview">
+                          <span>
+                            <Mail size={15} /> ПИСЬМО ПОКУПАТЕЛЮ
+                          </span>
+                          <p>
+                            Добрый день, Анна!
+                            <br />
+                            По счёту № 417 ожидаем оплату 480 000 ₽. Подскажите, когда удобно
+                            провести платёж?
+                          </p>
+                          <div>
+                            <ShieldCheck size={14} /> На вашем согласовании <Check size={15} />
+                          </div>
+                        </div>
+                      </>
+                    ) : step === 2 ? (
+                      <>
+                        <div className="promise-preview">
+                          <span>ДОГОВОРЁННОСТЬ ЗАФИКСИРОВАНА</span>
+                          <strong>
+                            28 октября <span>среда</span>
+                          </strong>
+                          <p>480 000 ₽ · полная оплата</p>
+                          <div>
+                            <CheckCheck size={16} /> Следующий шаг сохранён
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="paid-preview">
+                          <div>
+                            <Check size={28} />
+                          </div>
+                          <h4>Деньги снова в деле.</h4>
+                          <p>
+                            Поступление учтено. Счёт закрыт.
+                            <br />
+                            Напоминания остановлены.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="scenario-footer">
+                <span>Счёт</span>
+                <i className={step >= 1 ? 'done' : ''} />
+                <span>Письмо</span>
+                <i className={step >= 2 ? 'done' : ''} />
+                <span>Обещание</span>
+                <i className={step >= 3 ? 'done' : ''} />
+                <span>
+                  Оплата <Check size={13} />
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="calculator section-pad reveal">
+          <div className="calc-copy">
+            <div className="section-kicker">03 / ЦЕНА ОЖИДАНИЯ</div>
+            <h2>
+              Пока деньги ждут,
+              <br />
+              вы платите.
+            </h2>
+            <p>
+              Посчитайте, сколько стоит финансирование просрочки. Это деньги, которые могли бы
+              оставаться в вашем бизнесе.
+            </p>
+            <div className="calc-formula">Сумма × ставка × дни / 365</div>
+          </div>
+          <div className="calc-card">
+            <div className="calc-input-label">
+              <label htmlFor="amount">Сумма просроченных счетов</label>
+              <span>{money(amount * 100)}</span>
+            </div>
+            <input
+              id="amount"
+              type="range"
+              min="100000"
+              max="15000000"
+              step="100000"
+              value={amount}
+              onChange={(e) => setAmount(+e.target.value)}
+            />
+            <div className="calc-fields">
+              <label>
+                Дней ожидания
+                <div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={days}
+                    onChange={(e) => setDays(Math.max(1, Math.min(365, +e.target.value)))}
+                  />
+                  <span>дней</span>
+                </div>
+              </label>
+              <label>
+                Стоимость денег в год
+                <div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={rate}
+                    onChange={(e) => setRate(Math.max(1, Math.min(60, +e.target.value)))}
+                  />
+                  <span>%</span>
+                </div>
+              </label>
+            </div>
+            <div className="calc-result">
+              <span>Стоимость ожидания</span>
+              <strong>{money(Math.round((amount * rate * days) / 365))}</strong>
+              <span>при ваших условиях финансирования</span>
+            </div>
+          </div>
+        </section>
+        <section className="control section-pad reveal">
+          <div className="section-kicker">
+            <span>ВАШИ КЛИЕНТЫ. ВАШИ ПРАВИЛА.</span>
+            <ShieldCheck size={20} />
+          </div>
+          <h2>
+            Технологии берут рутину.
+            <br />
+            <span>Решения остаются у вас.</span>
+          </h2>
+          <div className="control-bottom">
+            <p>
+              Письмо не уйдёт без согласования. Спорный долг можно поставить на паузу. Покупатель
+              платит напрямую вам.
+            </p>
+            <div className="zero">
+              <strong>0</strong>
+              <span>
+                писем без
+                <br />
+                вашего согласия
+              </span>
+            </div>
+          </div>
+        </section>
+        <section className="pricing section-pad reveal" id="pricing">
+          <div className="section-kicker">
+            <span>04 / НАЧНЁМ С ВАШЕЙ ЗАДАЧИ</span>
+          </div>
+          <div className="pricing-head">
+            <h2>
+              Порядок в дебиторке.
+              <br />
+              Понятная стоимость.
+            </h2>
+            <p>
+              Выберите формат, который подходит
+              <br />
+              вашей команде.
+            </p>
+          </div>
+          <div className="pricing-grid">
+            <article className="price-card">
+              <div className="price-label">
+                КОНТРОЛЬ <span>ДЛЯ ВАШЕЙ КОМАНДЫ</span>
+              </div>
+              <h3>
+                14 900 ₽ <span>/ месяц</span>
+              </h3>
+              <p>
+                Рабочий кабинет для регулярной
+                <br />
+                работы с дебиторкой.
+              </p>
+              <ul>
+                {[
+                  'Реестр счетов и приоритеты',
+                  'Подготовка и согласование писем',
+                  'Обещания оплаты и поступления',
+                  'Импорт, экспорт и история действий',
+                ].map((t) => (
+                  <li key={t}>
+                    <Check size={17} />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <a href="/app" className="button button-dark">
+                Начать работу <ArrowUpRight size={19} />
+              </a>
+            </article>
+            <article className="price-card price-service">
+              <div className="price-label">
+                СОПРОВОЖДЕНИЕ <span>С ВАШИМИ ПРАВИЛАМИ</span>
+              </div>
+              <h3>Вместе с вами</h3>
+              <p>
+                Для компаний, которым нужна помощь
+                <br />с организацией процесса.
+              </p>
+              <ul>
+                {[
+                  'Разбор структуры задолженности',
+                  'Настройка очереди и правил работы',
+                  'Подготовка реестра для команды',
+                  'Условия по объёму и задачам',
+                ].map((t) => (
+                  <li key={t}>
+                    <Check size={17} />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <a href="/app?intent=service" className="button button-outline">
+                Обсудить задачу <ArrowUpRight size={19} />
+              </a>
+            </article>
+          </div>
+          <p className="pricing-note">
+            Начните с кабинета. Условия подключения и сопровождения согласуем до оплаты.
+          </p>
+        </section>
+        <section className="faq section-pad reveal">
+          <div>
+            <div className="section-kicker">ЕСТЬ ВОПРОСЫ?</div>
+            <h2>Разберёмся.</h2>
+          </div>
+          <div className="faq-list">
+            {faqs.map(([q, a], i) => (
+              <div className="faq-item" key={q}>
+                <button
+                  aria-expanded={openFaq === i}
+                  aria-controls={`faq-${i}`}
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  {q}
+                  <Plus size={20} className={openFaq === i ? 'rotated' : ''} />
+                </button>
+                {openFaq === i && <p id={`faq-${i}`}>{a}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="final-cta">
+          <span className="section-kicker">
+            <i className="status-dot" /> ВАШ СЛЕДУЮЩИЙ ШАГ
+          </span>
+          <h2>
+            Поставки завершены.
+            <br />
+            <span>Пора получать оплату.</span>
+          </h2>
+          <a href="/app" className="button button-lime">
+            Начать с первого счёта <MoveUpRight size={20} />
+          </a>
+          <div className="cta-decoration" aria-hidden="true">
+            ↗
+          </div>
+        </section>
+      </main>
+      <footer className="site-footer">
+        <div>
+          <Brand />
+          <p>Деньги возвращаются в дело.</p>
+        </div>
+        <div className="footer-nav">
+          <a href="#how">
+            Как это работает <ArrowRight size={14} />
+          </a>
+          <a href="#pricing">
+            Стоимость <ArrowRight size={14} />
+          </a>
+          <a href="/app?mode=login">
+            Личный кабинет <ArrowUpRight size={14} />
+          </a>
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} AgentPay</span>
+          <button onClick={() => setLegal('privacy')}>Конфиденциальность</button>
+          <button onClick={() => setLegal('terms')}>Условия использования</button>
+          <span>Для бизнеса. По-человечески.</span>
+        </div>
+      </footer>
+      {legal && (
+        <Dialog
+          title={legal === 'privacy' ? 'Конфиденциальность' : 'Условия использования'}
+          onClose={() => setLegal(null)}
+        >
+          <div className="legal-modal">
+            {legal === 'privacy' ? (
+              <>
+                <p>
+                  Для работы кабинета сохраняются данные аккаунта, компании, загруженных счетов,
+                  переписки и поступлений. Они используются для управления вашей дебиторской
+                  задолженностью.
+                </p>
+                <p>
+                  Данные кабинета доступны после входа. Вы можете выгрузить реестр. Пароль хранится
+                  в защищённом виде. Отправка писем и передача текста внешней модели возможны только
+                  при подключённых сервисах.
+                </p>
+                <p>
+                  Загружайте только сведения, которые ваша компания вправе обрабатывать. Доступ к
+                  рабочему пространству предназначен для уполномоченных сотрудников вашей компании.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  AgentPay помогает вести реестр задолженности, готовить письма и учитывать оплаты.
+                  Доступ к кабинету не создаёт договор на юридическое представительство или
+                  взыскание.
+                </p>
+                <p>
+                  Перед отправкой проверьте реквизиты, сумму, получателя и текст письма. Поступления
+                  отмечаются на основании ваших платёжных документов.
+                </p>
+                <p>
+                  Стоимость и условия обслуживания согласуются отдельно до оплаты. Доступ к аккаунту
+                  предназначен для уполномоченного сотрудника вашей компании.
+                </p>
+              </>
+            )}
+            <button className="button button-dark" onClick={() => setLegal(null)}>
+              Понятно <Check size={16} />
+            </button>
+          </div>
+        </Dialog>
+      )}
+    </div>
+  );
 }

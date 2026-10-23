@@ -469,3 +469,19 @@ def test_paid_invoice_contact_and_notes_can_still_be_corrected(client):
     assert updated.status_code == 200
     assert updated.json()["status"] == "paid" and updated.json()["balance"] == 0
     assert updated.json()["email"] == "corrected@example.ru"
+
+
+def test_status_changes_preserve_notes_unless_replacement_is_supplied(client):
+    register(client)
+    item = invoice(client)
+    endpoint = f"/api/invoices/{item['id']}"
+    assert client.patch(endpoint + "/contact", json={"email": item["email"], "notes": "Важный контекст"}).status_code == 200
+    paused = client.post(endpoint + "/status", json={"status": "paused"})
+    assert paused.status_code == 200
+    assert paused.json()["notes"] == "Важный контекст"
+    assert client.get(endpoint).json()["invoice"]["notes"] == "Важный контекст"
+    replaced = client.post(endpoint + "/status", json={"status": "disputed", "notes": "Ожидаем акт сверки"})
+    assert replaced.json()["notes"] == "Ожидаем акт сверки"
+    cleared = client.post(endpoint + "/status", json={"status": "open", "notes": ""})
+    assert cleared.json()["notes"] == ""
+    assert client.get(endpoint).json()["invoice"]["notes"] == ""

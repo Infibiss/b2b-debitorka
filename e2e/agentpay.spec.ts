@@ -147,6 +147,7 @@ test('a promise due today is not shown as a broken promise', async ({ page }) =>
 test('correcting a contact invalidates the old recipient and persists a fresh draft', async ({ page }) => {
   await register(page);
   const number = `CONTACT-${Date.now()}`;
+  const note = 'Адрес подтверждён покупателем';
   await createInvoice(page, number, '500');
   await page.getByText(number, { exact: true }).first().click();
   const drawer = page.getByRole('dialog', { name: 'Карточка счёта', exact: true });
@@ -156,7 +157,7 @@ test('correcting a contact invalidates the old recipient and persists a fresh dr
   await page.getByRole('button', { name: 'Изменить контакт и заметку', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Контакт и заметка', exact: true });
   await dialog.getByLabel('Email покупателя', { exact: true }).fill('corrected@example.ru');
-  await dialog.getByLabel('Заметка по счёту', { exact: true }).fill('Адрес подтверждён покупателем');
+  await dialog.getByLabel('Заметка по счёту', { exact: true }).fill(note);
   await dialog.getByRole('button', { name: 'Сохранить контакт', exact: true }).click();
   await expect(drawer.locator('.drawer-company')).toContainText('corrected@example.ru');
   await drawer.locator('.message-item').filter({ hasText: 'ap@example.ru' }).click();
@@ -170,6 +171,13 @@ test('correcting a contact invalidates the old recipient and persists a fresh dr
   await openRegistry(page);
   await page.getByText(number, { exact: true }).first().click();
   await expect(drawer.locator('.drawer-company')).toContainText('corrected@example.ru');
+  await expect(drawer.locator('.invoice-notes')).toContainText(note);
+  await page.getByRole('button', { name: 'Поставить на паузу', exact: true }).click();
+  await expect(drawer.locator('.drawer-invoice-head')).toContainText('На паузе');
+  await expect(drawer.locator('.invoice-notes')).toContainText(note);
+  await page.getByRole('button', { name: 'Вернуть в работу', exact: true }).click();
+  await expect(drawer.locator('.drawer-invoice-head')).toContainText('В работе');
+  await expect(drawer.locator('.invoice-notes')).toContainText(note);
 });
 
 test('CSV import previews invalid data, accepts valid rows, and avoids duplicates', async ({ page }) => {
