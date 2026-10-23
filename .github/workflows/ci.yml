@@ -62,7 +62,9 @@ jobs:
 
   deploy:
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Native Render checksPass is the default. Enable this legacy alternative only
+    # after disabling Render auto-deploy; see docs/operations.md.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.RENDER_DEPLOY_MODE == 'hook'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

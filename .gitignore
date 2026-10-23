@@ -18,3 +18,5 @@ e2e/report/
 
 # Supplied business report stays local.
 AgentPay_B2B-debitorka_prorabotka.pdf
+
+output/

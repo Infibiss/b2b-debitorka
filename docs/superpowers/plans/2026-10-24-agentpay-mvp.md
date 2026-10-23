@@ -34,7 +34,7 @@
 
 ## 5. Delivery and operations (Dockerfile, render.yaml, .github/workflows/, docs/)
 - [x] Pin dependencies; non-root container; health check; persistence, backups and restore.
-- [x] Add GitHub Actions Python, TS/build and Playwright checks; gated optional deployment hook.
+- [x] Add GitHub Actions Python, TS/build and Playwright checks; native Render deployment after CI checks, with separately gated legacy hook alternative.
 - [x] Document local run, SMTP/LLM, first customer setup, production config, transfer to RU hosting and limitations.
 
 ## 6. Independent review and end-to-end QA

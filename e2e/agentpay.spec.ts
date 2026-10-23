@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const PASSWORD = 'AgentPay-e2e-correct-2026!';
-const today = new Date().toLocaleDateString('en-CA');
-const nextWeek = new Date(Date.now() + 7 * 86_400_000).toLocaleDateString('en-CA');
+const businessDate = (instant: Date) => instant.toLocaleDateString('en-CA', { timeZone: 'Europe/Moscow' });
+const today = businessDate(new Date());
+const nextWeek = businessDate(new Date(Date.now() + 7 * 86_400_000));
 
 async function register(page: Page) {
   const email = `e2e-${Date.now()}-${Math.random().toString(16).slice(2)}@example.ru`;
@@ -129,8 +130,8 @@ test('invoice, approved draft, promise, payments and login persist without a fak
 test('a promise due today is not shown as a broken promise', async ({ page }) => {
   await register(page);
   const number = `PROMISE-${Date.now()}`;
-  const issued = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
-  const due = new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10);
+  const issued = businessDate(new Date(Date.now() - 60 * 86_400_000));
+  const due = businessDate(new Date(Date.now() - 45 * 86_400_000));
   await createInvoice(page, number, '1250', issued, due);
   await page.getByText(number, { exact: true }).first().click();
   await page.getByRole('button', { name: 'Обещание оплаты', exact: true }).click();

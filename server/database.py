@@ -21,7 +21,7 @@ class Config:
         business_timezone()  # Fail startup early for invalid/missing IANA data.
         production = os.getenv("APP_ENV", "development").lower() == "production"
         secure = os.getenv("SECURE_COOKIES", str(production)).lower() == "true"
-        app_url = os.getenv("APP_URL", "").rstrip("/")
+        app_url = (os.getenv("APP_URL") or os.getenv("RENDER_EXTERNAL_URL", "")).rstrip("/")
         if production and (not secure or not app_url.startswith("https://")):
             raise RuntimeError("Production requires SECURE_COOKIES=true and an https APP_URL")
         default = str(Path(__file__).parent / "data" / "agentpay.sqlite3")

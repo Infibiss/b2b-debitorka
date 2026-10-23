@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 with tempfile.TemporaryDirectory(prefix="agentpay-playwright-") as directory:
     os.environ["DATABASE_PATH"] = str(Path(directory) / "agentpay.sqlite3")
     os.environ["APP_ENV"] = "test"
+    os.environ["APP_TIMEZONE"] = "Europe/Moscow"
     os.environ["APP_URL"] = "http://127.0.0.1:8001"
     os.environ["SECURE_COOKIES"] = "false"
     # Browser tests must never contact external email or model providers.

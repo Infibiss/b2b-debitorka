@@ -4,15 +4,22 @@ Run: python3 -m pytest -q e2e/test_security_review.py
 """
 import importlib
 import sqlite3
-from datetime import date, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 
 
+def moscow_today():
+    """Expected API calendar, independent of the runner's local timezone."""
+    return datetime.now(ZoneInfo("Europe/Moscow")).date()
+
+
 @pytest.fixture
 def reviewed_app(tmp_path, monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("APP_TIMEZONE", "Europe/Moscow")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "review.sqlite3"))
     monkeypatch.setenv("SECURE_COOKIES", "false")
     monkeypatch.delenv("APP_URL", raising=False)
@@ -35,8 +42,8 @@ def signup(client, email="reviewer@example.ru"):
 def add_invoice(client, number="REVIEW-1"):
     response = client.post("/api/invoices", json={
         "company": "ООО Север", "number": number, "email": "ap@example.ru",
-        "issued_on": str(date.today() - timedelta(days=30)),
-        "due_on": str(date.today() - timedelta(days=10)), "amount": 125050,
+        "issued_on": str(moscow_today() - timedelta(days=30)),
+        "due_on": str(moscow_today() - timedelta(days=10)), "amount": 125050,
     })
     assert response.status_code == 201, response.text
     return response.json()
@@ -119,9 +126,9 @@ def test_every_sensitive_resource_rejects_another_tenant(reviewed_app):
         attempts = [
             ("GET", prefix, None),
             ("POST", prefix + "/draft", {}),
-            ("POST", prefix + "/promise", {"date": str(date.today())}),
+            ("POST", prefix + "/promise", {"date": str(moscow_today())}),
             ("POST", prefix + "/status", {"status": "paused"}),
-            ("POST", prefix + "/payments", {"amount": 1, "paid_on": str(date.today()), "reference": "X"}),
+            ("POST", prefix + "/payments", {"amount": 1, "paid_on": str(moscow_today()), "reference": "X"}),
             ("PATCH", prefix + "/contact", {"email": "other@example.ru", "notes": "X"}),
             ("PATCH", f"/api/messages/{message['id']}", {"subject": "X", "body": "X"}),
             ("POST", f"/api/messages/{message['id']}/approve", {}),
@@ -141,7 +148,7 @@ def test_payment_invalidates_approval_and_never_overstates_the_remaining_debt(re
         invoice = add_invoice(client)
         message = approved_message(client, invoice)
         prefix = f"/api/invoices/{invoice['id']}"
-        payment = {"amount": 25050, "paid_on": str(date.today()), "reference": "BANK-1"}
+        payment = {"amount": 25050, "paid_on": str(moscow_today()), "reference": "BANK-1"}
         assert client.post(prefix + "/payments", json=payment).json()["balance"] == 100000
         assert client.post(prefix + "/payments", json=payment).json()["balance"] == 100000
         old = client.get(prefix).json()["messages"][0]

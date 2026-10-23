@@ -1,14 +1,14 @@
 # Public/synthetic-data deployment by default. See docs/operations.md for RU customer data.
 services:
   - type: web
-    name: agentpay
+    name: agentpay-b2b
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: starter
+    plan: 0.5c-512mb
     region: frankfurt
     numInstances: 1
-    autoDeployTrigger: "off"
+    autoDeployTrigger: checksPass
     healthCheckPath: /api/health
     disk:
       name: agentpay-data
@@ -19,8 +19,6 @@ services:
         value: production
       - key: APP_TIMEZONE
         value: Europe/Moscow
-      - key: APP_URL
-        sync: false
       - key: SECURE_COOKIES
         value: "true"
       - key: DATABASE_PATH
