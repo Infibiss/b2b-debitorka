@@ -1,0 +1,15 @@
+{
+  "revision": "f03f8a016ee68c7fb3e8cd8f86c3002d04bd5e11",
+  "fresh_private_backup": true,
+  "backup_mode": "0600",
+  "restored_new_feature_records": true,
+  "temporary_restore_db_removed_by_trap": true,
+  "backup_timer_active": true,
+  "certificate_timer_active": true,
+  "trusted_https_health": true,
+  "off_vm_copy_to_operator_mac": true,
+  "off_vm_sha256_matches": true,
+  "off_vm_folder_mode": "0700",
+  "off_vm_file_mode": "0600",
+  "automatic_off_vm_upload": false
+}

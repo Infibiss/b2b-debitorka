@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-24T19:12:17.012229+00:00",
+  "provider": "dadata",
+  "environment": "hosted_production",
+  "owner_binding_enabled": true,
+  "unrelated_tenant_denied": true,
+  "secret_key_used": false,
+  "paid_standardization_used": false,
+  "query_kind": "official_public_example",
+  "query": "7707083893",
+  "ledger_writes": 0,
+  "status": "completed",
+  "exact_inn_confirmed": true,
+  "registration_status": "ACTIVE"
+}

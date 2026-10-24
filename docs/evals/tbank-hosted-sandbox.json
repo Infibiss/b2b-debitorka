@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-10-24T19:13:16.331572+00:00",
+  "environment": "sandbox",
+  "status": "unavailable",
+  "item_count": 0,
+  "approval_blocked": true,
+  "ledger_writes": 0,
+  "uses_customer_data": false,
+  "production_bank_verified": false
+}

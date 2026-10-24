@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-24T19:12:42.529981+00:00",
+  "tls_verified": true,
+  "paid_llm_calls": 0,
+  "outbound_messages": 0,
+  "existing_ledger_unchanged": true,
+  "existing_docx_retained": true,
+  "unrelated_tenant_has_no_owner_provider_access": true,
+  "sandbox_test_cash_rejected": true,
+  "audit_snapshot_and_export": true,
+  "sparse_cash_history_abstains": true,
+  "negotiation_internal_execution_idempotent_no_fake_payment": true,
+  "partner_grant_revoked": true,
+  "status": "passed"
+}

@@ -74,5 +74,5 @@ Files: `server/partner.py`, `tests/test_partner.py`, new UI components for conne
 - [x] Review all changes for financial correctness, provider coverage, auth and misleading success states; fix findings.
 - [x] Run targeted tests, full Python suite with actual disposable PostgreSQL, TypeScript/build/format, desktop/mobile Playwright, dependency audits and production Docker build.
 - [x] Record actual checks and remaining external prerequisites; update current acceptance, do not overwrite historical evidence.
-- [ ] Commit/push and wait for exact-SHA CI; manually deploy through existing pinned SSH helper after private backup. Preserve production .env and all persistent volumes.
-- [ ] Verify public HTTPS, Mandato assets, existing account/data continuity and new API/audit workflow. Copy a fresh approved private backup to Mac. Do not claim a live external connection or trained model without actual evidence.
+- [x] Commit/push and wait for exact-SHA CI; manually deploy through existing pinned SSH helper after private backup. Preserve production .env and all persistent volumes.
+- [x] Verify public HTTPS, Mandato assets, existing account/data continuity and new API/audit workflow. Copy a fresh approved private backup to Mac. Do not claim a live external connection or trained model without actual evidence.
