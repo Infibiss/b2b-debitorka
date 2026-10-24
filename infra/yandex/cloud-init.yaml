@@ -18,6 +18,11 @@ package_update: true
 package_upgrade: true
 packages: [ca-certificates, curl, gnupg, git, python3, unattended-upgrades]
 write_files:
+  - path: /etc/apt/apt.conf.d/99-agentpay-lock-timeout
+    permissions: '0644'
+    content: |
+      // cloud-init and unattended-upgrades may start together on the first boot.
+      DPkg::Lock::Timeout "600";
   - path: /etc/ssh/sshd_config.d/20-agentpay.conf
     permissions: '0644'
     content: |

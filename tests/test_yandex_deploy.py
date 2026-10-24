@@ -58,6 +58,7 @@ def test_cloud_init_requires_operator_public_key_and_configures_renewal_timer():
     assert data['ssh_pwauth'] is False and data['disable_root'] is True
     assert any('REPLACE_WITH_ED25519_PUBLIC_KEY' in str(user) for user in data['users'])
     written={row['path']:row for row in data['write_files']}
+    assert 'DPkg::Lock::Timeout "600";' in written['/etc/apt/apt.conf.d/99-agentpay-lock-timeout']['content']
     timer=written['/etc/systemd/system/agentpay-cert-renew.timer']['content']
     assert 'OnCalendar=' in timer and 'Persistent=true' in timer
     assert not any('PASSWORD=' in row.get('content','') for row in data['write_files'])
