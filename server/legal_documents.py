@@ -70,7 +70,7 @@ def build_docx(kind,facts,calculation,evidence,*,version,created_on):
         style.paragraph_format.space_before=Pt(8)
         style.paragraph_format.space_after=Pt(3)
     doc.core_properties.title=TITLES[kind].replace("\n"," ")
-    doc.core_properties.author="AgentPay"
+    doc.core_properties.author="Mandato"
     doc.core_properties.subject="Договорное денежное требование B2B"
     doc.core_properties.comments=""
     creditor,debtor=facts["creditor"],facts["debtor"]

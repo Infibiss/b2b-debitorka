@@ -24,6 +24,8 @@ import {
   TrendingUp,
   Bot,
   Scale,
+  ClipboardCheck,
+  PlugZap,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { Auth } from './Auth';
@@ -32,6 +34,9 @@ import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
 import { FinanceDesk } from './FinanceDesk';
 import { AgentDesk } from './AgentDesk';
 import LegalDesk from './LegalDesk';
+import { PortfolioDesk } from './PortfolioDesk';
+import { ConnectionsDesk } from './ConnectionsDesk';
+import { IntelligenceDesk } from './IntelligenceDesk';
 import {
   api,
   post,
@@ -47,13 +52,26 @@ import {
   ApiError,
 } from '../api';
 import './workspace.css';
-type Tab = 'overview' | 'registry' | 'finance' | 'agent' | 'legal' | 'messages' | 'settings';
+type Tab =
+  | 'overview'
+  | 'audit'
+  | 'connections'
+  | 'intelligence'
+  | 'registry'
+  | 'finance'
+  | 'agent'
+  | 'legal'
+  | 'messages'
+  | 'settings';
 const navigation = [
   { id: 'overview' as Tab, label: 'Обзор', icon: LayoutDashboard },
+  { id: 'audit' as Tab, label: 'Аудит', icon: ClipboardCheck },
   { id: 'registry' as Tab, label: 'Реестр', icon: Files },
   { id: 'finance' as Tab, label: 'Финансы', icon: Wallet },
   { id: 'agent' as Tab, label: 'Агент', icon: Bot },
   { id: 'legal' as Tab, label: 'Дела', icon: Scale },
+  { id: 'intelligence' as Tab, label: 'Поступления и условия', icon: TrendingUp },
+  { id: 'connections' as Tab, label: 'Подключения', icon: PlugZap },
   { id: 'messages' as Tab, label: 'Письма', icon: Mail },
   { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
 ];
@@ -441,6 +459,22 @@ export function Workspace() {
                 )}
               </section>
             </>
+          ) : tab === 'audit' ? (
+            <PortfolioDesk
+              invoices={invoices}
+              onChanged={() => void refresh()}
+              notify={notify}
+              onOpenInvoice={setSelected}
+              onNavigate={setTab}
+            />
+          ) : tab === 'connections' ? (
+            <ConnectionsDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
+          ) : tab === 'intelligence' ? (
+            <IntelligenceDesk
+              invoices={invoices}
+              onChanged={() => void refresh()}
+              notify={notify}
+            />
           ) : tab === 'registry' ? (
             <Registry
               invoices={invoices}
@@ -476,7 +510,7 @@ export function Workspace() {
             </div>
           )}
           <footer className="workspace-footer">
-            <span>AgentPay · Деньги возвращаются в дело.</span>
+            <span>Mandato · Деньги возвращаются в дело.</span>
             <span>
               <ShieldCheck size={12} />
               Действия сохраняются в истории
@@ -863,7 +897,7 @@ function SettingsPanel({
         <div>
           <span className="page-date">ВАША КОМПАНИЯ</span>
           <h1>Работа по вашим правилам.</h1>
-          <p>Реквизиты для писем и ограничения, которые учитывает AgentPay.</p>
+          <p>Реквизиты для писем и ограничения, которые учитывает Mandato.</p>
         </div>
       </div>
       <form className="settings-form" onSubmit={save}>

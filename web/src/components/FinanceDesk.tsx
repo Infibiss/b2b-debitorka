@@ -441,6 +441,7 @@ function FinanceModal({
   onDone: () => void;
 }) {
   const [key] = useState(() => crypto.randomUUID());
+  const [distinctReceipt, setDistinctReceipt] = useState(false);
   const [installments, setInstallments] = useState<{ date: string; amount: string }[]>([]);
   const names = {
     bank: 'Подтверждённое поступление',
@@ -474,6 +475,8 @@ function FinanceModal({
               payer_name: value(data, 'payer_name'),
               evidence: value(data, 'evidence'),
               confirmed: data.get('confirmed') === 'on',
+              distinct_confirmed: data.get('distinct_confirmed') === 'on',
+              distinct_reason: value(data, 'distinct_reason'),
             });
           if (modal.type === 'allocate')
             return post(`/finance/bank-payments/${modal.payment.id}/allocate`, {
@@ -558,6 +561,34 @@ function FinanceModal({
               <input type="checkbox" name="confirmed" required />
               <span>Сверил поступление с банковской выпиской</span>
             </label>
+            <details className="full-width">
+              <summary>В выписке есть другое похожее поступление</summary>
+              <p>
+                Сначала проверьте номер и дату документа. Повторную загрузку одного платежа
+                подтверждать нельзя.
+              </p>
+              <label className="consent">
+                <input
+                  type="checkbox"
+                  name="distinct_confirmed"
+                  checked={distinctReceipt}
+                  onChange={(e) => setDistinctReceipt(e.target.checked)}
+                />
+                <span>Подтверждаю, что это разные платежные документы</span>
+              </label>
+              {distinctReceipt && (
+                <label className="field">
+                  Основание различия платежей
+                  <textarea
+                    name="distinct_reason"
+                    required
+                    minLength={10}
+                    maxLength={3000}
+                    placeholder="Укажите оба документа и результат сверки с выпиской"
+                  />
+                </label>
+              )}
+            </details>
           </>
         )}
         {modal.type === 'allocate' && (

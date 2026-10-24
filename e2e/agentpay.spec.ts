@@ -82,7 +82,7 @@ test('public website is readable, interactive, and offers a real signup', async 
   await page.getByLabel('Дней ожидания').fill('60');
   await expect(page.locator('.calc-result strong')).not.toHaveText(initialCost);
   await page.getByRole('button', { name: 'Как загрузить данные из 1С?', exact: true }).click();
-  await expect(page.getByText(/Выгрузите реестр в CSV/)).toBeVisible();
+  await expect(page.getByText(/Загрузите выгрузку в CSV или XLSX/)).toBeVisible();
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);

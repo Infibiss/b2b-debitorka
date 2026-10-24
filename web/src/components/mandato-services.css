@@ -1,0 +1,483 @@
+.mandato-services {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.mandato-services .ops-heading {
+  margin-bottom: 4px;
+}
+.mandato-services .ms-card {
+  background: #fafbf6;
+  border: 1px solid #dce3d1;
+  border-radius: 12px;
+  padding: 25px;
+  min-width: 0;
+}
+.mandato-services h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #294c35;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+.mandato-services h3 {
+  font-size: 16px;
+  font-weight: 650;
+  color: #294c35;
+}
+.mandato-services .ms-card > p,
+.mandato-services .ms-proposal p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #68775e;
+  margin: 12px 0;
+}
+.mandato-services .ms-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mandato-services .ms-card-heading > h2 {
+  margin-right: auto;
+}
+.mandato-services .ms-card-heading > svg {
+  color: #617f4e;
+  flex: none;
+}
+.mandato-services .ms-status {
+  font-size: 10px;
+  font-weight: 650;
+  padding: 6px 9px;
+  background: #edf0e5;
+  color: #657454;
+  border-radius: 5px;
+  display: inline-block;
+  line-height: 1.5;
+  max-width: 100%;
+}
+.mandato-services .ms-status-completed,
+.mandato-services .ms-status-executed,
+.mandato-services .ms-status-available {
+  color: #365f37;
+  background: #e4efdb;
+}
+.mandato-services .ms-status-unavailable,
+.mandato-services .ms-status-handoff,
+.mandato-services .ms-status-stale,
+.mandato-services .ms-status-expired {
+  background: #f5ebd8;
+  color: #8b6637;
+}
+.mandato-services .ms-connections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.mandato-services .ms-connections .ms-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.mandato-services .ms-connections .ms-card > .button {
+  align-self: flex-start;
+  margin-top: auto;
+}
+.mandato-services small {
+  display: block;
+  color: #7d896e;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.mandato-services .ms-connections small {
+  margin: 0 0 16px;
+}
+.mandato-services .ms-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.mandato-services .ms-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+.mandato-services .ms-form > .button {
+  justify-self: start;
+}
+.mandato-services .ms-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+.mandato-services .field {
+  min-width: 0;
+  gap: 8px;
+}
+.mandato-services .field input,
+.mandato-services .field select,
+.mandato-services .field textarea {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+.mandato-services .field input[type='file'] {
+  padding: 10px;
+}
+.mandato-services .field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.mandato-services .ms-note {
+  font-size: 12px !important;
+  color: #7d896e !important;
+  line-height: 1.8;
+}
+.mandato-services .ms-fields .ms-note {
+  grid-column: 1 / -1;
+}
+.mandato-services .ms-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.mandato-services .ms-list-item {
+  padding: 15px 0;
+  border-top: 1px solid #e0e6d7;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+}
+.mandato-services .ms-list-item strong {
+  font-size: 13px;
+}
+.mandato-services .ms-list-item p {
+  width: 100%;
+  font-size: 12px;
+  color: #657454;
+  line-height: 1.8;
+}
+.mandato-services .ms-preview .ms-card-heading > .field {
+  min-width: 200px;
+  max-width: 100%;
+}
+.mandato-services .ms-warning,
+.mandato-services .ms-errors {
+  background: #f5eedf;
+  color: #805e36;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 14px 0;
+}
+.mandato-services .ms-errors {
+  padding-left: 30px;
+}
+.mandato-services .ms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #4d6640;
+}
+.mandato-services .ms-check input {
+  accent-color: #526f40;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  flex: none;
+}
+.mandato-services .ms-table-scroll {
+  overflow-x: auto;
+  margin-top: 18px;
+}
+.mandato-services table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+  min-width: 620px;
+}
+.mandato-services th {
+  color: #7a886d;
+  font-size: 11px;
+  font-weight: 550;
+  border-bottom: 1px solid #dce3d1;
+  padding: 10px 12px;
+}
+.mandato-services td {
+  border-bottom: 1px solid #e5eadc;
+  padding: 14px 12px;
+  vertical-align: top;
+  color: #4d6640;
+}
+.mandato-services td:nth-child(2) {
+  min-width: 200px;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+.mandato-services td:nth-child(4) {
+  white-space: nowrap;
+}
+.mandato-services td input {
+  accent-color: #526f40;
+  width: 16px;
+  height: 16px;
+}
+.mandato-services .ms-success {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #3a6034;
+  background: #e4efdb;
+  padding: 14px;
+  border-radius: 6px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+.mandato-services .ms-approval {
+  max-width: 670px;
+}
+.mandato-services .ms-forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.mandato-services .ms-forecast-grid article {
+  padding: 22px;
+  background: #edf1e5;
+  border-radius: 8px;
+}
+.mandato-services .ms-forecast-grid span {
+  display: block;
+  font-size: 12px;
+  color: #718362;
+}
+.mandato-services .ms-forecast-grid strong {
+  font-size: clamp(23px, 2.2vw, 36px);
+  font-weight: 550;
+  color: #355b34;
+  letter-spacing: -1px;
+  display: block;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.mandato-services .ms-neutral {
+  padding: 20px;
+  background: #eff2e8;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+.mandato-services .ms-neutral p {
+  font-size: 13px;
+  line-height: 1.9;
+  color: #6f7e63;
+  margin-top: 8px;
+}
+.mandato-services .ms-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 24px 0;
+}
+.mandato-services dt {
+  font-size: 11px;
+  color: #7d896e;
+}
+.mandato-services dd {
+  font-size: 17px;
+  color: #456339;
+  font-weight: 600;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.mandato-services details {
+  border-top: 1px solid #e0e6d7;
+  margin-top: 20px;
+  padding-top: 16px;
+}
+.mandato-services summary {
+  font-size: 12px;
+  color: #4f6b40;
+  cursor: pointer;
+  line-height: 1.8;
+}
+.mandato-services .ms-notes {
+  font-size: 12px;
+  color: #758366;
+  padding-left: 20px;
+  line-height: 1.9;
+  margin-top: 14px;
+}
+.mandato-services .ms-fieldset {
+  border: 1px solid #dce3d1;
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.mandato-services .ms-fieldset legend {
+  padding: 0 6px;
+  color: #718362;
+  font-size: 12px;
+}
+.mandato-services .ms-schedule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+  gap: 10px;
+  align-items: end;
+}
+.mandato-services .ms-schedule .icon-button {
+  margin-bottom: 4px;
+}
+.mandato-services .ms-proposals {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+}
+.mandato-services .ms-proposal {
+  border: 1px solid #dce3d1;
+  border-radius: 8px;
+  padding: 22px;
+  min-width: 0;
+}
+.mandato-services .ms-proposal-facts {
+  display: flex;
+  gap: 20px 32px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.mandato-services .ms-proposal-facts dd {
+  font-size: 14px;
+}
+.mandato-services .ms-proposal .ms-evidence {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #4e6742;
+}
+.mandato-services .ms-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mandato-services .button {
+  font-size: 12px;
+  gap: 8px;
+  min-height: 42px;
+}
+@media (max-width: 1200px) {
+  .mandato-services .ms-connections {
+    grid-template-columns: 1fr;
+  }
+  .mandato-services .ms-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .mandato-services {
+    gap: 18px;
+  }
+  .mandato-services .ms-card {
+    padding: 19px;
+  }
+  .mandato-services h2 {
+    font-size: 17px;
+  }
+  .mandato-services .ms-forecast-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .mandato-services .ms-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .mandato-services .ms-proposal {
+    padding: 16px;
+  }
+  .mandato-services .ms-card-heading {
+    align-items: flex-start;
+  }
+  .mandato-services .ms-schedule {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+  .mandato-services .ms-schedule .field:first-child {
+    grid-column: 1 / -1;
+  }
+  .mandato-services .ms-preview .ms-card-heading > .field {
+    width: 100%;
+  }
+  .mandato-services .ms-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.mandato-services .ms-partner-token {
+  margin-top: 24px;
+  padding: 22px;
+  background: #edf1e5;
+  border: 1px solid #cddbbb;
+  border-radius: 8px;
+}
+.mandato-services .ms-partner-token p {
+  color: #657454;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.mandato-services .ms-partner-token .field {
+  margin: 18px 0;
+}
+.mandato-services .ms-partner-token input {
+  font-family: monospace;
+}
+.mandato-services .ms-ledger-preview .ms-list {
+  max-height: none;
+}
+.mandato-services .ms-ledger-change {
+  padding: 20px 0;
+  border-bottom: 1px solid #dce3d1;
+}
+.mandato-services .ms-ledger-change h3 {
+  margin-bottom: 16px;
+}
+.mandato-services .ms-ledger-change h4 {
+  color: #718362;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.mandato-services .ms-ledger-facts {
+  display: grid;
+  gap: 12px;
+}
+.mandato-services .ms-ledger-facts dd {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.mandato-services .ms-registry-coverage {
+  width: 100%;
+  list-style: none;
+  padding: 12px;
+  background: #edf1e5;
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #6a7b5e;
+}

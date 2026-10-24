@@ -109,7 +109,7 @@ class AgentRuntime:
     def review_node(self, state):
         proposal = self.load(state)
         if proposal["decision"] not in ("approve", "reject") or not proposal["reviewed_by"]:
-            raise HTTPException(409, "Нужно подтверждение сотрудника в AgentPay")
+            raise HTTPException(409, "Нужно подтверждение сотрудника в Mandato")
         return {"status": proposal["status"]}
 
     def execute_node(self, state):

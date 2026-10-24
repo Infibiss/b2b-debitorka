@@ -438,7 +438,7 @@ function MessageEditor({
     a.href = URL.createObjectURL(
       new Blob([`${subject}\n\n${body}`], { type: 'text/plain;charset=utf-8' })
     );
-    a.download = 'agentpay-letter.txt';
+    a.download = 'mandato-letter.txt';
     a.click();
     URL.revokeObjectURL(a.href);
   }

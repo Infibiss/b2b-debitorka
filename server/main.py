@@ -1,4 +1,4 @@
-"""AgentPay HTTP API. Run with: python -m uvicorn server.main:app."""
+"""Mandato HTTP API. Run with: python -m uvicorn server.main:app."""
 import csv
 import hashlib
 import hmac
@@ -245,7 +245,7 @@ def create_app():
         initialize(config)
         yield
 
-    application = FastAPI(title="AgentPay API", version="1.0.0", lifespan=lifespan,
+    application = FastAPI(title="Mandato API", version="1.0.0", lifespan=lifespan,
                           docs_url=None if config.production else "/api/docs", redoc_url=None,
                           openapi_url=None if config.production else "/api/openapi.json")
     application.state.config = config
@@ -577,13 +577,13 @@ def create_app():
         writer.writerow(["контрагент", "инн", "email", "номер", "дата", "срок", "сумма", "оплачено", "остаток", "статус"])
         for item in items:
             writer.writerow([safe(item[key]) for key in ("company", "inn", "email", "number", "issued_on", "due_on")] + [money_text(item[key]) for key in ("amount", "paid_amount", "balance")] + [item["status"]])
-        return Response("\ufeff" + buffer.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="agentpay-invoices.csv"'})
+        return Response("\ufeff" + buffer.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="mandato-invoices.csv"'})
 
     ctx = SimpleNamespace(config=config, get_user=get_user, database=database, event=event,
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:

@@ -1,0 +1,35 @@
+{
+  "provider": "tbank",
+  "environment": "sandbox",
+  "mode": "sandbox",
+  "production_verified": false,
+  "attempted_at": "2026-10-24T18:35:24.656547+00:00",
+  "official_sources": [
+    "https://developer.tbank.ru/docs/intro/other/sandbox",
+    "https://developer.tbank.ru/docs/intro/other/integration-1c"
+  ],
+  "request": {
+    "method": "GET",
+    "endpoint": "https://business.tbank.ru/openapi/sandbox/api/v1/statement",
+    "account_number_kind": "official_public_example",
+    "accountNumber": "40702810110011000000",
+    "from": "2024-04-26T21:00:00.000Z",
+    "uses_user_data": false,
+    "authorization_saved": false
+  },
+  "http_status": null,
+  "status": "failed",
+  "operation_count": null,
+  "ledger_writes": 0,
+  "error_chain": [
+    {
+      "type": "ProviderUnavailable"
+    },
+    {
+      "type": "SSLCertVerificationError",
+      "errno": 1,
+      "certificate_verify_code": 19
+    }
+  ],
+  "parsing": "not_verified"
+}

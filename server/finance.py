@@ -307,6 +307,8 @@ class BankInput(Input):
     reference:str=Field(min_length=1,max_length=200)
     evidence:str=Field(min_length=1,max_length=3000)
     confirmed:StrictBool
+    distinct_confirmed:StrictBool=False
+    distinct_reason:str=Field(default='',max_length=3000)
     @field_validator('payer_inn')
     @classmethod
     def validate_payer_inn(cls,value):
@@ -396,10 +398,13 @@ def create_router(ctx):
         if not data.confirmed:fail(422,'Подтвердите сверку поступления с банковским документом')
         with ctx.database(ctx.config,write=True) as c:
             old=c.execute('SELECT * FROM finance_bank_payments WHERE tenant_id=? AND external_id=?',(user['tenant_id'],data.external_id)).fetchone()
-            values=data.model_dump(mode='json')
+            values=data.model_dump(mode='json',exclude={'distinct_confirmed','distinct_reason'})
             if old:
                 if any(str(old[k])!=str(v if k!='confirmed' else int(v)) for k,v in values.items()):fail(409,'Банковский идентификатор уже использован с другими данными')
                 return bank_view(old)
+            from .bank_exchange import assert_no_duplicate_source
+            assert_no_duplicate_source(c,user['tenant_id'],values,distinct_confirmed=data.distinct_confirmed,
+                reason=data.distinct_reason,actor_id=user['id'])
             bank_id=uid()
             c.execute('INSERT INTO finance_bank_payments(id,tenant_id,external_id,amount,paid_on,payer_inn,payer_name,reference,evidence,confirmed,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',(bank_id,user['tenant_id'],data.external_id,data.amount,str(data.paid_on),data.payer_inn,data.payer_name,data.reference,data.evidence,1,timestamp()))
             return bank_view(c.execute('SELECT * FROM finance_bank_payments WHERE id=? AND tenant_id=?',(bank_id,user['tenant_id'])).fetchone())

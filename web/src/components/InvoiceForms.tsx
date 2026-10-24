@@ -89,7 +89,7 @@ const template =
 export function downloadTemplate() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'agentpay-template.csv';
+  a.download = 'mandato-template.csv';
   a.click();
   URL.revokeObjectURL(a.href);
 }

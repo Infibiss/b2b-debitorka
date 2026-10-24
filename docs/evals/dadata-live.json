@@ -1,0 +1,15 @@
+{
+  "provider": "dadata",
+  "environment": "production",
+  "method": "findById/party",
+  "attempted_at": "2026-10-24T18:42:15.114424+00:00",
+  "query_kind": "official_public_example",
+  "query": "7707083893",
+  "paid_standardization_used": false,
+  "secret_key_used": false,
+  "ledger_writes": 0,
+  "status": "completed",
+  "exact_inn_confirmed": true,
+  "registration_status": "ACTIVE",
+  "provider_record_date": "2026-09-03T00:00:00+00:00"
+}

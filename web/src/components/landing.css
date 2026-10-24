@@ -1,3 +1,14 @@
+.brand.brand-mandato {
+  gap: 0.32em;
+  font-weight: 650;
+  letter-spacing: -0.055em;
+}
+.brand-mandato .mandato-mark {
+  width: 1.12em;
+  height: 1.12em;
+  flex: none;
+  display: block;
+}
 .landing {
   max-width: 1800px;
   margin: auto;
@@ -344,13 +355,6 @@
   font-size: 15px;
   gap: 5px;
   letter-spacing: -0.7px;
-}
-.scenario-top .brand-mark {
-  transform: scale(0.65) rotate(-28deg);
-  margin-right: -2px;
-}
-.scenario-top .brand-dot {
-  font-size: 7px;
 }
 .scenario-top > span {
   font-size: 7px;

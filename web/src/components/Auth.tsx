@@ -167,7 +167,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
             </p>
           )}
         </div>
-        <span className="auth-copyright">© {new Date().getFullYear()} AgentPay</span>
+        <span className="auth-copyright">© {new Date().getFullYear()} Mandato</span>
       </main>
     </div>
   );

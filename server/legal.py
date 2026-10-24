@@ -287,6 +287,35 @@ def initialize_schema(connection):
 def _json(value):return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"),default=str)
 
 
+def document_sender_snapshot(connection, tenant_id):
+    """Declared sender facts shared by document review and portfolio freshness."""
+    row = connection.execute('''SELECT t.company,s.sender_name,s.reply_to,s.bank_details
+        FROM settings s JOIN tenants t ON t.id=s.tenant_id WHERE s.tenant_id=?''', (tenant_id,)).fetchone()
+    return {key:row[key] for key in ('company','sender_name','reply_to','bank_details')}
+
+
+def pretrial_snapshot(connection, row):
+    """Stable source facts; passage of the waiting period is not a mutation."""
+    facts = json.loads(row['facts_json'])
+    last = connection.execute('''SELECT occurred_on,reference FROM legal_milestones
+        WHERE tenant_id=? AND case_id=? AND stage='claim_sent'
+        ORDER BY occurred_on DESC,created_at DESC,id DESC LIMIT 1''', (row['tenant_id'],row['id'])).fetchone()
+    ready = _day(last['occurred_on'])+timedelta(days=facts['pretrial_days']+1) if last else None
+    return dict(sent_on=last['occurred_on'] if last else None, reference=last['reference'] if last else '',
+                days=facts['pretrial_days'], ready_on=str(ready) if ready else None, applicable=facts['pretrial_days']>0)
+
+
+def document_snapshot(connection, row, kind):
+    """Single authority for exact generated document review/freshness checks."""
+    from . import finance
+    ledger = finance.financial_snapshot(connection,row['tenant_id'],row['invoice_id'])
+    content = dict(ledger=ledger['snapshot_hash'], facts=json.loads(row['facts_json']), facts_revision=row['facts_revision'],
+                   sender=document_sender_snapshot(connection,row['tenant_id']))
+    if kind == 'statement_of_claim':
+        content['pretrial'] = pretrial_snapshot(connection,row)
+    return hashlib.sha256(_json(content).encode()).hexdigest()
+
+
 def _fetch_official_rates(through):
     if through>business_today():raise ValueError("Будущие ставки нельзя подтвердить заранее")
     source="https://www.cbr.ru/hd_base/KeyRate/?UniDbQuery.Posted=True&UniDbQuery.From=01.08.2016&UniDbQuery.To="+through.strftime("%d.%m.%Y")
@@ -380,21 +409,11 @@ def create_router(ctx):
         return result
 
     def pretrial(connection,row):
-        facts=json.loads(row["facts_json"])
-        sent=[item for item in milestones(connection,row["tenant_id"],row["id"]) if item["stage"]=="claim_sent"]
-        last=sent[-1] if sent else None
-        ready=_day(last["occurred_on"])+timedelta(days=facts["pretrial_days"]+1) if last else None
-        return {"sent_on":last["occurred_on"] if last else None,"reference":last["reference"] if last else "",
-                "days":facts["pretrial_days"],"ready_on":str(ready) if ready else None,"applicable":facts["pretrial_days"]>0,
-                "ready":facts["pretrial_days"]==0 or bool(ready and business_today()>=ready)}
+        value=pretrial_snapshot(connection,row)
+        return {**value,"ready":value['days']==0 or bool(value['ready_on'] and business_today()>=_day(value['ready_on']))}
 
     def snapshot(connection,row,kind):
-        ledger=finance.financial_snapshot(connection,row["tenant_id"],row["invoice_id"])
-        settings=ctx.settings_view(connection,row["tenant_id"])
-        content={"ledger":ledger["snapshot_hash"],"facts":json.loads(row["facts_json"]),"facts_revision":row["facts_revision"],
-                 "sender":{key:settings[key] for key in ("company","sender_name","reply_to","bank_details")}}
-        if kind=="statement_of_claim":content["pretrial"]={key:value for key,value in pretrial(connection,row).items() if key!="ready"}
-        return hashlib.sha256(_json(content).encode()).hexdigest()
+        return document_snapshot(connection,row,kind)
 
     def calculation(connection,tenant,invoice_id,data):
         ledger=finance.financial_snapshot(connection,tenant,invoice_id)
@@ -564,7 +583,7 @@ def create_router(ctx):
         with ctx.database(ctx.config) as connection:doc=dict(document_row(connection,user["tenant_id"],document_id))
         content=base64.b64decode(doc["content_base64"])
         if hashlib.sha256(content).hexdigest()!=doc["sha256"]:ctx.problem(409,"Контрольная сумма документа не совпадает")
-        return Response(content,media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",headers={"Content-Disposition":f'attachment; filename="agentpay-{doc["kind"]}-v{doc["version"]}.docx"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
+        return Response(content,media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",headers={"Content-Disposition":f'attachment; filename="mandato-{doc["kind"]}-v{doc["version"]}.docx"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
 
     @router.get("/cases/{case_id}/fee")
     def calculate_fee(case_id:str,user=Depends(ctx.get_user)):
