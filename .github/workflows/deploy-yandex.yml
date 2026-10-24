@@ -1,0 +1,93 @@
+name: Deploy reviewed release to Yandex VM
+
+on:
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact 40-character SHA with a successful ci.yml push to main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: agentpay-yandex-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Disabled until the owner enables this repo variable after budget/VM/SSH review.
+    if: >-
+      vars.YANDEX_VM_DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate the immutable revision and exact trusted CI push
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.revision }}
+          SOURCE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
+          SOURCE_WORKFLOW_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.workflow_id || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'A full Git commit SHA is required.'; exit 1; }
+          ci_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml" --jq .id)
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f head_sha="$RELEASE_SHA" -f status=success -f event=push -f branch=main -f per_page=100 \
+            > "$RUNNER_TEMP/agentpay-ci-runs.json"
+          python3 - "$RELEASE_SHA" "$GITHUB_REPOSITORY" "$ci_id" <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          sha,repository,workflow_id=sys.argv[1:]
+          source_run=os.getenv('SOURCE_RUN_ID','')
+          source_workflow=os.getenv('SOURCE_WORKFLOW_ID','')
+          if source_workflow and source_workflow!=workflow_id:
+              raise SystemExit('Triggered workflow is not the expected ci.yml workflow')
+          data=json.loads((Path(os.environ['RUNNER_TEMP'])/'agentpay-ci-runs.json').read_text())
+          approved=[run for run in data.get('workflow_runs',[]) if
+                    str(run.get('workflow_id'))==workflow_id and run.get('head_sha')==sha and
+                    run.get('head_branch')=='main' and run.get('event')=='push' and
+                    run.get('status')=='completed' and run.get('conclusion')=='success' and
+                    (run.get('head_repository') or {}).get('full_name')==repository and
+                    (not source_run or str(run.get('id'))==source_run)]
+          if not approved:
+              raise SystemExit('No successful exact ci.yml push-to-main run exists for this repository and commit')
+          PY
+          if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'revision=%s\n' "$RELEASE_SHA" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.verified.outputs.revision }}
+          persist-credentials: false
+      - name: Deploy through a pinned SSH identity and known host key
+        env:
+          RELEASE_SHA: ${{ steps.verified.outputs.revision }}
+          DEPLOY_HOST: ${{ secrets.YANDEX_VM_HOST }}
+          DEPLOY_USER: ${{ secrets.YANDEX_VM_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.YANDEX_VM_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.YANDEX_VM_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/agentpay-key"
+          hosts="$RUNNER_TEMP/agentpay-known-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$hosts"
+          bash scripts/deploy_yandex_vm.sh --host "$DEPLOY_HOST" --user "${DEPLOY_USER:-agentpay}" \
+            --revision "$RELEASE_SHA" --identity-file "$key" --known-hosts "$hosts"

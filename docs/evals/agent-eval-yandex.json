@@ -1,0 +1,212 @@
+{
+  "dataset": "synthetic-candidates-v1",
+  "mode": "yandex",
+  "evaluation_scope": "synthetic_live_yandex",
+  "model_quality_measured": true,
+  "created_at": "2026-10-24T00:58:55.599578+00:00",
+  "cases": 19,
+  "false_ready": 0,
+  "true_ready": 9,
+  "missed_ready": 0,
+  "provider_failures": 0,
+  "ready_precision": 1.0,
+  "ready_recall": 1.0,
+  "decision_accuracy": 1.0,
+  "intent_accuracy": 1.0,
+  "passed": true,
+  "limitations": "Synthetic small dataset; replay does not measure LLM extraction quality or production/business outcomes.",
+  "outcomes": [
+    {
+      "id": "partial-explicit",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "hallucinated-amount",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "hallucinated-date",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "invented-evidence",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "negation",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "ambiguous",
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    },
+    {
+      "id": "injection-en",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "untrusted_instruction"
+      ]
+    },
+    {
+      "id": "injection-ru",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "untrusted_instruction"
+      ]
+    },
+    {
+      "id": "quoted-history",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "quoted_history"
+      ]
+    },
+    {
+      "id": "ambiguous-model",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "foreign-currency",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "amount_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "missing-currency",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "amount_mismatch",
+        "currency_unsupported",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "weekday-only",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "ambiguous",
+        "date_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "multiple-options",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "ambiguous",
+        "amount_required",
+        "date_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "tomorrow",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "decimal-money",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "payment-claim",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "payment_claim",
+      "expected_intent": "payment_claim",
+      "reasons": []
+    },
+    {
+      "id": "negated-payment",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    },
+    {
+      "id": "dispute",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "dispute",
+      "expected_intent": "dispute",
+      "reasons": []
+    },
+    {
+      "id": "unknown",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    }
+  ],
+  "grader_revision": "v1.1 separates adversarial candidate fixtures from valid live source inputs",
+  "fixture_sha256": "b4642dafe612fd1d7308457cdf521169bb4410d262d0c81ae53ae4fce963dc76",
+  "runtime_versions": {
+    "langgraph": "1.2.16",
+    "langgraph-checkpoint-sqlite": "3.1.2",
+    "langgraph-checkpoint-postgres": "3.2.0",
+    "langfuse": "5.0.4"
+  }
+}

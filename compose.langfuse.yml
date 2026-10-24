@@ -1,0 +1,127 @@
+# Local-only Langfuse, adapted from the upstream self-hosting compose.
+# Bootstrap: .venv/bin/python scripts/langfuse_local.py init
+# Start: docker compose --env-file var/langfuse-local.env -f compose.langfuse.yml up -d
+name: agentpay-langfuse
+services:
+  worker:
+    image: docker.langfuse.com/langfuse/langfuse-worker:4@sha256:48f8af2c4b6bbf929380f301ade18cf99e7b31331fd26dfaf253ce670e5b39a2
+    mem_limit: 1024m
+    restart: unless-stopped
+    depends_on: &ready
+      postgres: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      blob: {condition: service_healthy}
+    environment: &shared
+      DATABASE_URL: postgresql://langfuse:${LF_POSTGRES_PASSWORD:?Run bootstrap}@postgres:5432/langfuse
+      NEXTAUTH_URL: http://127.0.0.1:3033
+      SALT: ${LF_SALT:?Run bootstrap}
+      ENCRYPTION_KEY: ${LF_ENCRYPTION_KEY:?Run bootstrap}
+      TELEMETRY_ENABLED: 'false'
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: 'false'
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${LF_CLICKHOUSE_PASSWORD:?Run bootstrap}
+      CLICKHOUSE_CLUSTER_ENABLED: 'false'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_AUTH: ${LF_REDIS_PASSWORD:?Run bootstrap}
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LF_S3_PASSWORD:?Run bootstrap}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://blob:8333
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: 'true'
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LF_S3_PASSWORD:?Run bootstrap}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://blob:8333
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: 'true'
+      LANGFUSE_S3_BATCH_EXPORT_ENABLED: 'false'
+      LANGFUSE_IN_APP_AGENT_ENABLED: 'false'
+  web:
+    image: docker.langfuse.com/langfuse/langfuse:4@sha256:e4cc4bfd0f77285d7454135e1bd14020abdd5c4217a2f0e824b8abcbf3e3cc0f
+    mem_limit: 1536m
+    restart: unless-stopped
+    depends_on: *ready
+    ports: ['127.0.0.1:3033:3000']
+    environment:
+      <<: *shared
+      NEXTAUTH_SECRET: ${LF_NEXTAUTH_SECRET:?Run bootstrap}
+      LANGFUSE_DISABLE_SIGNUP_ONBOARDING: 'true'
+      LANGFUSE_INIT_ORG_ID: agentpay-local
+      LANGFUSE_INIT_ORG_NAME: AgentPay local
+      LANGFUSE_INIT_PROJECT_ID: agentpay-agent
+      LANGFUSE_INIT_PROJECT_NAME: AgentPay minimized agent traces
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?Run bootstrap}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?Run bootstrap}
+      LANGFUSE_INIT_USER_EMAIL: operator@agentpay.invalid
+      LANGFUSE_INIT_USER_NAME: Local operator
+      LANGFUSE_INIT_USER_PASSWORD: ${LF_USER_PASSWORD:?Run bootstrap}
+  postgres:
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+    mem_limit: 256m
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_DB: langfuse
+      POSTGRES_PASSWORD: ${LF_POSTGRES_PASSWORD:?Run bootstrap}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U langfuse -d langfuse']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6
+    user: '101:101'
+    # A 1GiB cap produced real OvercommitTracker failures even on synthetic reads.
+    mem_limit: 2048m
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${LF_CLICKHOUSE_PASSWORD:?Run bootstrap}
+    volumes: [clickhouse_data:/var/lib/clickhouse, clickhouse_logs:/var/log/clickhouse-server]
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  blob:
+    # Latest published standard image verified via official Docker Hub API 2026-10-24.
+    image: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    mem_limit: 512m
+    restart: unless-stopped
+    command: ['mini', '-dir=/data', '-ip.bind=0.0.0.0']
+    environment:
+      AWS_ACCESS_KEY_ID: langfuse
+      AWS_SECRET_ACCESS_KEY: ${LF_S3_PASSWORD:?Run bootstrap}
+      S3_BUCKET: langfuse
+    volumes: [blob_data:/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:9333/cluster/status >/dev/null']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541
+    mem_limit: 128m
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', '${LF_REDIS_PASSWORD:?Run bootstrap}', '--maxmemory-policy', 'noeviction']
+    environment:
+      REDISCLI_AUTH: ${LF_REDIS_PASSWORD:?Run bootstrap}
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  postgres_data:
+  clickhouse_data:
+  clickhouse_logs:
+  blob_data:
+  redis_data:

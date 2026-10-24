@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix="agentpay-playwright-") as directory:
     os.environ["SECURE_COOKIES"] = "false"
     # Browser tests must never contact external email or model providers.
     for key in list(os.environ):
-        if key.startswith(("SMTP_", "YANDEX_", "LLM_")):
+        if key == "DATABASE_URL" or key.startswith(("SMTP_", "YANDEX_", "LLM_", "LANGFUSE_", "LANGSMITH_")):
             os.environ.pop(key, None)
-    uvicorn.run("server.main:app", host="127.0.0.1", port=8001, log_level="warning")
+    uvicorn.run("server.main:app", host="127.0.0.1", port=8001, log_level="warning",
+                proxy_headers=True, forwarded_allow_ips="127.0.0.1")

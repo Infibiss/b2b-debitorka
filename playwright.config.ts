@@ -10,11 +10,17 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'e2e/report', open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:8001',
+    // APIRequestContext has no browser-generated Origin. Keep the real Origin
+    // guard enabled and send the same allowed origin as the browser frontend.
+    extraHTTPHeaders: { Origin: 'http://127.0.0.1:8001' },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } } },
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } },
+    },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {

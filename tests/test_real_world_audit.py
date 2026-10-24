@@ -154,14 +154,15 @@ def test_only_actual_identity_changes_invalidate_unsent_approvals_and_sent_histo
 
 def legacy_v1_copy(client, target):
     """Produce the real v1 shape from a disposable fixture, never a working DB."""
+    from server.database import LEGACY_SCHEMA_SQL
     with sqlite3.connect(client.app.state.config.database_path) as source:
+        source.row_factory = sqlite3.Row
         with sqlite3.connect(target) as saved:
-            source.backup(saved)
-            columns = {row[1] for row in saved.execute("PRAGMA table_info(messages)")}
-            if "invalidation_reason" in columns:
-                saved.execute("ALTER TABLE messages DROP COLUMN invalidation_reason")
-            saved.execute("DELETE FROM schema_version WHERE version>1")
-            saved.execute("PRAGMA user_version=1")
+            saved.executescript(LEGACY_SCHEMA_SQL)
+            for table in ("tenants", "users", "sessions", "settings", "invoices", "events", "messages", "payments"):
+                columns = [row[1] for row in saved.execute("PRAGMA table_info(" + table + ")")]
+                for row in source.execute("SELECT * FROM " + table):
+                    saved.execute("INSERT INTO " + table + "(" + ",".join(columns) + ") VALUES(" + ",".join("?" for _ in columns) + ")", tuple(row[k] for k in columns))
     return target
 
 
@@ -180,7 +181,7 @@ def test_v1_migration_preserves_finances_and_sent_history_but_requires_new_legac
     initialize(Config(str(path)))  # Additive migration must be idempotent.
     with sqlite3.connect(path) as connection:
         connection.row_factory = sqlite3.Row
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert connection.execute("SELECT count(*) FROM schema_version WHERE version=2").fetchone()[0] == 1
         stale = connection.execute("SELECT * FROM messages WHERE id=?", (old_approved["id"],)).fetchone()
         assert stale["status"] == "draft" and stale["invalidation_reason"]
@@ -203,12 +204,12 @@ def test_restore_accepts_v1_backup_then_startup_migrates_to_current_schema(audit
     assert restore_database(snapshot, restored) is None
     initialize(Config(str(restored)))
     with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert connection.execute("SELECT sum(amount-paid_amount) FROM invoices").fetchone()[0] == 125000
         assert connection.execute("SELECT count(*) FROM payments").fetchone()[0] == 1
 
 
-def test_restore_accepts_current_v2_backup_without_rewriting_history(audit_client, tmp_path):
+def test_restore_accepts_current_v3_backup_without_rewriting_history(audit_client, tmp_path):
     from scripts.backup import backup_database
     from scripts.restore import restore_database
     from server.database import Config, initialize
@@ -220,7 +221,7 @@ def test_restore_accepts_current_v2_backup_without_rewriting_history(audit_clien
     assert restore_database(snapshot, restored) is None
     initialize(Config(str(restored)))
     with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert connection.execute("SELECT sum(amount-paid_amount) FROM invoices").fetchone()[0] == 150025
         restored_message = connection.execute("SELECT status,body,invalidation_reason FROM messages WHERE id=?", (approved["id"],)).fetchone()
         assert restored_message == ("approved", approved["body"], None)
@@ -272,7 +273,7 @@ def test_stale_draft_edit_cannot_reapprove_an_obsolete_balance_and_sent_text_is_
     old = draft_and_approve(audit_client, invoice["id"])
     assert pay(audit_client, invoice["id"], 100, "PARTIAL").status_code == 200
     edited = audit_client.patch(f"/api/messages/{old['id']}", json={"subject": "Обновлено", "body": "Остаток 9 рублей, проверено вручную"})
-    assert edited.status_code == 200
+    assert edited.status_code == 409
     assert audit_client.post(f"/api/messages/{old['id']}/approve").status_code == 409
     fresh = draft_and_approve(audit_client, invoice["id"])
     assert "9,00" in fresh["body"]
@@ -332,34 +333,35 @@ def test_mixed_csv_with_invalid_precision_or_unicode_contact_is_all_or_nothing(a
         assert audit_client.get("/api/invoices").json()["items"] == []
 
 
-def test_current_duplicate_contract_is_company_number_not_inn_identity(audit_client):
-    """Characterize the documented limitation; this is not approval for real AR."""
+def test_stable_inn_identity_rejects_alias_duplicates_and_allows_different_legal_entities(audit_client):
     original = add_debt(audit_client, company="ООО Берёзка")
-    # Identical legal identity with a different spelling is currently a new key.
-    alias = add_debt(audit_client, company="ООО Бере\u0308зка")
-    assert alias["inn"] == original["inn"] and alias["id"] != original["id"]
-    distinct_legal_entity = audit_client.post("/api/invoices", json={"company": original["company"], "inn": "7801234567", "number": original["number"], "issued_on": original["issued_on"], "due_on": original["due_on"], "amount": 150025})
-    assert distinct_legal_entity.status_code == 409
+    fields = {k: original[k] for k in ("company", "inn", "email", "number", "issued_on", "due_on", "amount")}
+    assert audit_client.post("/api/invoices", json={**fields, "company": "ООО Бере\u0308зка"}).status_code == 409
+    distinct = audit_client.post("/api/invoices", json={**fields, "inn": "7801234567"})
+    assert distinct.status_code == 201
+    assert distinct.json()["counterparty_id"] != original["counterparty_id"]
     assert audit_client.get("/api/overview").json()["total_outstanding"] == 300050
 
 
-def test_current_cooldown_scope_is_per_invoice_and_not_debtor_mailbox(audit_client, mail_capture):
-    """Document the existing policy scope; a future debtor-level rule needs a contract."""
+def test_cooldown_spans_counterparty_invoices_and_shared_mailbox(audit_client, mail_capture):
     first = add_debt(audit_client)
     second = add_debt(audit_client, number="П-002")
-    for invoice in (first, second):
-        message = draft_and_approve(audit_client, invoice["id"])
-        assert audit_client.post(f"/api/messages/{message['id']}/send").status_code == 200
-    assert len(mail_capture["deliveries"]) == 2
+    message = draft_and_approve(audit_client, first["id"])
+    assert audit_client.post(f"/api/messages/{message['id']}/send").status_code == 200
+    other = draft_and_approve(audit_client, second["id"])
+    assert audit_client.post(f"/api/messages/{other['id']}/send").status_code == 409
+    assert len(mail_capture["deliveries"]) == 1
 
 
-@pytest.mark.parametrize("header", ["Оплачено, руб.", "Остаток (руб.)", "Paid Amount"])
-def test_accounting_headers_with_units_or_display_spaces_must_not_silently_inflate_debt(audit_client, header):
+@pytest.mark.parametrize("header,expected_paid", [("Оплачено, руб.", 40000), ("Остаток (руб.)", 60000), ("Paid Amount", 40000)])
+def test_accounting_headers_with_units_preserve_opening_payment_and_exact_balance(audit_client, header, expected_paid):
     content = f"контрагент;номер;дата;срок;сумма;{header}\nПокупатель;F-001;01.10.2026;15.10.2026;1000;400\n"
     preview = audit_client.post("/api/invoices/import/preview", json={"content": content}).json()
-    assert preview["items"] == [] and preview["errors"], "Recognizable accounting column was silently discarded"
-    assert audit_client.post("/api/invoices/import", json={"content": content}).status_code == 422
-    assert audit_client.get("/api/invoices").json()["items"] == []
+    assert not preview["errors"] and preview["items"][0]["paid_amount"] == expected_paid
+    assert audit_client.post("/api/invoices/import", json={"content": content}).status_code == 200
+    item = audit_client.get("/api/invoices").json()["items"][0]
+    assert item["balance"] == 100000 - expected_paid
+    assert audit_client.get("/api/overview").json()["collected_amount"] == 0
 
 
 def test_two_fresh_startups_cannot_downgrade_schema_or_repeat_column_migration(tmp_path, monkeypatch):
@@ -413,7 +415,7 @@ def test_two_fresh_startups_cannot_downgrade_schema_or_repeat_column_migration(t
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(start, ("first", "second")))
     with original_connect(target) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert connection.execute("SELECT count(*) FROM schema_version WHERE version=2").fetchone()[0] == 1
 
 
@@ -439,7 +441,7 @@ def test_bootstrap_retries_a_transient_wal_negotiation_lock(tmp_path, monkeypatc
     initialize(Config(str(target)))
     with original_connect(target) as connection:
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
 
 
 def test_real_parallel_fresh_file_startups_end_in_one_current_wal_schema(tmp_path):
@@ -450,5 +452,5 @@ def test_real_parallel_fresh_file_startups_end_in_one_current_wal_schema(tmp_pat
         with ThreadPoolExecutor(max_workers=2) as pool:
             list(pool.map(lambda _: initialize(Config(str(target))), range(2)))
         with sqlite3.connect(target) as connection:
-            assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+            assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
             assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"

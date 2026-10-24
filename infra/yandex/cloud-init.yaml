@@ -1,0 +1,115 @@
+#cloud-config
+# Ubuntu 24.04 LTS, 2 vCPU 20%, 2 GB RAM, 30 GB network-ssd.
+# Replace the public key before provisioning. Never put API/database secrets in user-data.
+ssh_pwauth: false
+disable_root: true
+groups: [docker]
+users:
+  - default
+  - name: agentpay
+    gecos: AgentPay operator
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    ssh_authorized_keys:
+      - REPLACE_WITH_ED25519_PUBLIC_KEY
+package_update: true
+package_upgrade: true
+packages: [ca-certificates, curl, gnupg, git, python3, unattended-upgrades]
+write_files:
+  - path: /etc/ssh/sshd_config.d/20-agentpay.conf
+    permissions: '0644'
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+  - path: /etc/systemd/system/agentpay-cert-renew.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Renew AgentPay short-lived public IP TLS certificate
+      ConditionPathExists=/opt/agentpay/current
+      After=docker.service network-online.target
+      Requires=docker.service
+      [Service]
+      Type=oneshot
+      User=agentpay
+      Group=docker
+      WorkingDirectory=/opt/agentpay/current
+      ExecStart=/bin/bash /opt/agentpay/current/infra/yandex/renew-cert.sh
+      TimeoutStartSec=600
+  - path: /etc/systemd/system/agentpay-cert-renew.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Check AgentPay IP certificate renewal twice daily
+      [Timer]
+      OnCalendar=*-*-* 00,12:00:00
+      RandomizedDelaySec=600
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+  - path: /etc/systemd/system/agentpay-backup.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Private AgentPay PostgreSQL daily archive
+      ConditionPathExists=/opt/agentpay/current
+      After=docker.service
+      [Service]
+      Type=oneshot
+      User=agentpay
+      Group=docker
+      WorkingDirectory=/opt/agentpay/current
+      ExecStart=/bin/bash /opt/agentpay/current/infra/yandex/backup.sh
+      TimeoutStartSec=600
+  - path: /etc/systemd/system/agentpay-backup.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Daily AgentPay PostgreSQL backup
+      [Timer]
+      OnCalendar=*-*-* 02:15:00 UTC
+      RandomizedDelaySec=600
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+  - path: /usr/local/sbin/agentpay-docker-init
+    permissions: '0700'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      . /etc/os-release
+      printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu %s stable\n' "$(dpkg --print-architecture)" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - path: /usr/local/sbin/agentpay-swap-init
+    permissions: '0700'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      # 2GB RAM builds can briefly exceed physical memory. This is a private
+      # bounded safety margin, not extra CPU/RAM capacity or a Langfuse install.
+      memory_kib=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+      if ((memory_kib < 3 * 1024 * 1024)); then
+        umask 077
+        swap=/swapfile-agentpay
+        if [[ ! -f "$swap" ]]; then
+          fallocate -l 2G "$swap"
+          chmod 600 "$swap"
+          mkswap "$swap"
+        fi
+        chmod 600 "$swap"
+        if ! swapon --show=NAME --noheadings | grep -qx "$swap"; then swapon "$swap"; fi
+        if ! grep -qF '/swapfile-agentpay ' /etc/fstab; then printf '/swapfile-agentpay none swap sw 0 0\n' >> /etc/fstab; fi
+        printf 'vm.swappiness=10\n' > /etc/sysctl.d/80-agentpay-swap.conf
+        sysctl -w vm.swappiness=10
+      fi
+runcmd:
+  - [bash, /usr/local/sbin/agentpay-swap-init]
+  - [bash, /usr/local/sbin/agentpay-docker-init]
+  - [bash, -ceu, 'install -d -m 0750 -o agentpay -g agentpay /opt/agentpay /opt/agentpay/releases /opt/agentpay/incoming; install -d -m 0700 -o agentpay -g agentpay /etc/agentpay /etc/agentpay/letsencrypt /var/backups/agentpay; systemctl enable --now docker; systemctl daemon-reload; systemctl enable --now agentpay-cert-renew.timer agentpay-backup.timer']
+  - [systemctl, restart, ssh]

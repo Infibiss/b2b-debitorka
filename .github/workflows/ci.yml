@@ -1,4 +1,4 @@
-name: Verify and optionally deploy
+name: Verify
 
 on:
   push:
@@ -17,6 +17,20 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: agentpay_test
+          POSTGRES_PASSWORD: agentpay-test-only
+          POSTGRES_DB: agentpay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agentpay_test -d agentpay_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7, verified official tag
         with:
@@ -34,7 +48,11 @@ jobs:
       - name: Audit runtime Python dependencies
         run: python -m pip_audit -r requirements.txt --progress-spinner off
       - name: Test API and operations
+        env:
+          TEST_POSTGRES_URL: postgresql://agentpay_test:agentpay-test-only@127.0.0.1:5432/agentpay_test
         run: python -m pytest -q
+      - name: Evaluate agent safety regressions
+        run: python -m server.agent_evals --mode replay --out var/agent-eval-replay.json
       - name: Install frontend dependencies
         run: npm ci
       - name: Audit frontend dependencies
@@ -59,34 +77,3 @@ jobs:
             e2e/results/
           if-no-files-found: ignore
           retention-days: 7
-
-  deploy:
-    needs: verify
-    # Native Render checksPass is the default. Enable this legacy alternative only
-    # after disabling Render auto-deploy; see docs/operations.md.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.RENDER_DEPLOY_MODE == 'hook'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Trigger optional Render deployment
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        shell: bash
-        run: |
-          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-            echo "Deployment skipped: RENDER_DEPLOY_HOOK is not configured."
-            exit 0
-          fi
-          case "$RENDER_DEPLOY_HOOK" in
-            https://api.render.com/deploy/*) ;;
-            *) echo "Invalid Render deploy hook configuration."; exit 1 ;;
-          esac
-          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-            --fail --max-time 45 --get --data-urlencode "ref=$GITHUB_SHA" "$RENDER_DEPLOY_HOOK") || {
-            echo "Render deploy hook request failed."
-            exit 1
-          }
-          case "$status" in
-            2??) echo "Render accepted the deploy request. Check the service health before declaring it live." ;;
-            *) echo "Render deploy hook did not return a success status."; exit 1 ;;
-          esac

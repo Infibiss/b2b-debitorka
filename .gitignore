@@ -4,6 +4,7 @@ web/dist/
 __pycache__/
 .pytest_cache/
 *.pyc
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

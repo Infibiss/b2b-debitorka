@@ -69,6 +69,8 @@ class InvoiceInput(Input):
     issued_on: date
     due_on: date
     amount: Money
+    paid_amount: Annotated[StrictInt, Field(ge=0, le=1_000_000_000_000_000)] = 0
+    balance: Annotated[StrictInt, Field(ge=0, le=1_000_000_000_000_000)] | None = None
     notes: str = Field(default="", max_length=5000)
 
     @field_validator("company", "number", mode="before")
@@ -92,6 +94,8 @@ class InvoiceInput(Input):
     def dates_valid(self):
         if self.due_on < self.issued_on:
             raise ValueError("Срок оплаты не может быть раньше даты счёта")
+        if self.paid_amount > self.amount or (self.balance is not None and self.balance != self.amount-self.paid_amount):
+            raise ValueError("Сумма, оплачено и остаток не согласованы")
         return self
 
 

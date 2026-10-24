@@ -1,0 +1,227 @@
+{
+  "version": "cbr-keyrate-2026-10-24",
+  "verified_through": "2026-10-24",
+  "available_from": "2016-08-01",
+  "source": "https://www.cbr.ru/hd_base/KeyRate/?UniDbQuery.Posted=True&UniDbQuery.From=01.08.2016&UniDbQuery.To=24.10.2026",
+  "decision_source": "https://www.cbr.ru/press/pr/?file=23102026_133000key.htm",
+  "raw_sha256": "0bab6441fdb494b4b49c89cf2f6e274b2583443a5064493e81c2fe22c4d0685f",
+  "daily_rows": 2577,
+  "periods": [
+    {
+      "from_on": "2016-08-01",
+      "annual_percent": "10.50"
+    },
+    {
+      "from_on": "2016-09-19",
+      "annual_percent": "10.00"
+    },
+    {
+      "from_on": "2017-03-27",
+      "annual_percent": "9.75"
+    },
+    {
+      "from_on": "2017-05-02",
+      "annual_percent": "9.25"
+    },
+    {
+      "from_on": "2017-06-19",
+      "annual_percent": "9.00"
+    },
+    {
+      "from_on": "2017-09-18",
+      "annual_percent": "8.50"
+    },
+    {
+      "from_on": "2017-10-30",
+      "annual_percent": "8.25"
+    },
+    {
+      "from_on": "2017-12-18",
+      "annual_percent": "7.75"
+    },
+    {
+      "from_on": "2018-02-12",
+      "annual_percent": "7.50"
+    },
+    {
+      "from_on": "2018-03-26",
+      "annual_percent": "7.25"
+    },
+    {
+      "from_on": "2018-09-17",
+      "annual_percent": "7.50"
+    },
+    {
+      "from_on": "2018-12-17",
+      "annual_percent": "7.75"
+    },
+    {
+      "from_on": "2019-06-17",
+      "annual_percent": "7.50"
+    },
+    {
+      "from_on": "2019-07-29",
+      "annual_percent": "7.25"
+    },
+    {
+      "from_on": "2019-09-09",
+      "annual_percent": "7.00"
+    },
+    {
+      "from_on": "2019-10-28",
+      "annual_percent": "6.50"
+    },
+    {
+      "from_on": "2019-12-16",
+      "annual_percent": "6.25"
+    },
+    {
+      "from_on": "2020-02-10",
+      "annual_percent": "6.00"
+    },
+    {
+      "from_on": "2020-04-27",
+      "annual_percent": "5.50"
+    },
+    {
+      "from_on": "2020-06-22",
+      "annual_percent": "4.50"
+    },
+    {
+      "from_on": "2020-07-27",
+      "annual_percent": "4.25"
+    },
+    {
+      "from_on": "2021-03-22",
+      "annual_percent": "4.50"
+    },
+    {
+      "from_on": "2021-04-26",
+      "annual_percent": "5.00"
+    },
+    {
+      "from_on": "2021-06-15",
+      "annual_percent": "5.50"
+    },
+    {
+      "from_on": "2021-07-26",
+      "annual_percent": "6.50"
+    },
+    {
+      "from_on": "2021-09-13",
+      "annual_percent": "6.75"
+    },
+    {
+      "from_on": "2021-10-25",
+      "annual_percent": "7.50"
+    },
+    {
+      "from_on": "2021-12-20",
+      "annual_percent": "8.50"
+    },
+    {
+      "from_on": "2022-02-14",
+      "annual_percent": "9.50"
+    },
+    {
+      "from_on": "2022-02-28",
+      "annual_percent": "20.00"
+    },
+    {
+      "from_on": "2022-04-11",
+      "annual_percent": "17.00"
+    },
+    {
+      "from_on": "2022-05-04",
+      "annual_percent": "14.00"
+    },
+    {
+      "from_on": "2022-05-27",
+      "annual_percent": "11.00"
+    },
+    {
+      "from_on": "2022-06-14",
+      "annual_percent": "9.50"
+    },
+    {
+      "from_on": "2022-07-25",
+      "annual_percent": "8.00"
+    },
+    {
+      "from_on": "2022-09-19",
+      "annual_percent": "7.50"
+    },
+    {
+      "from_on": "2023-07-24",
+      "annual_percent": "8.50"
+    },
+    {
+      "from_on": "2023-08-15",
+      "annual_percent": "12.00"
+    },
+    {
+      "from_on": "2023-09-18",
+      "annual_percent": "13.00"
+    },
+    {
+      "from_on": "2023-10-30",
+      "annual_percent": "15.00"
+    },
+    {
+      "from_on": "2023-12-18",
+      "annual_percent": "16.00"
+    },
+    {
+      "from_on": "2024-07-29",
+      "annual_percent": "18.00"
+    },
+    {
+      "from_on": "2024-09-16",
+      "annual_percent": "19.00"
+    },
+    {
+      "from_on": "2024-10-28",
+      "annual_percent": "21.00"
+    },
+    {
+      "from_on": "2025-06-09",
+      "annual_percent": "20.00"
+    },
+    {
+      "from_on": "2025-07-28",
+      "annual_percent": "18.00"
+    },
+    {
+      "from_on": "2025-09-15",
+      "annual_percent": "17.00"
+    },
+    {
+      "from_on": "2025-10-27",
+      "annual_percent": "16.50"
+    },
+    {
+      "from_on": "2025-12-22",
+      "annual_percent": "16.00"
+    },
+    {
+      "from_on": "2026-02-16",
+      "annual_percent": "15.50"
+    },
+    {
+      "from_on": "2026-03-23",
+      "annual_percent": "15.00"
+    },
+    {
+      "from_on": "2026-04-27",
+      "annual_percent": "14.50"
+    },
+    {
+      "from_on": "2026-06-22",
+      "annual_percent": "14.25"
+    },
+    {
+      "from_on": "2026-07-27",
+      "annual_percent": "14.00"
+    }
+  ]
+}

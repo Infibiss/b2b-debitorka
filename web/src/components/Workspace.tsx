@@ -22,11 +22,16 @@ import {
   AlertCircle,
   CircleCheck,
   TrendingUp,
+  Bot,
+  Scale,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { Auth } from './Auth';
 import { CreateInvoice, ImportInvoices, downloadTemplate } from './InvoiceForms';
 import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
+import { FinanceDesk } from './FinanceDesk';
+import { AgentDesk } from './AgentDesk';
+import LegalDesk from './LegalDesk';
 import {
   api,
   post,
@@ -42,10 +47,13 @@ import {
   ApiError,
 } from '../api';
 import './workspace.css';
-type Tab = 'overview' | 'registry' | 'messages' | 'settings';
+type Tab = 'overview' | 'registry' | 'finance' | 'agent' | 'legal' | 'messages' | 'settings';
 const navigation = [
   { id: 'overview' as Tab, label: 'Обзор', icon: LayoutDashboard },
   { id: 'registry' as Tab, label: 'Реестр', icon: Files },
+  { id: 'finance' as Tab, label: 'Финансы', icon: Wallet },
+  { id: 'agent' as Tab, label: 'Агент', icon: Bot },
+  { id: 'legal' as Tab, label: 'Дела', icon: Scale },
   { id: 'messages' as Tab, label: 'Письма', icon: Mail },
   { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
 ];
@@ -440,6 +448,12 @@ export function Workspace() {
               onImport={() => setModal('import')}
               onOpen={setSelected}
             />
+          ) : tab === 'finance' ? (
+            <FinanceDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
+          ) : tab === 'agent' ? (
+            <AgentDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
+          ) : tab === 'legal' ? (
+            <LegalDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
           ) : tab === 'messages' ? (
             <Correspondence
               invoices={invoices}

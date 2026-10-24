@@ -1,3 +1,26 @@
+# Проверка расширенного MVP — 24.10.2026
+
+Текущий объём и оставшиеся требования: [приёмка](report-mvp-acceptance.md). Ниже сначала новые проверки, затем исторический протокол первого узкого выпуска.
+
+## Локально подтверждено для расширенного MVP
+
+- Полный Python-прогон с реальным PostgreSQL: **291 passed / 1 skipped**, 28.51 s, включая последнюю bootstrap-регрессию. Пропуск — намеренно opt-in live provider test, отдельный фактический canary ниже.
+- Полный Chromium desktop / Pixel 7: **24 passed**, 56.5 s. ОСВ mapping/сверка/история, точное received_at/timezone, публичный сайт/signup, деньги/письма/обещания, bank split/correction, stale ledger switch, derived balance, увеличение закрытого требования, реальный DOCX/review/ручная стадия/reload. API-запросы тестов передают реальный allowed Origin; независимые клиенты получают отдельные IP в доверенном localhost test proxy, production лимиты не ослаблены.
+- TypeScript, production build, форматирование; npm и Python dependency audit — известных уязвимостей не найдено на момент проверки.
+- Replay: 19 синтетических кейсов, false-ready 0, missed-ready 0; это проверка guardrails, не измерение качества LLM. Отдельный реальный Yandex eval: 19 кейсов, 0 false-ready/0 missed-ready/0 provider failures. [Артефакты и ограничения](evals/README.md).
+- Реальный FastAPI → LangGraph → Yandex → review → verify_payment → Langfuse canary: executed, paid_amount=0, 3 observations, input/output пусты, 252/57 tokens. [Протокол](evals/agent-langfuse-canary.json). Langfuse на VM не включён.
+- Фактические PostgreSQL pg_dump/restore в отдельные disposable БД: финансовые строки и ожидающий checkpoint восстановлены; непустая цель отклоняется. SQLite v3 проверена на сохранение существующих ID и FK/integrity; перед миграцией сделана закрытая локальная копия.
+- DOCX всех трёх видов отрисованы LibreOffice, по две страницы; визуально проверены шесть страниц, без лишнего пустого листа/обрезания. Примеры и PNG синтетические, остаются в `/tmp/agentpay-legal-qa/`, не являются документами реального клиента.
+- Инфраструктурная регрессия: shell variables сохраняются в base64 write_files при передаче YC metadata; повторная проверка exact user-data после создания VM обязательна. Nginx bootstrap/HTTPS config и pinned Certbot flags проверены отдельно; успешный реальный ACME пока не выводится из этих тестов.
+
+## Внешний выпуск
+
+Владелец заменил Render на Yandex VM до 2 000 ₽/месяц и выбрал SSH только со своего IP, ручной deploy. CI автоматический. Передача private SSH key в GitHub и публичный SSH не выполняются. Ресурсы создаются в ru-central1-d: в зоне a квота SSD была только 10 ГБ; неиспользуемый IP зоны a освобождён. Конфигурация остаётся 2 vCPU20% / 2GB / SSD30GB / 1 IPv4, ~1 905 ₽/31 день без модели.
+
+Точный SHA, GitHub Actions run, живой URL, HTTPS/restart/backup проверки будут добавлены только после фактического выполнения. Наличие Compose/cloud-init не означает успешный deploy. Корпоративный SMTP, реальные юридические реквизиты/договоры, внешний backup и клиентские пилоты не подключены/не подтверждены.
+
+---
+
 # Проверка выпуска AgentPay
 
 Это исторический протокол первого технического выпуска, а не подтверждение выполнения всего исходного PDF. Последующая [полная сверка отчёта](report-gap-audit.md) обнаружила существенные пропуски; [аудит сценариев](scenario-audit.md) описывает исправления и новые проверки.

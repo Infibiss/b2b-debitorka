@@ -1,0 +1,77 @@
+# Cheap VM default: app + private PostgreSQL + HTTPS proxy; no Langfuse services.
+# docker compose --env-file /etc/agentpay/production.env -p agentpay -f compose.production.yml up -d app app-db proxy
+name: agentpay
+services:
+  app:
+    image: agentpay:${AGENTPAY_RELEASE:-local}
+    build: {context: ., dockerfile: Dockerfile}
+    restart: unless-stopped
+    mem_limit: 512m
+    stop_grace_period: 45s
+    env_file: ['${AGENTPAY_ENV_FILE:-/etc/agentpay/production.env}']
+    environment:
+      APP_ENV: production
+      SECURE_COOKIES: 'true'
+      APP_TIMEZONE: Europe/Moscow
+      APP_URL: ${APP_URL:?Set the HTTPS IP URL}
+      DATABASE_URL: postgresql://agentpay:${APP_DB_PASSWORD:?Generate production.env}@app-db:5432/agentpay
+      PORT: '10000'
+      # No public app port; Nginx replaces client-supplied forwarding headers.
+      FORWARDED_ALLOW_IPS: '*'
+      LANGFUSE_BASE_URL: ${LANGFUSE_INTERNAL_URL:-${LANGFUSE_BASE_URL:-}}
+    depends_on:
+      app-db: {condition: service_healthy}
+    read_only: true
+    tmpfs: ['/tmp:size=128m', '/var/data:size=1m,uid=10001,gid=10001']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging: &logs
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  app-db:
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+    restart: unless-stopped
+    mem_limit: 384m
+    shm_size: 128m
+    environment:
+      POSTGRES_USER: agentpay
+      POSTGRES_DB: agentpay
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?Generate production.env}
+    command: ['postgres', '-c', 'shared_buffers=64MB', '-c', 'max_connections=30', '-c', 'work_mem=4MB', '-c', 'maintenance_work_mem=64MB']
+    volumes: [app_pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agentpay -d agentpay']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+    security_opt: [no-new-privileges:true]
+    logging: *logs
+  proxy:
+    # Official stable Nginx and Certbot digests verified from Docker Hub 2026-10-24.
+    image: nginx:1.30.6-alpine@sha256:47928bf67eb62a1863cb08d9ecb52d3e704304ba614eaee17884204677702951
+    restart: unless-stopped
+    mem_limit: 64m
+    entrypoint: ['nginx', '-g', 'daemon off;']
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./infra/yandex/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${AGENTPAY_CONFIG_DIR:-/etc/agentpay}/nginx-site.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${AGENTPAY_CONFIG_DIR:-/etc/agentpay}/letsencrypt:/etc/letsencrypt:ro
+      - acme_webroot:/var/www/acme:ro
+    tmpfs: ['/var/cache/nginx:size=32m', '/var/run:size=1m', '/tmp:size=1m']
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    depends_on: {app: {condition: service_healthy}}
+    logging: *logs
+  certbot:
+    image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
+    profiles: [ops]
+    mem_limit: 128m
+    volumes:
+      - ${AGENTPAY_CONFIG_DIR:-/etc/agentpay}/letsencrypt:/etc/letsencrypt
+      - acme_webroot:/var/www/acme
+    logging: *logs
+volumes:
+  app_pg_data:
+  acme_webroot:

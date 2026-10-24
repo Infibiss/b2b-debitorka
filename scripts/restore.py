@@ -42,10 +42,16 @@ def restore_database(backup: Path, database: Path, *, replace_existing: bool = F
             required = {"tenants", "users", "sessions", "settings", "invoices", "payments", "messages", "events", "schema_version"}
             present = {row[0] for row in restored.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             version = restored.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (1, 2) or not required.issubset(present):
-                raise ValueError("Backup is not a supported AgentPay schema version 1 or 2 database")
-            if version == 2 and "invalidation_reason" not in {row[1] for row in restored.execute("PRAGMA table_info(messages)")}:
+            if version not in (1, 2, 3) or not required.issubset(present):
+                raise ValueError("Backup is not a supported AgentPay schema version 1, 2 or 3 database")
+            if version >= 2 and "invalidation_reason" not in {row[1] for row in restored.execute("PRAGMA table_info(messages)")}:
                 raise ValueError("Backup is missing the AgentPay schema version 2 message provenance")
+            if version == 3:
+                required_v3 = {"finance_counterparties", "finance_bank_payments", "finance_actions", "finance_adjustments", "finance_reversals", "finance_promises", "finance_installments", "finance_imports", "finance_identity_conflicts"}
+                invoice_columns = {row[1] for row in restored.execute("PRAGMA table_info(invoices)")}
+                payment_columns = {row[1] for row in restored.execute("PRAGMA table_info(payments)")}
+                if not required_v3.issubset(present) or not {"counterparty_id", "number_key", "opening_paid_amount", "adjustment_amount", "promised_amount", "revision"}.issubset(invoice_columns) or not {"bank_payment_id", "reversed_amount"}.issubset(payment_columns):
+                    raise ValueError("Backup is missing the AgentPay schema version 3 financial ledger")
             if restored.execute("PRAGMA foreign_key_check").fetchall():
                 raise ValueError("Backup contains invalid foreign-key references")
         if exists_at_start:

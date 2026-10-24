@@ -1,0 +1,139 @@
+{
+  "verified_on": "2026-10-24",
+  "region": "ru",
+  "currency": "RUB",
+  "includes_vat": true,
+  "source": "https://yandex.cloud/api/priceList/getPriceList",
+  "public_price_list": "https://yandex.cloud/ru/price-list",
+  "skus": [
+    {
+      "sku": "dn27ajm6m8mnfcshbi61",
+      "name": "nbs.network-nvme.allocated",
+      "label": "Быстрый диск (SSD)",
+      "pricing_unit": "gbyte*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.0199"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2r8aklo79bmpkd87l3",
+      "name": "compute.vm.cpu.c20.v3",
+      "label": "Вычислительные ресурсы обычной ВМ, Intel Ice Lake, 20% vCPU",
+      "pricing_unit": "core*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.52"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2ilq72mjc3bej6j74p",
+      "name": "compute.vm.ram.v3",
+      "label": "Вычислительные ресурсы обычной ВМ, Intel Ice Lake, RAM",
+      "pricing_unit": "gbyte*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.33"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2al287u6jr3a710u8g",
+      "name": "nbs.network-hdd.allocated",
+      "label": "Стандартный диск (HDD)",
+      "pricing_unit": "gbyte*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.0048"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn229q5mnmp58t58tfel",
+      "name": "network.public_fips",
+      "label": "Публичный IP-адрес (динамический или статический)",
+      "pricing_unit": "fip*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.26352"
+        }
+      ],
+      "effective_from_utc": "2025-12-31T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2nqa0nqffbhihsq2n5",
+      "name": "network.public_fips.deallocated",
+      "label": "Резервирование неактивного публичного статического IP-адреса",
+      "pricing_unit": "fip*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0.34038"
+        }
+      ],
+      "effective_from_utc": "2025-12-31T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2blgm6egk7u97t0mr0",
+      "name": "storage.bucket.used_space.standard",
+      "label": "Object Storage. Размещение данных в стандартном хранилище",
+      "pricing_unit": "gbyte*hour",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0"
+        },
+        {
+          "startPricingQuantity": "720",
+          "unitPrice": "0.0033"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2tsb3bn2sgk6tict7r",
+      "name": "storage.api.get.standard",
+      "label": "Object Storage. Стандартное хранилище, операции GET",
+      "pricing_unit": "10k*request",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0"
+        },
+        {
+          "startPricingQuantity": "10",
+          "unitPrice": "0.46"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    },
+    {
+      "sku": "dn2c17otu20ij2eu4k18",
+      "name": "storage.api.put.standard",
+      "label": "Object Storage. Стандартное хранилище, операции PUT",
+      "pricing_unit": "1k*request",
+      "rates": [
+        {
+          "startPricingQuantity": "0",
+          "unitPrice": "0"
+        },
+        {
+          "startPricingQuantity": "10",
+          "unitPrice": "0.5692"
+        }
+      ],
+      "effective_from_utc": "2026-04-30T21:00:00+00:00"
+    }
+  ]
+}

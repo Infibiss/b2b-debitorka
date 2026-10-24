@@ -1,0 +1,55 @@
+{
+  "captured_at": "2026-10-24T01:29:10.428431+00:00",
+  "scope": "Six AgentPay local Langfuse containers only, Docker Desktop, synthetic data",
+  "measurement": "Single docker stats --no-stream snapshot after successful application/Yandex/Langfuse canary; rounded values, not a load test or peak measurement",
+  "canary_peak_measured": false,
+  "containers": [
+    {
+      "service": "web",
+      "memory_mib": 702.9,
+      "limit_mib": 1536,
+      "cpu_percent": 1.17
+    },
+    {
+      "service": "worker",
+      "memory_mib": 384.4,
+      "limit_mib": 1024,
+      "cpu_percent": 2.21
+    },
+    {
+      "service": "postgres",
+      "memory_mib": 85.98,
+      "limit_mib": 256,
+      "cpu_percent": 0.0
+    },
+    {
+      "service": "clickhouse",
+      "memory_mib": 1082.37,
+      "limit_mib": 2048,
+      "cpu_percent": 8.3
+    },
+    {
+      "service": "redis",
+      "memory_mib": 12.43,
+      "limit_mib": 128,
+      "cpu_percent": 1.86
+    },
+    {
+      "service": "blob",
+      "memory_mib": 146.9,
+      "limit_mib": 512,
+      "cpu_percent": 1.32
+    }
+  ],
+  "approximate_total_memory_mib": 2414.98,
+  "total_container_limits_mib": 5504,
+  "excluded": "AgentPay application, application PostgreSQL, host OS, Docker overhead and other containers",
+  "observed_failure": "ClickHouse cap 1024MiB produced OvercommitTracker query failures on a small number of synthetic traces; cap raised to 2048MiB before successful full canary",
+  "inference": "Do not co-host this full Langfuse stack on the baseline 2GiB application VM. A 4GiB all-in deployment is not validated safe. Keep optional local tracing or provision a separate appropriately sized deployment.",
+  "vendor_compose_recommendation": {
+    "cores": 4,
+    "memory_gib": 16,
+    "source": "https://langfuse.com/self-hosting/deployment/docker-compose"
+  },
+  "vendor_service_sizing_source": "https://langfuse.com/self-hosting/configuration/scaling"
+}

@@ -35,7 +35,15 @@ export type InvoiceEvent = {
   detail: string;
   created_at: string;
 };
-export type Payment = { id: string; amount: number; paid_on: string; reference: string };
+export type Payment = {
+  id: string;
+  amount: number;
+  paid_on: string;
+  reference: string;
+  display_reference?: string;
+  bank_payment_id?: string | null;
+  reversed_amount?: number;
+};
 export type Detail = {
   invoice: Invoice;
   events: InvoiceEvent[];

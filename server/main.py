@@ -17,6 +17,8 @@ from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
 from urllib.parse import urlsplit
+from types import SimpleNamespace
+import importlib
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
@@ -28,7 +30,9 @@ from fastapi.staticfiles import StaticFiles
 from .csv_import import parse_csv
 from .business_time import business_today
 from .database import Config, database, initialize
-from . import llm
+from . import llm, finance
+from .agent_policy import provider_allowed
+from .finance_imports import create_invoice, preview_changes
 from .models import (ContactInput, CSVInput, DraftInput, InvoiceInput, Login, MessageInput,
                      PaymentInput, PromiseInput, Register, SettingsInput, StatusInput)
 
@@ -148,44 +152,22 @@ def event(connection, tenant_id, invoice_id, kind, title, detail=""):
 
 
 def invoice_row(connection, tenant_id, invoice_id):
-    row = connection.execute("SELECT * FROM invoices WHERE id=? AND tenant_id=?", (invoice_id, tenant_id)).fetchone()
-    if row is None:
-        problem(404, "Счёт не найден")
-    return row
+    return finance.load_invoice(connection, tenant_id, invoice_id)
 
 
 def invoice_view(row):
-    today = business_today()
-    result = {key: row[key] for key in ("id", "company", "inn", "email", "number", "issued_on", "due_on", "amount", "paid_amount", "promise_date", "notes")}
-    balance = row["amount"] - row["paid_amount"]
-    days = max(0, (today - date.fromisoformat(row["due_on"])).days) if balance else 0
-    status = "paid" if not balance else row["status"]
-    if balance and status == "open" and row["promise_date"]:
-        status = "promised"
-    reasons = []
-    broken = balance and row["promise_date"] and date.fromisoformat(row["promise_date"]) < today
-    if days:
-        reasons.append(f"Просрочка {days} дн.")
-    if broken:
-        reasons.append("Нарушено обещание оплаты")
-    if balance >= 10_000_000 and days:
-        reasons.append("Остаток от 100 000 ₽")
-    priority = "high" if broken or days >= 30 or (balance >= 10_000_000 and days) else "medium" if days else "low"
-    if status in ("paid", "disputed", "paused"):
-        priority = "low"
-        if status == "disputed":
-            reasons.append("Спор: требуется решение сотрудника")
-        elif status == "paused":
-            reasons.append("Контакт приостановлен")
-    result.update(balance=balance, days_overdue=days, status=status, priority=priority, priority_reasons=reasons)
-    return result
+    return finance.view_invoice(row)
 
 
 def contactable(row):
-    if row["paid_amount"] >= row["amount"]:
+    if finance.balance(row) <= 0:
         problem(409, "Счёт оплачен: напоминание не требуется")
     if row["status"] in ("disputed", "paused"):
         problem(409, "Контакт приостановлен: сначала разрешите спор или снимите паузу")
+    if row["counterparty_hold"] or not row["counterparty_contact_allowed"]:
+        problem(409, "Контакт по контрагенту приостановлен или не разрешён")
+    if row["counterparty_mandate_expires_on"] and row["counterparty_mandate_expires_on"] < str(business_today()):
+        problem(409, "Срок разрешения на контакт истёк")
     if not row["email"]:
         problem(409, "Для письма необходим email контрагента")
 
@@ -202,8 +184,10 @@ def message_view(row):
 
 
 def require_current_message(message):
+    if message["invalidation_reason"] == "contact_changed":
+        problem(409, "Адрес получателя изменился. Подготовьте новое письмо")
     if message["invalidation_reason"]:
-        problem(409, "Письмо устарело: данные компании изменились. Подготовьте новое письмо")
+        problem(409, "Письмо устарело: данные счёта или компании изменились. Подготовьте новое письмо")
 
 
 def money_text(amount):
@@ -219,7 +203,7 @@ def smtp_configuration(tenant_id):
 def settings_view(connection, tenant_id):
     row = connection.execute("SELECT s.*,t.company FROM settings s JOIN tenants t ON t.id=s.tenant_id WHERE s.tenant_id=?", (tenant_id,)).fetchone()
     return {**{key: row[key] for key in ("company", "sender_name", "reply_to", "bank_details", "annual_rate", "cooldown_days")},
-            "smtp_configured": smtp_configuration(tenant_id), "llm_configured": llm.configured()}
+            "smtp_configured": smtp_configuration(tenant_id), "llm_configured": llm.configured() and provider_allowed(tenant_id)}
 
 
 def create_session(connection, user, config, status=200):
@@ -250,15 +234,7 @@ def get_user(request: Request):
 
 
 def insert_invoice(connection, tenant_id, data):
-    invoice_id = identifier()
-    connection.execute("""INSERT INTO invoices(id,tenant_id,company,inn,email,number,issued_on,due_on,amount,notes,created_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (invoice_id, tenant_id, data["company"], data.get("inn", ""), data.get("email", ""), data["number"], str(data["issued_on"]), str(data["due_on"]), data["amount"], data.get("notes", ""), now()))
-    event(connection, tenant_id, invoice_id, "invoice_created", "Счёт добавлен", f"№ {data['number']} · {money_text(data['amount'])} ₽")
-    return invoice_row(connection, tenant_id, invoice_id)
-
-
-def duplicate_keys(connection, tenant_id):
-    return {(row["company"], row["number"]) for row in connection.execute("SELECT company,number FROM invoices WHERE tenant_id=?", (tenant_id,))}
+    return create_invoice(connection, tenant_id, data)
 
 
 def create_app():
@@ -335,7 +311,7 @@ def create_app():
     def overview(user=Depends(get_user)):
         with database(config) as connection:
             items = [invoice_view(row) for row in connection.execute("SELECT * FROM invoices WHERE tenant_id=?", (user["tenant_id"],))]
-            payments = list(connection.execute("SELECT amount,paid_on FROM payments WHERE tenant_id=?", (user["tenant_id"],)))
+            payments = list(connection.execute("SELECT amount-reversed_amount AS amount,paid_on FROM payments WHERE tenant_id=?", (user["tenant_id"],)))
         labels = ["В срок", "1–7 дней", "8–30 дней", "31–60 дней", "61–90 дней", "90+ дней"]
         amounts = [0] * len(labels)
         for item in items:
@@ -350,7 +326,7 @@ def create_app():
             "total_outstanding": sum(item["balance"] for item in items),
             "overdue_amount": sum(item["balance"] for item in items if item["days_overdue"]),
             "collected_amount": sum(payment["amount"] for payment in payments),
-            "promised_amount": sum(item["balance"] for item in items if item["status"] == "promised"),
+            "promised_amount": sum(item["promised_amount"] for item in items if item["status"] == "promised"),
             "invoice_count": len(items), "overdue_count": sum(1 for item in items if item["days_overdue"]),
             "aging": [{"label": label, "amount": amount} for label, amount in zip(labels, amounts)],
             "weekly": [{"date": str(start + timedelta(days=offset)), "amount": totals[str(start + timedelta(days=offset))]} for offset in range(7)],
@@ -378,14 +354,8 @@ def create_app():
     def preview_import(data: CSVInput, user=Depends(get_user)):
         items, errors = parse_csv(data.content)
         with database(config) as connection:
-            seen = duplicate_keys(connection, user["tenant_id"])
-        duplicates = 0
-        for item in items:
-            key = (item["company"], item["number"])
-            if key in seen:
-                duplicates += 1
-            seen.add(key)
-        return {"items": items, "errors": errors, "duplicate_count": duplicates}
+            changes = preview_changes(connection, user["tenant_id"], items) if not errors else []
+        return {"items": items, "errors": errors, "duplicate_count": sum(c["action"] != "create" for c in changes), "changes": changes}
 
     @application.post("/api/invoices/import")
     def commit_import(data: CSVInput, user=Depends(get_user)):
@@ -394,15 +364,14 @@ def create_app():
             problem(422, {"message": "Исправьте ошибки: ни один счёт не импортирован", "errors": errors})
         imported = skipped = 0
         with database(config, write=True) as connection:
-            seen = duplicate_keys(connection, user["tenant_id"])
-            for item in items:
-                key = (item["company"], item["number"])
-                if key in seen:
-                    skipped += 1
-                    continue
-                insert_invoice(connection, user["tenant_id"], item)
-                seen.add(key)
-                imported += 1
+            changes = preview_changes(connection, user["tenant_id"], items)
+            if any(change["action"] in ("update", "conflict") for change in changes):
+                problem(409, "Источник содержит изменения или конфликты. Выполните сверку и явно согласуйте изменения")
+            for change in changes:
+                if change["action"] == "skip": skipped += 1
+                else:
+                    insert_invoice(connection, user["tenant_id"], change["after"])
+                    imported += 1
         return {"imported": imported, "skipped": skipped}
 
     @application.get("/api/invoices/{invoice_id}")
@@ -411,7 +380,7 @@ def create_app():
             invoice = invoice_view(invoice_row(connection, user["tenant_id"], invoice_id))
             events = [{key: row[key] for key in ("id", "type", "title", "detail", "created_at")} for row in connection.execute("SELECT * FROM events WHERE invoice_id=? AND tenant_id=? ORDER BY created_at DESC", (invoice_id, user["tenant_id"]))]
             messages = [message_view(row) for row in connection.execute("SELECT * FROM messages WHERE invoice_id=? AND tenant_id=? ORDER BY created_at DESC", (invoice_id, user["tenant_id"]))]
-            payments = [{key: row[key] for key in ("id", "amount", "paid_on", "reference", "created_at")} for row in connection.execute("SELECT * FROM payments WHERE invoice_id=? AND tenant_id=? ORDER BY paid_on DESC,created_at DESC", (invoice_id, user["tenant_id"]))]
+            payments = [{key: public[key] for key in ("id", "amount", "paid_on", "reference", "created_at", "bank_payment_id", "reversed_amount", "display_reference")} for row in connection.execute("SELECT * FROM payments WHERE invoice_id=? AND tenant_id=? ORDER BY paid_on DESC,created_at DESC", (invoice_id, user["tenant_id"])) for public in [finance.payment_view(connection, row)]]
         return {"invoice": invoice, "events": events, "messages": messages, "payments": payments}
 
     @application.patch("/api/invoices/{invoice_id}/contact")
@@ -422,6 +391,7 @@ def create_app():
             # Old drafts keep their actual recipient and financial snapshot. They
             # must never silently become approved mail to a corrected address.
             connection.execute("UPDATE messages SET status='draft' WHERE invoice_id=? AND tenant_id=? AND status!='sent'", (invoice_id, user["tenant_id"]))
+            finance.bump(connection, user["tenant_id"], invoice_id, "contact_changed")
             previous = row["email"] or "не указан"
             current = data.email or "не указан"
             detail = f"Email: {previous} → {current}"
@@ -434,12 +404,12 @@ def create_app():
     def draft(invoice_id: str, data: DraftInput, user=Depends(get_user)):
         with database(config) as connection:
             contactable(invoice_row(connection, user["tenant_id"], invoice_id))
-        wording, source = llm.phrases(data.tone)
+        wording, source = llm.phrases(data.tone) if provider_allowed(user["tenant_id"], production=config.production) else (llm.fallback(data.tone), "template")
         with database(config, write=True) as connection:
             row = invoice_row(connection, user["tenant_id"], invoice_id)
             contactable(row)
             settings = settings_view(connection, user["tenant_id"])
-            balance = row["amount"] - row["paid_amount"]
+            balance = finance.balance(row)
             date_text = date.fromisoformat(row["due_on"]).strftime("%d.%m.%Y")
             facts = f"По счёту № {row['number']} от {date.fromisoformat(row['issued_on']).strftime('%d.%m.%Y')} остаётся к оплате {money_text(balance)} ₽. Срок оплаты — {date_text}."
             body = wording["greeting"] + "\n\n" + facts + "\n\n" + wording["request"]
@@ -474,7 +444,7 @@ def create_app():
                 problem(409, "Адрес получателя изменился. Подготовьте новое письмо")
             if message["status"] == "sent":
                 problem(409, "Письмо уже отправлено")
-            if row["amount"] - row["paid_amount"] != message["balance_snapshot"]:
+            if finance.balance(row) != message["balance_snapshot"]:
                 problem(409, "Остаток изменился. Подготовьте новое письмо")
             connection.execute("UPDATE messages SET status='approved' WHERE id=? AND tenant_id=?", (message_id, user["tenant_id"]))
             event(connection, user["tenant_id"], message["invoice_id"], "message_approved", "Письмо согласовано", user["name"])
@@ -492,12 +462,14 @@ def create_app():
                 problem(409, "Адрес получателя изменился. Подготовьте новое письмо")
             if message["status"] != "approved":
                 problem(409, "Перед отправкой согласуйте письмо")
-            if row["amount"] - row["paid_amount"] != message["balance_snapshot"]:
+            if finance.balance(row) != message["balance_snapshot"]:
                 problem(409, "Остаток изменился. Подготовьте новое письмо")
             if not smtp_configuration(user["tenant_id"]):
                 problem(409, "Почта компании не подключена. Письмо сохранено, но не отправлено")
             settings = settings_view(connection, user["tenant_id"])
-            latest = connection.execute("SELECT sent_at FROM messages WHERE tenant_id=? AND invoice_id=? AND status='sent' ORDER BY sent_at DESC LIMIT 1", (user["tenant_id"], row["id"])).fetchone()
+            latest = connection.execute("""SELECT m.sent_at FROM messages m JOIN invoices i ON i.id=m.invoice_id AND i.tenant_id=m.tenant_id
+                WHERE m.tenant_id=? AND m.status='sent' AND (i.counterparty_id=? OR m.recipient=?) ORDER BY m.sent_at DESC LIMIT 1""",
+                (user["tenant_id"], row["counterparty_id"], message["recipient"])).fetchone()
             if latest and datetime.fromisoformat(latest["sent_at"]) + timedelta(days=settings["cooldown_days"]) > datetime.now(timezone.utc):
                 problem(409, "Выдержите интервал между письмами, заданный в настройках")
             mail = EmailMessage()
@@ -542,43 +514,25 @@ def create_app():
     @application.post("/api/invoices/{invoice_id}/payments")
     def record_payment(invoice_id: str, data: PaymentInput, user=Depends(get_user)):
         with database(config, write=True) as connection:
-            row = invoice_row(connection, user["tenant_id"], invoice_id)
-            existing = connection.execute("SELECT * FROM payments WHERE tenant_id=? AND invoice_id=? AND reference=?", (user["tenant_id"], invoice_id, data.reference)).fetchone()
-            if existing:
-                if existing["amount"] != data.amount or existing["paid_on"] != str(data.paid_on):
-                    problem(409, "Такой номер платежа уже зарегистрирован с другими данными")
-                return invoice_view(row)
-            if data.amount > row["amount"] - row["paid_amount"]:
-                problem(422, "Сумма платежа превышает остаток по счёту")
-            if str(data.paid_on) < row["issued_on"]:
-                problem(422, "Дата платежа не может быть раньше даты счёта")
-            connection.execute("INSERT INTO payments VALUES(?,?,?,?,?,?,?)", (identifier(), user["tenant_id"], invoice_id, data.amount, str(data.paid_on), data.reference, now()))
-            connection.execute("UPDATE invoices SET paid_amount=paid_amount+? WHERE id=? AND tenant_id=?", (data.amount, invoice_id, user["tenant_id"]))
-            connection.execute("UPDATE messages SET status='draft' WHERE invoice_id=? AND tenant_id=? AND status='approved'", (invoice_id, user["tenant_id"]))
-            event(connection, user["tenant_id"], invoice_id, "payment_recorded", "Зарегистрирована оплата", f"{money_text(data.amount)} ₽ · {data.reference}")
-            return invoice_view(invoice_row(connection, user["tenant_id"], invoice_id))
+            return finance.record_manual_payment(connection, user["tenant_id"], invoice_id, data.amount, data.paid_on, data.reference, user["id"])
 
     @application.post("/api/invoices/{invoice_id}/promise")
     def promise(invoice_id: str, data: PromiseInput, user=Depends(get_user)):
         with database(config, write=True) as connection:
             row = invoice_row(connection, user["tenant_id"], invoice_id)
-            if row["paid_amount"] == row["amount"]:
-                problem(409, "Счёт уже оплачен")
-            if row["status"] == "disputed":
-                problem(409, "Сначала разрешите спор по счёту")
-            connection.execute("UPDATE invoices SET promise_date=? WHERE id=? AND tenant_id=?", (str(data.date), invoice_id, user["tenant_id"]))
-            event(connection, user["tenant_id"], invoice_id, "promise_recorded", "Зафиксировано обещание оплаты", data.date.strftime("%d.%m.%Y"))
+            finance.record_promise(connection, user["tenant_id"], invoice_id, finance.balance(row), data.date, user["id"], identifier())
             return invoice_view(invoice_row(connection, user["tenant_id"], invoice_id))
 
     @application.post("/api/invoices/{invoice_id}/status")
     def update_status(invoice_id: str, data: StatusInput, user=Depends(get_user)):
         with database(config, write=True) as connection:
             row = invoice_row(connection, user["tenant_id"], invoice_id)
-            if row["paid_amount"] == row["amount"]:
+            if finance.balance(row) <= 0:
                 problem(409, "Оплаченный счёт нельзя вернуть в работу")
             connection.execute("UPDATE invoices SET status=?,notes=COALESCE(?,notes) WHERE id=? AND tenant_id=?", (data.status, data.notes, invoice_id, user["tenant_id"]))
             if data.status in ("disputed", "paused"):
                 connection.execute("UPDATE messages SET status='draft' WHERE invoice_id=? AND tenant_id=? AND status='approved'", (invoice_id, user["tenant_id"]))
+            finance.bump(connection, user["tenant_id"], invoice_id, "status_changed")
             titles = {"open": "Счёт возвращён в работу", "disputed": "Открыт спор по счёту", "paused": "Контакт приостановлен"}
             event(connection, user["tenant_id"], invoice_id, "status_changed", titles[data.status], data.notes or "")
             return invoice_view(invoice_row(connection, user["tenant_id"], invoice_id))
@@ -602,6 +556,7 @@ def create_app():
                 columns = ",".join(key + "=?" for key in values)
                 connection.execute(f"UPDATE settings SET {columns} WHERE tenant_id=?", (*values.values(), user["tenant_id"]))
             if changed_identity:
+                connection.execute("UPDATE invoices SET revision=revision+1 WHERE tenant_id=?", (user["tenant_id"],))
                 affected = list(connection.execute("SELECT DISTINCT invoice_id FROM messages WHERE tenant_id=? AND status!='sent' AND invalidation_reason IS NULL", (user["tenant_id"],)))
                 connection.execute("UPDATE messages SET status='draft',invalidation_reason=COALESCE(invalidation_reason,'sender_settings_changed') WHERE tenant_id=? AND status!='sent'", (user["tenant_id"],))
                 for row in affected:
@@ -623,6 +578,19 @@ def create_app():
         for item in items:
             writer.writerow([safe(item[key]) for key in ("company", "inn", "email", "number", "issued_on", "due_on")] + [money_text(item[key]) for key in ("amount", "paid_amount", "balance")] + [item["status"]])
         return Response("\ufeff" + buffer.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="agentpay-invoices.csv"'})
+
+    ctx = SimpleNamespace(config=config, get_user=get_user, database=database, event=event,
+                          invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
+                          now=now, problem=problem, settings_view=settings_view, contactable=contactable)
+    application.include_router(finance.create_router(ctx))
+    for module_name in ("legal", "agent", "accounting_import"):
+        try:
+            module = importlib.import_module("server." + module_name)
+        except ModuleNotFoundError as error:
+            if error.name != "server." + module_name: raise
+            continue
+        if hasattr(module, "create_router"):
+            application.include_router(module.create_router(ctx))
 
     @application.api_route("/api/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"])
     def missing_api(path: str):
