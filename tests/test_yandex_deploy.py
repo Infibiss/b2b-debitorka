@@ -73,6 +73,9 @@ def test_shell_recipe_is_parseable_and_never_uses_unverified_ssh():
     assert 'options=(-F /dev/null ' in text
     assert 'git get-tar-commit-id' in text and 'before stopping' in text
     assert 'filter=\'data\'' in text
+    assert 'bash -s --' not in text
+    assert 'cat > "$remote_script"' in text
+    assert '"$checksum" "$host" < /dev/null' in text
 
 
 def test_cloud_init_renderer_rejects_private_key_and_preserves_existing_output(tmp_path):

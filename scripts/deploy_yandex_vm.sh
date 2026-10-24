@@ -41,9 +41,10 @@ PY
 options=(-F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" -o ConnectTimeout=10 -i "$identity")
 ssh "${options[@]}" "$user@$host" 'test -d /opt/agentpay/incoming && test -d /etc/agentpay && command -v docker >/dev/null'
 scp "${options[@]}" "$archive" "$user@$host:/opt/agentpay/incoming/$revision.tar"
-# These command arguments are restricted above to hexadecimal/IPv4. The script body
-# travels over the same authenticated connection, never from an unauthenticated URL.
-ssh "${options[@]}" "$user@$host" bash -s -- "$revision" "$checksum" "$host" <<'REMOTE'
+# Run a saved file with closed stdin: docker compose run attaches stdin by default
+# and can otherwise consume the remainder of a streamed `bash -s` deployment.
+remote_script="$work/$revision.deploy.sh"
+cat > "$remote_script" <<'REMOTE'
 set -euo pipefail
 release=$1 checksum=$2 public_ip=$3
 exec 8>/opt/agentpay/.deploy.lock
@@ -124,3 +125,5 @@ mv -Tf /opt/agentpay/current.next /opt/agentpay/current
 rm -f "$archive"
 echo 'Verified release is healthy over trusted HTTPS. Check UI and the certificate/backup timers before reopening writes.'
 REMOTE
+scp "${options[@]}" "$remote_script" "$user@$host:/opt/agentpay/incoming/$revision.deploy.sh"
+ssh "${options[@]}" "$user@$host" bash "/opt/agentpay/incoming/$revision.deploy.sh" "$revision" "$checksum" "$host" < /dev/null
