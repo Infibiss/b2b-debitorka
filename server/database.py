@@ -1,6 +1,7 @@
 """SQLite connection lifecycle and additive, versioned schema migration."""
 import os
 import sqlite3
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,17 +50,18 @@ def initialize(config):
     if config.database_path == ":memory:":
         raise RuntimeError("DATABASE_PATH must be a persistent file")
     Path(config.database_path).parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(config.database_path, timeout=15)
+    connection = sqlite3.connect(config.database_path, timeout=15, isolation_level=None)
     try:
-        connection.execute("PRAGMA journal_mode = WAL")
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 15000")
+        # The version read and every migration share one write lock. Otherwise
+        # two version-zero startups can replay v1 after the first reached v2.
+        connection.execute("BEGIN IMMEDIATE")
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version > 1:
+        if version > 2:
             raise RuntimeError("Database schema is newer than this application")
         if version == 0:
-            connection.executescript("""
-                BEGIN IMMEDIATE;
+            schema_sql = """
                 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS tenants (id TEXT PRIMARY KEY, company TEXT NOT NULL, created_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS users (
@@ -111,8 +113,37 @@ def initialize(config):
                 CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);
                 INSERT OR IGNORE INTO schema_version(version, applied_at) VALUES(1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
                 PRAGMA user_version = 1;
-                COMMIT;
-            """)
+            """
+            # This is static DDL without semicolons inside literals. execute()
+            # preserves our transaction; executescript() would implicitly commit.
+            for statement in schema_sql.split(";"):
+                if statement.strip():
+                    connection.execute(statement)
+            version = 1
+        if version == 1:
+            connection.execute("ALTER TABLE messages ADD COLUMN invalidation_reason TEXT")
+            # V1 drafts contain no provenance for the then-current sender
+            # settings. Preserve their text/history but require a fresh draft.
+            connection.execute("UPDATE messages SET status='draft',invalidation_reason='legacy_sender_settings' WHERE status!='sent'")
+            connection.execute("INSERT INTO schema_version(version,applied_at) VALUES(2,strftime('%Y-%m-%dT%H:%M:%SZ','now'))")
+            connection.execute("PRAGMA user_version=2")
         connection.commit()
+        # Journal mode cannot change inside a transaction. Negotiate only after
+        # the schema is current, and tolerate a short competing startup lock.
+        deadline = time.monotonic() + 15
+        while True:
+            try:
+                mode = connection.execute("PRAGMA journal_mode = WAL").fetchone()[0]
+                if mode.lower() != "wal":
+                    raise RuntimeError("Database filesystem must support SQLite WAL")
+                break
+            except sqlite3.OperationalError as error:
+                code = getattr(error, "sqlite_errorcode", 0) & 0xFF
+                if code not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED) or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.025)
+    except BaseException:
+        connection.rollback()
+        raise
     finally:
         connection.close()

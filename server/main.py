@@ -201,6 +201,11 @@ def message_view(row):
     return {key: row[key] for key in PUBLIC_MESSAGE}
 
 
+def require_current_message(message):
+    if message["invalidation_reason"]:
+        problem(409, "Письмо устарело: данные компании изменились. Подготовьте новое письмо")
+
+
 def money_text(amount):
     return f"{amount // 100:,}".replace(",", " ") + f",{amount % 100:02d}"
 
@@ -453,6 +458,7 @@ def create_app():
             message = message_row(connection, user["tenant_id"], message_id)
             if message["status"] == "sent":
                 problem(409, "Отправленное письмо нельзя изменить")
+            require_current_message(message)
             connection.execute("UPDATE messages SET subject=?,body=?,status='draft' WHERE id=? AND tenant_id=?", (data.subject, data.body, message_id, user["tenant_id"]))
             event(connection, user["tenant_id"], message["invoice_id"], "draft_edited", "Письмо отредактировано", "Для отправки требуется повторное согласование")
             return message_view(message_row(connection, user["tenant_id"], message_id))
@@ -461,6 +467,7 @@ def create_app():
     def approve(message_id: str, user=Depends(get_user)):
         with database(config, write=True) as connection:
             message = message_row(connection, user["tenant_id"], message_id)
+            require_current_message(message)
             row = invoice_row(connection, user["tenant_id"], message["invoice_id"])
             contactable(row)
             if message["recipient"] != row["email"]:
@@ -478,6 +485,7 @@ def create_app():
         failed = False
         with database(config, write=True) as connection:
             message = message_row(connection, user["tenant_id"], message_id)
+            require_current_message(message)
             row = invoice_row(connection, user["tenant_id"], message["invoice_id"])
             contactable(row)
             if message["recipient"] != row["email"]:
@@ -499,6 +507,7 @@ def create_app():
                 mail["Reply-To"] = settings["reply_to"]
             mail["Message-ID"] = f"<{message_id}@{os.environ['SMTP_FROM'].split('@')[-1]}>"
             mail.set_content(message["body"])
+            accepted = False
             try:
                 port = int(os.getenv("SMTP_PORT", "587"))
                 use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
@@ -513,13 +522,18 @@ def create_app():
                         smtp.login(os.environ["SMTP_USER"], os.getenv("SMTP_PASSWORD", ""))
                     if smtp.send_message(mail):
                         raise smtplib.SMTPException("Recipient rejected")
+                    accepted = True
+            except (OSError, smtplib.SMTPException, ValueError):
+                # A positive DATA acknowledgement is definitive even if QUIT
+                # subsequently fails. Without that acknowledgement the outcome
+                # remains uncertain and a human must reconcile before retrying.
+                if not accepted:
+                    connection.execute("UPDATE messages SET status='failed' WHERE id=? AND tenant_id=?", (message_id, user["tenant_id"]))
+                    event(connection, user["tenant_id"], row["id"], "message_failed", "Отправка не подтверждена", "Проверьте почтовый сервер перед повторным согласованием")
+                    failed = True
+            if accepted:
                 connection.execute("UPDATE messages SET status='sent',sent_at=? WHERE id=? AND tenant_id=?", (now(), message_id, user["tenant_id"]))
                 event(connection, user["tenant_id"], row["id"], "message_sent", "Письмо принято почтовым сервером", message["recipient"])
-            except (OSError, smtplib.SMTPException, ValueError):
-                # Ambiguous SMTP failures require a human review; no automatic retries.
-                connection.execute("UPDATE messages SET status='failed' WHERE id=? AND tenant_id=?", (message_id, user["tenant_id"]))
-                event(connection, user["tenant_id"], row["id"], "message_failed", "Отправка не подтверждена", "Проверьте почтовый сервер перед повторным согласованием")
-                failed = True
             result = message_view(message_row(connection, user["tenant_id"], message_id))
         if failed:
             problem(502, "Почтовый сервер не подтвердил отправку. Обратитесь к администратору")
@@ -578,6 +592,8 @@ def create_app():
     def patch_settings(data: SettingsInput, user=Depends(get_user)):
         values = data.model_dump(exclude_none=True)
         with database(config, write=True) as connection:
+            previous = settings_view(connection, user["tenant_id"])
+            changed_identity = any(key in values and values[key] != previous[key] for key in ("company", "sender_name", "reply_to", "bank_details"))
             company = values.pop("company", None)
             if company is not None:
                 connection.execute("UPDATE tenants SET company=? WHERE id=?", (company, user["tenant_id"]))
@@ -585,6 +601,11 @@ def create_app():
             if values:
                 columns = ",".join(key + "=?" for key in values)
                 connection.execute(f"UPDATE settings SET {columns} WHERE tenant_id=?", (*values.values(), user["tenant_id"]))
+            if changed_identity:
+                affected = list(connection.execute("SELECT DISTINCT invoice_id FROM messages WHERE tenant_id=? AND status!='sent' AND invalidation_reason IS NULL", (user["tenant_id"],)))
+                connection.execute("UPDATE messages SET status='draft',invalidation_reason=COALESCE(invalidation_reason,'sender_settings_changed') WHERE tenant_id=? AND status!='sent'", (user["tenant_id"],))
+                for row in affected:
+                    event(connection, user["tenant_id"], row["invoice_id"], "message_invalidated", "Письмо требует обновления", "Изменены реквизиты или данные отправителя. Подготовьте новое письмо")
             return settings_view(connection, user["tenant_id"])
 
     @application.get("/api/export")

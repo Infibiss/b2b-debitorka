@@ -22,14 +22,34 @@ VOCABULARY = set("""подскажите пожалуйста когда пла�
 сообщите нам по поставке есть разногласия детали благодарим вас за обратную связь
 можете ли вы уточнить ожидаемую направить информацию планируемой дате ожидаем
 вашего ответа поможем подготовить недостающие уточняющие уточнения уточните чтобы
-проверить данные добрый день здравствуйте приветствуем уважением спасибо
+проверить данные добрый день здравствуйте приветствуем уважением спасибо ваш планируемую
 сотрудничество благодарностью ответ с о в готовы будем признательны""".split())
 _cache = {}
 _cache_lock = threading.Lock()
+MODEL_URI = re.compile(r"gpt://[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)?")
 
 
 def configured():
-    return bool(os.getenv("YANDEX_API_KEY") and os.getenv("YANDEX_MODEL"))
+    return bool(os.getenv("YANDEX_API_KEY") and MODEL_URI.fullmatch(os.getenv("YANDEX_MODEL", "")))
+
+
+def configuration_status():
+    """Operator-facing metadata only: never return credentials or model folder IDs."""
+    missing = [name for name in ("YANDEX_API_KEY", "YANDEX_MODEL") if not os.getenv(name)]
+    valid_model = bool(MODEL_URI.fullmatch(os.getenv("YANDEX_MODEL", "")))
+    return {"configured": configured(), "missing": missing,
+            "reason": "missing_configuration" if missing else "ready" if valid_model else "invalid_model_uri",
+            "key_id_present": bool(os.getenv("YANDEX_API_KEY_ID"))}
+
+
+def probe():
+    """One live request, bypassing cached fallbacks; report only redacted outcomes."""
+    result = configuration_status()
+    if not result["configured"]:
+        return {**result, "status": "configuration_error"}
+    _, source, reason, http_status = _generate_result("soft")
+    return {**result, "status": "ok" if source == "yandex" else "unavailable",
+            "source": source, "reason": reason, "http_status": http_status}
 
 
 def fallback(tone):
@@ -73,12 +93,34 @@ def phrases(tone):
 
 
 def _generate(tone):
+    fragments, source, _, _ = _generate_result(tone)
+    return fragments, source
+
+
+def _generate_result(tone):
+    # A short, generic wording adapter is deliberately a closed task. Constrain
+    # generation with a schema instead of repeatedly extending a word allowlist
+    # for unconstrained prose. Financial facts remain entirely outside the call.
+    requests = [fallback(tone)["request"]]
+    requests += (["Просим уточнить планируемую дату оплаты. Если нужны документы для сверки, сообщите нам.",
+                  "Подскажите, пожалуйста, когда планируется оплата? Готовы подготовить документы для сверки."]
+                 if tone == "soft" else
+                 ["Просим направить информацию о планируемой дате оплаты и подтвердить её ответным письмом.",
+                  "Ожидаем вашего ответа о планируемой дате оплаты. Если по поставке есть разногласия, сообщите детали."])
     payload = {
         "modelUri": os.environ["YANDEX_MODEL"],
         "completionOptions": {"stream": False, "temperature": 0.15, "maxTokens": "220"},
-        "jsonObject": True,
+        "jsonSchema": {"schema": {
+            "type": "object", "additionalProperties": False,
+            "required": ["greeting", "request", "closing"],
+            "properties": {
+                "greeting": {"type": "string", "enum": ["Здравствуйте!", "Добрый день!"]},
+                "request": {"type": "string", "enum": requests},
+                "closing": {"type": "string", "enum": ["С уважением,", "Спасибо за сотрудничество."]},
+            },
+        }},
         "messages": [
-            {"role": "system", "text": "Составь только нейтральные общие фразы делового письма на русском. Верни JSON с тремя строками greeting, request, closing. Приветствие и завершение до восьмидесяти символов, просьба сообщить планируемую дату оплаты до двухсот сорока символов. Только русские буквы, пробелы и обычная пунктуация. Не используй цифры, факты о получателе, суммы словами, угрозы, правовые обещания, сроки, скидки, реквизиты и ссылки."},
+            {"role": "system", "text": "Выбери сочетающиеся нейтральные фразы делового письма на русском из вариантов JSON-схемы. Верни только JSON с greeting, request, closing. Не добавляй и не изменяй факты, имена, суммы, сроки, реквизиты или правовые утверждения."},
             {"role": "user", "text": "Тон: " + tone + ". Сформулируй приветствие, просьбу сообщить дату оплаты и вежливое завершение. Только JSON."},
         ],
     }
@@ -92,7 +134,19 @@ def _generate(tone):
         result = response.json()
         # Both the established result envelope and current documented direct body.
         text = result.get("result", result)["alternatives"][0]["message"]["text"]
-        fragments = validate_fragments(json.loads(text))
-        return fragments, "yandex"
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError):
-        return fallback(tone), "template"
+        parsed = json.loads(text)
+        try:
+            fragments = validate_fragments(parsed)
+        except ValueError:
+            return fallback(tone), "template", "output_rejected", response.status_code
+        return fragments, "yandex", "ok", response.status_code
+    except httpx.HTTPStatusError as error:
+        status = error.response.status_code
+        reason = {401: "authentication", 403: "permission", 429: "rate_limit"}.get(status)
+        return fallback(tone), "template", reason or ("provider_unavailable" if status >= 500 else "model_or_request"), status
+    except httpx.TimeoutException:
+        return fallback(tone), "template", "timeout", None
+    except httpx.HTTPError:
+        return fallback(tone), "template", "network", None
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+        return fallback(tone), "template", "invalid_response", None

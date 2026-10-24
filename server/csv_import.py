@@ -17,6 +17,14 @@ HEADERS = {
     **{key: key for key in ("company", "inn", "number", "issued_on", "due_on", "amount", "notes")},
 }
 REQUIRED = {"company", "number", "issued_on", "due_on", "amount"}
+# These columns describe accounting state which this importer cannot restore.
+# Silently dropping them can turn a partly paid debt into a full new demand.
+UNSUPPORTED_FINANCIAL_HEADERS = {
+    "оплачено", "оплата", "оплаты", "сумма оплаты", "сумма оплат", "сумма оплачено",
+    "остаток", "остаток долга", "остаток задолженности", "сальдо", "статус",
+    "paid", "paid_amount", "amount_paid", "payment_amount", "balance", "balance_due",
+    "outstanding", "outstanding_amount", "status", "currency", "валюта",
+}
 
 
 def rubles_to_kopeks(raw):
@@ -46,7 +54,12 @@ def parse_csv(content):
     try:
         reader = csv.reader(io.StringIO(content), delimiter=delimiter, strict=True)
         raw_headers = next(reader, [])
+        normalized = [" ".join(header.strip().casefold().split()) for header in raw_headers]
+        if any(header in UNSUPPORTED_FINANCIAL_HEADERS for header in normalized):
+            return [], [{"row": 1, "message": "Этот файл содержит оплаты, остатки, статусы или валюту, которые импорт пока не переносит. Импорт остановлен, чтобы не изменить сумму долга. Используйте согласованный реестр неоплаченных рублёвых счетов; оплаты внесите отдельно после сверки."}]
         headers = [HEADERS.get(header.strip().lower(), header.strip().lower()) for header in raw_headers]
+        if any(header not in HEADERS.values() for header in headers):
+            return [], [{"row": 1, "message": "В файле есть неподдерживаемые столбцы. Импорт остановлен: их значения нельзя молча отбросить. Сопоставьте заголовки с форматом реестра; бухгалтерские выгрузки с оплатами и остатками требуют отдельной сверки."}]
         if len(set(headers)) != len(headers):
             return [], [{"row": 1, "message": "Названия столбцов не должны повторяться"}]
         missing = REQUIRED.difference(headers)
