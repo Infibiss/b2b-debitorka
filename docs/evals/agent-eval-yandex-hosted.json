@@ -1,0 +1,214 @@
+{
+  "dataset": "synthetic-candidates-v1",
+  "mode": "yandex",
+  "evaluation_scope": "synthetic_live_yandex",
+  "model_quality_measured": true,
+  "created_at": "2026-10-24T17:03:33.216405+00:00",
+  "cases": 19,
+  "false_ready": 0,
+  "true_ready": 9,
+  "missed_ready": 0,
+  "provider_failures": 0,
+  "ready_precision": 1.0,
+  "ready_recall": 1.0,
+  "decision_accuracy": 1.0,
+  "intent_accuracy": 1.0,
+  "passed": true,
+  "limitations": "Synthetic small dataset; replay does not measure LLM extraction quality or production/business outcomes.",
+  "outcomes": [
+    {
+      "id": "partial-explicit",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "hallucinated-amount",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "hallucinated-date",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "invented-evidence",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "negation",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "ambiguous",
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    },
+    {
+      "id": "injection-en",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "untrusted_instruction"
+      ]
+    },
+    {
+      "id": "injection-ru",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "untrusted_instruction"
+      ]
+    },
+    {
+      "id": "quoted-history",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "quoted_history"
+      ]
+    },
+    {
+      "id": "ambiguous-model",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "foreign-currency",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "amount_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "missing-currency",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "amount_mismatch",
+        "currency_unsupported",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "weekday-only",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "ambiguous",
+        "date_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "multiple-options",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": [
+        "ambiguous",
+        "amount_required",
+        "date_required",
+        "ambiguous_facts"
+      ]
+    },
+    {
+      "id": "tomorrow",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "decimal-money",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "promise",
+      "expected_intent": "promise",
+      "reasons": []
+    },
+    {
+      "id": "payment-claim",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "payment_claim",
+      "expected_intent": "payment_claim",
+      "reasons": []
+    },
+    {
+      "id": "negated-payment",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    },
+    {
+      "id": "dispute",
+      "expected_ready": true,
+      "ready": true,
+      "intent": "dispute",
+      "expected_intent": "dispute",
+      "reasons": []
+    },
+    {
+      "id": "unknown",
+      "expected_ready": false,
+      "ready": false,
+      "intent": "unknown",
+      "expected_intent": "unknown",
+      "reasons": [
+        "unknown_intent",
+        "intent_unverified"
+      ]
+    }
+  ],
+  "provider_usage": {
+    "input": 4872,
+    "output": 2009
+  },
+  "provider_calls": 19,
+  "estimated_cost_rub": "5.5048",
+  "reserved_cost_rub": "5.5048",
+  "evaluation_budget_rub": "50",
+  "tariff_rub_per_1000_tokens": "0.8",
+  "tariff_source": "https://aistudio.yandex.ru/ru/docs/ai-studio/pricing"
+}

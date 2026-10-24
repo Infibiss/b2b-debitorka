@@ -52,10 +52,10 @@ Owner: root; new PostgreSQL adapter and UI modules, shared API integration coord
 
 - [x] Independent reviews against all report MVP rows and new financial/agent/legal invariants.
 - [x] Full Python + PostgreSQL + browser workflows on desktop/mobile, real Yandex canary on synthetic input, document render/inspection, dependency audits and Docker build.
-- [ ] Push tested code, wait for real GitHub Actions success.
-- [ ] Deploy the approved 2 vCPU20% / 2GB / SSD30GB Yandex VM with private PostgreSQL and trusted HTTPS by IP; verify restart persistence and public workflow. SSH only from the operator IP, manual deploy, no GitHub SSH secrets; Langfuse stays off this VM.
-- [ ] Connect permitted provider credentials without logging/exposing them. If an account permission/credential requires the owner, finish all unaffected work and request only the concrete final access step.
-- [ ] Report the actual live URL, monthly cost and remaining operational requirements in chat/docs. Keep service UI focused on the user's work.
+- [x] Push tested code, wait for real GitHub Actions success.
+- [x] Deploy the approved 2 vCPU20% / 2GB / SSD30GB Yandex VM with private PostgreSQL and trusted HTTPS by IP; verify restart persistence and public workflow. SSH only from the operator IP, manual deploy, no GitHub SSH secrets; Langfuse stays off this VM.
+- [x] Connect permitted provider credentials without logging/exposing them. If an account permission/credential requires the owner, finish all unaffected work and request only the concrete final access step.
+- [x] Report the actual live URL, monthly cost and remaining operational requirements in chat/docs. Keep service UI focused on the user's work.
 
 ## Acceptance examples
 

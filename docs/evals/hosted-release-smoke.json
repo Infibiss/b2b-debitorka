@@ -1,0 +1,32 @@
+{
+  "checked_at": "2026-10-24T17:14:55.681816+00:00",
+  "tls_verified": true,
+  "health": true,
+  "finance_split_idempotency_cap_correction_promise": true,
+  "legal_docx_review_persistence": true,
+  "unbound_paid_provider_denied": true,
+  "persisted_invoices": 3,
+  "provider": "Yandex",
+  "model": "yandexgpt-5.1",
+  "status": "executed",
+  "action": "verify_payment",
+  "checkpoint_survived_restart": true,
+  "repeated_approval_idempotent": true,
+  "balance_unchanged": true,
+  "langfuse_on_vm": false,
+  "full_vm_reboot_preserved_data": true,
+  "off_vm_backup": {
+    "copied_to_operator_computer": true,
+    "sha256_matches": true,
+    "mode": "0600",
+    "bytes": 121100,
+    "automatic_off_vm_upload": false
+  },
+  "binding": {
+    "owner_enabled": true,
+    "qa_denied": true,
+    "unknown_denied": true,
+    "langfuse_on_vm": false
+  },
+  "deployed_revision": "ba06a877756ba928b7b587769b8de6f365e12757"
+}
