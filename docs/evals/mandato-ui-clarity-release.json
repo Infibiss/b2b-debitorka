@@ -1,0 +1,39 @@
+{
+  "runtime_revision": "56f793417b62a6392afffcdeeab121f3e8a10137",
+  "ci": "success",
+  "ci_url": "https://github.com/Infibiss/b2b-debitorka/actions/runs/40354469144",
+  "pytest": {
+    "passed": 506,
+    "skipped": 1
+  },
+  "playwright": {
+    "passed": 68,
+    "projects": ["desktop", "mobile"]
+  },
+  "typescript": "passed",
+  "production_build": "passed",
+  "format": "passed",
+  "independent_review": "no blockers",
+  "financial_tables_unchanged": 8,
+  "https_smoke": {
+    "checked_at": "2026-10-26T16:06:49.778174+00:00",
+    "tls_verified": true,
+    "financial_writes": 0,
+    "external_sends": 0,
+    "new_ui_assets": true,
+    "javascript_sha256": "8ab4473690d31e00f24a3bfbf416476c3f3e5fbb057ec389122a30bb09110a76",
+    "status": "passed",
+    "existing_test_account": true,
+    "financial_balances_retained": true,
+    "owner_key_isolation": true
+  },
+  "private_backup_restore": {
+    "status": "passed",
+    "financial_tables_matched": 8,
+    "new_service_tables_present": 4,
+    "isolated_local_restore": true
+  },
+  "new_cloud_resources": 0,
+  "vpn_disabled": false,
+  "ssh_source": "single current operator VPN proxy exit /32"
+}

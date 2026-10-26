@@ -27,4 +27,4 @@
 ## 4. Release
 - [x] Resolve overview decision from human; preserve functionality and document map of tools to main sections.
 - [x] TypeScript, build, formatting, all browser and server regressions; independent spec and code review.
-- [ ] Commit/push, verify CI, private backup, exact-SHA manual deploy to same VM, verify HTTPS and unchanged financial fingerprint; private copy and rollback retained.
+- [x] Commit/push, verify CI, private backup, exact-SHA manual deploy to same VM, verify HTTPS and unchanged financial fingerprint; private copy and rollback retained.
