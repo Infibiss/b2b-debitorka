@@ -100,3 +100,66 @@ test('accountant invitation joins the same organization and cannot enable policy
   await page.getByRole('button', { name: 'Управление', exact: true }).click();
   await expect(page.getByLabel('Автоматические напоминания', { exact: true })).toBeDisabled();
 });
+
+test('a confirmed contract shows its fixed number and cannot silently remove linked invoices', async ({
+  page,
+}, info) => {
+  const session = await account(page, `contract-ui-${info.project.name}`);
+  const headers = { 'X-CSRF-Token': session.csrf_token };
+  for (const number of ['CON-1', 'CON-2', 'CON-3']) {
+    const result = await page.request.post('/api/invoices', {
+      headers,
+      data: {
+        company: 'Покупатель договора',
+        inn: '9900000000',
+        number,
+        issued_on: '2026-10-01',
+        due_on: '2026-10-15',
+        amount: 100000,
+      },
+    });
+    expect(result.status()).toBe(201);
+  }
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Открыть дело Покупатель договора', exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Карточка дела', exact: true });
+  await dialog.getByRole('button', { name: 'Указать договор', exact: true }).click();
+  await dialog.getByLabel('Номер договора', { exact: true }).fill('CON-2026');
+  for (const checkbox of await dialog.getByRole('checkbox').all()) await checkbox.uncheck();
+  await dialog.getByRole('checkbox', { name: /CON-1/ }).check();
+  await dialog.getByRole('checkbox', { name: /CON-2/ }).check();
+  await dialog.getByRole('button', { name: 'Сохранить договор', exact: true }).click();
+  await expect(dialog.getByText('Договор CON-2026', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Счета договора', exact: true }).click();
+  await expect(dialog.getByLabel('Номер договора', { exact: true })).toHaveAttribute(
+    'readonly',
+    ''
+  );
+  await expect(dialog.getByRole('checkbox', { name: /CON-1/ })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /CON-1/ })).toBeDisabled();
+  await expect(dialog.getByRole('checkbox', { name: /CON-2/ })).toBeDisabled();
+  await expect(dialog.getByRole('checkbox', { name: /CON-3/ })).toBeEnabled();
+  await dialog.getByRole('checkbox', { name: /CON-3/ }).check();
+  await dialog.getByRole('button', { name: 'Сохранить договор', exact: true }).click();
+  await expect(
+    dialog.getByRole('button', { name: 'Открыть счёт CON-1', exact: true })
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole('button', { name: 'Открыть счёт CON-2', exact: true })
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole('button', { name: 'Открыть счёт CON-3', exact: true })
+  ).toBeVisible();
+  let extraAssignments = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/workflow/contracts'))
+      extraAssignments++;
+  });
+  await dialog.getByRole('button', { name: 'Счета договора', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Сохранить договор', exact: true }).click();
+  await expect(dialog.getByLabel('Номер договора', { exact: true })).toHaveCount(0);
+  expect(extraAssignments).toBe(0);
+});

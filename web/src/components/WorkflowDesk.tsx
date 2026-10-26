@@ -616,6 +616,15 @@ function CaseDialog({
     if (!item) return;
     const values = new FormData(event.currentTarget);
     const invoiceIds = values.getAll('invoice_ids').map(String);
+    if (
+      item.contract_known &&
+      invoiceIds.length === item.invoice_ids.length &&
+      invoiceIds.every((id) => item.invoice_ids.includes(id))
+    ) {
+      setAssigning(false);
+      setError('');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -754,7 +763,7 @@ function CaseDialog({
                   ))}
                 <button className="button button-white" onClick={() => setAssigning(!assigning)}>
                   <Link2 size={14} />
-                  {item.contract_known ? 'Уточнить договор' : 'Указать договор'}
+                  {item.contract_known ? 'Счета договора' : 'Указать договор'}
                 </button>
                 <button className="button button-white" onClick={() => onNavigate('intelligence')}>
                   Условия и согласования
@@ -770,6 +779,7 @@ function CaseDialog({
                       required
                       name="number"
                       defaultValue={item.contract_number || ''}
+                      readOnly={item.contract_known}
                       maxLength={120}
                       placeholder="Например, 24/2026"
                     />
@@ -783,7 +793,11 @@ function CaseDialog({
                           name="invoice_ids"
                           value={invoice.id}
                           defaultChecked={item.invoice_ids.includes(invoice.id)}
+                          disabled={item.contract_known && item.invoice_ids.includes(invoice.id)}
                         />
+                        {item.contract_known && item.invoice_ids.includes(invoice.id) && (
+                          <input type="hidden" name="invoice_ids" value={invoice.id} />
+                        )}
                         {invoice.number} · {money(invoice.balance)}
                       </label>
                     ))}
