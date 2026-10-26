@@ -1,4 +1,5 @@
 """Mandato HTTP API. Run with: python -m uvicorn server.main:app."""
+import asyncio
 import csv
 import hashlib
 import hmac
@@ -11,7 +12,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -72,7 +73,7 @@ class GuardMiddleware:
         headers = {key.decode("latin1").lower(): value.decode("latin1") for key, value in scope["headers"]}
         method, path = scope["method"], scope["path"]
         if method in ("POST", "PUT", "PATCH", "DELETE"):
-            if self.config.app_url:
+            if self.config.app_url and path != "/api/workflow/inbound":
                 expected = urlsplit(self.config.app_url)
                 supplied = urlsplit(headers.get("origin", ""))
                 if (supplied.scheme, supplied.netloc) != (expected.scheme, expected.netloc):
@@ -109,7 +110,7 @@ class GuardMiddleware:
             original_receive = receive
         if path.startswith("/api/"):
             ip = (scope.get("client") or ("unknown",))[0]
-            group = "auth" if path in ("/api/auth/login", "/api/auth/register") else "api"
+            group = "auth" if path in ("/api/auth/login", "/api/auth/register", "/api/workflow/invitations/accept") else "api"
             limit = 15 if group == "auth" else 300
             key, clock = (ip, group), time.monotonic()
             with self.lock:
@@ -132,7 +133,7 @@ class GuardMiddleware:
                     (b"x-content-type-options", b"nosniff"),
                     (b"x-frame-options", b"DENY"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
-                    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+                    (b"permissions-policy", b"camera=(), microphone=(self), geolocation=()"),
                 ])
                 if path.startswith("/api/"):
                     response_headers.append((b"cache-control", b"no-store"))
@@ -211,7 +212,10 @@ def create_session(connection, user, config, status=200):
     timestamp = datetime.now(timezone.utc)
     connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (timestamp.isoformat(),))
     connection.execute("INSERT INTO sessions VALUES(?,?,?,?,?)", (digest(token), user["id"], csrf, (timestamp + timedelta(days=7)).isoformat(), timestamp.isoformat()))
-    response = JSONResponse({"user": {key: user[key] for key in ("id", "name", "company", "email")}, "csrf_token": csrf}, status)
+    from .workflow import membership_role
+    public = {key: user[key] for key in ("id", "name", "company", "email")}
+    public['role'] = membership_role(connection, user)
+    response = JSONResponse({"user": public, "csrf_token": csrf}, status)
     response.set_cookie(COOKIE_NAME, token, max_age=7 * 86400, httponly=True, secure=config.secure_cookies, samesite="lax", path="/")
     return response
 
@@ -230,7 +234,18 @@ def get_user(request: Request):
         csrf = request.headers.get("x-csrf-token", "")
         if not csrf or not hmac.compare_digest(csrf, user["csrf_token"]):
             problem(403, "Проверка безопасности не пройдена. Обновите страницу")
-    return dict(user)
+    from .workflow import membership_role
+    with database(request.app.state.config) as connection:
+        role = membership_role(connection, user)
+    if role != 'manager' and request.method not in ('GET', 'HEAD', 'OPTIONS'):
+        path = request.url.path
+        director_only = (path == '/api/settings' or path == '/api/negotiation/policy'
+                         or path.startswith('/api/partner/')
+                         or (path.startswith('/api/negotiation/') and path.endswith(('/review', '/execute')))
+                         or (path.startswith('/api/legal/') and path.endswith(('/review', '/milestones'))))
+        if director_only:
+            problem(403, 'Это решение доступно только руководителю')
+    return dict(user) | {'role': role}
 
 
 def insert_invoice(connection, tenant_id, data):
@@ -243,7 +258,17 @@ def create_app():
     @asynccontextmanager
     async def lifespan(application):
         initialize(config)
-        yield
+        worker = None
+        if os.getenv('WORKFLOW_WORKER_ENABLED', 'true' if config.production else 'false').lower() == 'true':
+            from .workflow import scheduler_loop
+            worker = asyncio.create_task(scheduler_loop(config))
+        try:
+            yield
+        finally:
+            if worker:
+                worker.cancel()
+                with suppress(asyncio.CancelledError):
+                    await worker
 
     application = FastAPI(title="Mandato API", version="1.0.0", lifespan=lifespan,
                           docs_url=None if config.production else "/api/docs", redoc_url=None,
@@ -272,8 +297,9 @@ def create_app():
                 tenant_id, user_id = identifier(), identifier()
                 connection.execute("INSERT INTO tenants VALUES(?,?,?)", (tenant_id, data.company, now()))
                 connection.execute("INSERT INTO users VALUES(?,?,?,?,?,?)", (user_id, tenant_id, data.name, data.email, password_hash, now()))
+                connection.execute("INSERT INTO workflow_memberships VALUES(?,?,?,?)", (user_id, tenant_id, "manager", now()))
                 connection.execute("INSERT INTO settings(tenant_id,sender_name,reply_to) VALUES(?,?,?)", (tenant_id, data.name, data.email))
-                user = {"id": user_id, "name": data.name, "company": data.company, "email": data.email}
+                user = {"id": user_id, "name": data.name, "company": data.company, "email": data.email, "tenant_id": tenant_id}
                 return create_session(connection, user, config, 201)
         except sqlite3.IntegrityError:
             problem(409, "Аккаунт с таким email уже существует")
@@ -297,7 +323,7 @@ def create_app():
 
     @application.get("/api/auth/me")
     def me(user=Depends(get_user)):
-        return {"user": {key: user[key] for key in ("id", "name", "company", "email")}, "csrf_token": user["csrf_token"]}
+        return {"user": {key: user[key] for key in ("id", "name", "company", "email", "role")}, "csrf_token": user["csrf_token"]}
 
     @application.post("/api/auth/logout")
     def logout(request: Request, user=Depends(get_user)):
@@ -467,11 +493,10 @@ def create_app():
             if not smtp_configuration(user["tenant_id"]):
                 problem(409, "Почта компании не подключена. Письмо сохранено, но не отправлено")
             settings = settings_view(connection, user["tenant_id"])
-            latest = connection.execute("""SELECT m.sent_at FROM messages m JOIN invoices i ON i.id=m.invoice_id AND i.tenant_id=m.tenant_id
-                WHERE m.tenant_id=? AND m.status='sent' AND (i.counterparty_id=? OR m.recipient=?) ORDER BY m.sent_at DESC LIMIT 1""",
-                (user["tenant_id"], row["counterparty_id"], message["recipient"])).fetchone()
-            if latest and datetime.fromisoformat(latest["sent_at"]) + timedelta(days=settings["cooldown_days"]) > datetime.now(timezone.utc):
-                problem(409, "Выдержите интервал между письмами, заданный в настройках")
+            from .workflow import current_policy, contact_blocked
+            cooldown = max(settings['cooldown_days'], current_policy(connection, user['tenant_id'])['cooldown_days'])
+            if contact_blocked(connection, user['tenant_id'], row['counterparty_id'], message['recipient'], cooldown):
+                problem(409, 'Выдержите интервал между письмами, заданный в настройках; проверьте неподтверждённые отправки')
             mail = EmailMessage()
             mail["Subject"], mail["To"] = message["subject"], message["recipient"]
             mail["From"] = formataddr((settings["sender_name"] or user["name"], os.environ["SMTP_FROM"]))
@@ -500,7 +525,10 @@ def create_app():
                 # subsequently fails. Without that acknowledgement the outcome
                 # remains uncertain and a human must reconcile before retrying.
                 if not accepted:
-                    connection.execute("UPDATE messages SET status='failed' WHERE id=? AND tenant_id=?", (message_id, user["tenant_id"]))
+                    connection.execute("UPDATE messages SET status='failed',invalidation_reason='smtp_outcome_unknown' WHERE id=? AND tenant_id=?", (message_id, user["tenant_id"]))
+                    from .workflow import _exception, case_items
+                    case = next(item for item in case_items(connection, user['tenant_id']) if row['id'] in item['invoice_ids'])
+                    _exception(connection, user['tenant_id'], case['id'], row['id'], 'delivery_unknown', 'Проверьте журнал почтового сервера: исход отправки не подтверждён.', 'legacy-delivery:' + message_id)
                     event(connection, user["tenant_id"], row["id"], "message_failed", "Отправка не подтверждена", "Проверьте почтовый сервер перед повторным согласованием")
                     failed = True
             if accepted:
@@ -583,7 +611,7 @@ def create_app():
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { navigate, test, expect } from './fixtures';
 
 const businessToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(
   new Date()
@@ -34,7 +34,7 @@ test('accounting source mapping, discrepancy and approved evidence persist witho
   const reason =
     'Проверено бухгалтером: расхождение передано на разбор, агрегаты не являются счетами';
   await page.goto('/app');
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await page.getByRole('tab', { name: 'ОСВ и акты', exact: true }).click();
   await page.getByLabel('Номер или название источника', { exact: true }).fill(source);
   await page.getByLabel('Дата остатков', { exact: true }).fill(businessToday);
@@ -104,7 +104,7 @@ test('accounting source mapping, discrepancy and approved evidence persist witho
   expect(items[0].id).toBe(original.id);
   expect(items[0].balance).toBe(70_000);
   await page.reload();
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await page.getByRole('tab', { name: 'ОСВ и акты', exact: true }).click();
   await expect(history.getByRole('row').filter({ hasText: 'ООО Берёзка' })).toContainText(reason);
   await expect(history.getByRole('row').filter({ hasText: 'ООО Север' })).toContainText(source);

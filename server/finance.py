@@ -380,6 +380,9 @@ def create_router(ctx):
     def patch_cp(cp_id:str,data:CounterpartyPatch,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config,write=True) as c:
             cp=cp_row(c,user['tenant_id'],cp_id);values={k:v for k,v in data.model_dump(exclude_unset=True,mode='json').items() if v is not None or k=='mandate_expires_on'}
+            if set(values) - {'hold', 'hold_reason', 'contact_allowed'} or values.get('contact_allowed') is True:
+                from .workflow import require_manager
+                require_manager(c, user)
             if 'hold' in values:
                 set_hold(c,user['tenant_id'],cp_id,values.pop('hold'),values.get('hold_reason') or cp['hold_reason'] or 'Решение ответственного',user['id'])
             if values:
@@ -448,6 +451,9 @@ def create_router(ctx):
             save_action(c,user['tenant_id'],'reversal',data.idempotency_key,payload,result,user['id']);return result
     @router.post('/invoices/{invoice_id}/adjustments')
     def adjust(invoice_id:str,data:AdjustmentInput,user=Depends(ctx.get_user)):
+        with ctx.database(ctx.config) as c:
+            from .workflow import require_manager
+            require_manager(c, user)
         if data.kind not in ('return','offset','credit','debit'):fail(422,'Некорректный вид корректировки')
         if data.effective_on>business_today():fail(422,'Корректировка не может быть датирована будущим')
         with ctx.database(ctx.config,write=True) as c:
@@ -462,7 +468,11 @@ def create_router(ctx):
             result=view_invoice(load_invoice(c,user['tenant_id'],invoice_id));save_action(c,user['tenant_id'],'adjustment',data.idempotency_key,payload,result,user['id']);return result
     @router.post('/invoices/{invoice_id}/promise')
     def promise(invoice_id:str,data:PromiseBody,user=Depends(ctx.get_user)):
-        with ctx.database(ctx.config,write=True) as c:return record_promise(c,user['tenant_id'],invoice_id,data.amount,data.date,user['id'],data.idempotency_key,[i.model_dump(mode='json') for i in data.installments] if data.installments else None)
+        with ctx.database(ctx.config,write=True) as c:
+            if data.installments:
+                from .workflow import require_manager
+                require_manager(c, user)
+            return record_promise(c,user['tenant_id'],invoice_id,data.amount,data.date,user['id'],data.idempotency_key,[i.model_dump(mode='json') for i in data.installments] if data.installments else None)
     @router.get('/invoices/{invoice_id}/ledger')
     def ledger(invoice_id:str,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:

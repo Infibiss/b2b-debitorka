@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { navigate, test, expect } from './fixtures';
 
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date());
 
@@ -30,7 +30,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   expect(added.status()).toBe(201);
   const invoice = await added.json();
   await page.goto('/app');
-  await page.getByRole('button', { name: 'Дела', exact: true }).click();
+  await navigate(page, 'Дела');
   await page.getByRole('button', { name: 'Новое дело', exact: true }).click();
   const opening = page.getByRole('dialog', { name: 'Новое юридическое дело', exact: true });
   await opening.getByRole('combobox', { name: 'Счёт', exact: true }).selectOption(invoice.id);
@@ -151,7 +151,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   await expect(page.locator('.legal-fee')).toContainText('Подтверждённые поступления');
   await expect(page.locator('.legal-fee')).toContainText('0 ₽');
   await page.reload();
-  await page.getByRole('button', { name: 'Дела', exact: true }).click();
+  await navigate(page, 'Дела');
   await page.getByRole('button', { name: new RegExp(invoice.number) }).click();
   await page.getByRole('tab', { name: 'Документы', exact: true }).click();
   await expect(page.locator('.legal-document-list')).toContainText('Согласовано');

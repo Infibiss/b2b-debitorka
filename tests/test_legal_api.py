@@ -152,7 +152,8 @@ def test_missing_factual_fields_and_contested_or_above_limit_order_fail_closed(c
     assert client.post(f"/api/legal/cases/{item['id']}/documents",json={"kind":"court_order","calculation":{"through_on":"2026-10-24","sanction":"none"}}).status_code==422
 
 
-def test_recorded_delivery_and_filing_are_manual_evidenced_milestones_with_pretrial_gate(client):
+def test_recorded_delivery_and_filing_are_manual_evidenced_milestones_with_pretrial_gate(client,monkeypatch):
+    freeze_document_clock(monkeypatch)
     inv,item=case(client)
     evidence(client,item["id"],"contract","Договор № П-1","2026-07-01");evidence(client,item["id"])
     claim=document(client,item["id"]);assert review(client,claim["id"]).status_code==200
@@ -228,6 +229,7 @@ def bank_allocate(c,invoice_id,number,amount,paid_on):
 
 
 def test_fee_uses_only_net_bank_allocations_and_handles_stage_date_ambiguity_conservatively(client,monkeypatch):
+    freeze_document_clock(monkeypatch)
     from datetime import date
     inv,item=case(client)
     evidence(client,item["id"],"contract","Договор № П-1","2026-07-01");evidence(client,item["id"])
@@ -290,3 +292,14 @@ def test_every_legal_resource_and_action_is_tenant_scoped(client):
     assert client.post('/api/legal/calculations',json={"invoice_id":inv["id"],"through_on":"2026-10-24"}).status_code==404
     assert client.post(f"/api/legal/cases/{item['id']}/evidence",json={"kind":"other","title":"Подмена","reference":"Файл","occurred_on":"2026-10-24"}).status_code==404
     assert client.patch(f"/api/legal/cases/{item['id']}",json={"facts":facts()}).status_code==404
+
+
+def freeze_document_clock(monkeypatch):
+    """These historical filing scenarios require a document already created that day."""
+    from datetime import datetime, timezone
+    class DocumentClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            instant = cls(2026, 10, 24, 9, tzinfo=timezone.utc)
+            return instant.astimezone(tz) if tz else instant.replace(tzinfo=None)
+    monkeypatch.setattr(importlib.import_module('server.main'), 'datetime', DocumentClock)

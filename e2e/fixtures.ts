@@ -11,3 +11,11 @@ export const test = base.extend({
 export { expect };
 
 export type { Page } from '@playwright/test';
+
+/** Exercise the compact navigation as a user would: open tools when needed. */
+export async function navigate(page: import('@playwright/test').Page, name: string) {
+  await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
+  const button = page.getByRole('button', { name, exact: true });
+  if (!(await button.isVisible())) await page.getByText('Инструменты', { exact: true }).click();
+  await button.click();
+}

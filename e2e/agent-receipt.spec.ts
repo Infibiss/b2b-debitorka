@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { navigate, expect, test } from './fixtures';
 
 // The input belongs to the browser's timezone, independently of the business date.
 test.use({ timezoneId: 'Asia/Vladivostok' });
@@ -29,7 +29,7 @@ test('manual agent intake persists the explicit receipt time and shows it after 
   expect(added.status()).toBe(201);
   const invoice = await added.json();
   await page.goto('/app');
-  await page.getByRole('button', { name: 'Агент', exact: true }).click();
+  await navigate(page, 'Агент');
   await page.getByRole('button', { name: 'Разобрать сообщение', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ответ покупателя', exact: true });
   const receipt = dialog.getByLabel('Дата и время получения ответа', { exact: true });
@@ -61,7 +61,7 @@ test('manual agent intake persists the explicit receipt time and shows it after 
     '2026-10-23T13:45:00.000Z'
   );
   await page.reload();
-  await page.getByRole('button', { name: 'Агент', exact: true }).click();
+  await navigate(page, 'Агент');
   await page
     .locator('.ops-proposal-row')
     .filter({ hasText: 'Обещаем оплатить 300 рублей завтра.' })

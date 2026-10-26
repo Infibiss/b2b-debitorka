@@ -6,6 +6,10 @@ import {
   Play,
   Pause,
   FileText,
+  Settings2,
+  Landmark,
+  Layers3,
+  Clock3,
   Mail,
   CheckCheck,
   ShieldCheck,
@@ -13,7 +17,6 @@ import {
   Menu,
   X,
   MoveUpRight,
-  CircleCheck,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { Dialog } from './Dialog';
@@ -21,57 +24,55 @@ import { money } from '../api';
 import './landing.css';
 const steps = [
   {
-    label: 'Видим задолженность',
-    caption: 'Загрузите реестр. Остатки, сроки и приоритеты уже на своих местах.',
-    icon: FileText,
-  },
-  {
-    label: 'Находим нужные слова',
+    label: 'Собираем дело целиком',
     caption:
-      'Письмо с точной суммой и понятным следующим шагом. Вы выбираете тон и согласуете текст.',
-    icon: Mail,
+      'Счета одного покупателя по одному договору — вместе. Суммы, документы и контакты проходят проверку.',
   },
   {
-    label: 'Фиксируем договорённость',
-    caption: 'Покупатель назвал дату? Обещание останется в карточке, а не потеряется в переписке.',
-    icon: CheckCheck,
-  },
-  {
-    label: 'Закрываем оплатой',
+    label: 'Напоминаем по вашим правилам',
     caption:
-      'Зарегистрируйте поступление. Остаток пересчитается, работа по оплаченному счёту остановится.',
-    icon: CircleCheck,
+      'Руководитель задаёт тон, расписание и границы. Mandato ведёт обычные напоминания автоматически.',
+  },
+  {
+    label: 'Следим за договорённостью',
+    caption:
+      'Ответ покупателя остаётся в деле. Обещание оплаты становится следующим шагом, но не меняет остаток долга.',
+  },
+  {
+    label: 'Учитываем реальные поступления',
+    caption:
+      'Частичная оплата уменьшает остаток. По погашенным счетам контакт прекращается, по остальным работа продолжается.',
   },
 ];
 const faqs = [
   [
     'Кому подходит Mandato?',
-    'Поставщикам, производителям и компаниям, которые работают с юридическими лицами с отсрочкой платежа. Особенно когда счетов уже много, а контроль всё ещё держится на таблицах и памяти менеджеров.',
+    'Бухгалтерам и финансовым руководителям компаний, которые продают юридическим лицам с отсрочкой платежа. Mandato помогает видеть задолженность по контрагенту и договору, вести напоминания и разбирать исключения в одном рабочем пространстве.',
   ],
   [
     'Как загрузить данные из 1С?',
-    'Загрузите выгрузку в CSV или XLSX. В кабинете можно выбрать лист и сопоставить колонки, проверить суммы, даты и повторы перед сохранением. Для ОСВ есть отдельная сверка: общий остаток не создаёт счета автоматически.',
+    'Начните с выгрузки CSV или XLSX: выберите лист, сопоставьте колонки и проверьте суммы, даты и повторы перед сохранением. Для регулярного обмена настройте подключение 1С и проверьте доступ. ОСВ используется для сверки: общий остаток сам по себе не создаёт счета.',
   ],
   [
-    'Покупатель получит письмо без нашего ведома?',
-    'Каждое письмо сначала попадает к вам на согласование. Можно изменить текст или отложить контакт. Для отправки нужно подключить почту компании.',
+    'Нужно согласовывать каждое письмо?',
+    'Нет. Руководитель утверждает правила и включает автоматическую работу после настройки почты и расписания. Обычные напоминания идут в этих границах. Споры, неоднозначные ответы и оплаты попадают на проверку бухгалтеру; скидка, рассрочка и юридическая эскалация требуют решения руководителя.',
   ],
   [
     'Что делать, если покупатель оспаривает долг?',
-    'Переведите счёт в статус «Спор». Письма по нему будут приостановлены, пока вы не разберётесь в документах. Вся история останется в карточке.',
+    'Поставьте дело на паузу и разберите расхождения. Автоматические напоминания приостанавливаются, документы и история переписки остаются в карточке. Решение о дальнейшем действии принимает ваша команда.',
   ],
   [
     'Mandato принимает деньги покупателей?',
-    'Нет. Покупатели платят напрямую вашей компании по вашим реквизитам. Вы отмечаете поступления в кабинете, и остатки автоматически пересчитываются.',
+    'Нет. Покупатели платят напрямую вашей компании по вашим реквизитам. Подтверждённое поступление учитывается по конкретным счетам. Частичная оплата уменьшает остаток, а обещание заплатить не считается деньгами.',
   ],
   [
     'Можно начать с небольшой части реестра?',
-    'Да. Загрузите несколько счетов, настройте правила и пройдите весь процесс с вашей командой. Вы сможете расширить реестр, когда убедитесь, что работа устроена удобно.',
+    'Да. Загрузите несколько счетов, проверьте дела и документы, настройте правила с руководителем. Подключения можно добавлять по мере готовности: для каждого нужны доступ и проверка обмена.',
   ],
 ];
 export function Landing() {
   const [step, setStep] = useState(0),
-    [playing, setPlaying] = useState(true),
+    [playing, setPlaying] = useState(() => !matchMedia('(prefers-reduced-motion: reduce)').matches),
     [menu, setMenu] = useState(false),
     [openFaq, setOpenFaq] = useState<number | null>(0),
     [amount, setAmount] = useState(3000000),
@@ -137,25 +138,26 @@ export function Landing() {
       </header>
       <main id="main">
         <section className="hero">
-          <div className="hero-photo" />
           <div className="hero-shade" />
           <div className="hero-content">
             <div className="eyebrow hero-eyebrow">
-              <span className="status-dot" /> ДЕБИТОРКА ПОД КОНТРОЛЕМ
+              <span className="status-dot" /> АГЕНТ ДЛЯ РАБОТЫ С ДЕБИТОРКОЙ
             </div>
             <h1>
-              Деньги возвращаются
-              <br />в дело.
+              Просроченные счета —<br />
+              <span>в понятный план</span>
+              <br />
+              возврата.
             </h1>
             <div className="hero-bottom">
               <div>
                 <p>
-                  Вы выполнили свою работу.
-                  <br />
-                  Мы поможем получить за неё оплату.
+                  Mandato собирает долги по контрагентам и договорам,
+                  <br className="desktop-break" /> напоминает по вашим правилам и выводит на вас
+                  <br className="desktop-break" /> только то, что требует решения.
                 </p>
                 <a href="/app" className="button button-lime">
-                  Вернуть деньги в оборот <ArrowUpRight size={20} />
+                  Разобрать свой реестр <ArrowUpRight size={20} />
                 </a>
                 <button className="hero-watch" onClick={scrollWorkflow}>
                   <span>
@@ -164,24 +166,58 @@ export function Landing() {
                   Посмотреть, как это работает
                 </button>
               </div>
-              <div className="hero-note">
-                <span className="note-line" />
-                <span>
-                  Меньше просрочки.
-                  <br />
-                  Больше пространства для роста.
-                </span>
-                <ArrowUpRight size={26} />
-              </div>
             </div>
           </div>
+          <aside className="hero-workspace" aria-label="Как устроен рабочий день в Mandato">
+            <div className="workspace-top">
+              <span className="status-dot" /> РАБОЧИЙ ДЕНЬ В MANDATO <span>↗</span>
+            </div>
+            <div className="workspace-title">
+              Вы — за решениями.
+              <br />
+              <span>Mandato — за рутиной.</span>
+            </div>
+            <div className="workspace-item">
+              <span className="workspace-icon">
+                <Settings2 size={17} />
+              </span>
+              <div>
+                <strong>В работе у Mandato</strong>
+                <p>Напоминания, сроки, ожидание ответа</p>
+              </div>
+              <span className="workspace-badge">По правилам</span>
+            </div>
+            <div className="workspace-item">
+              <span className="workspace-icon">
+                <FileText size={17} />
+              </span>
+              <div>
+                <strong>На проверке у бухгалтера</strong>
+                <p>Документы и неоднозначные поступления</p>
+              </div>
+              <ArrowUpRight size={16} />
+            </div>
+            <div className="workspace-item">
+              <span className="workspace-icon">
+                <ShieldCheck size={17} />
+              </span>
+              <div>
+                <strong>На решении у руководителя</strong>
+                <p>Скидка, рассрочка, юридический шаг</p>
+              </div>
+              <ArrowUpRight size={16} />
+            </div>
+            <div className="workspace-footer">
+              <Check size={14} /> Правила утверждаете вы. История сохраняется.
+            </div>
+          </aside>
           <div className="hero-index">
-            <span>01 — 04</span>
-            <span>ОТ ПОСТАВКИ ДО ОПЛАТЫ</span>
+            <span>ОТ ПЕРВОГО НАПОМИНАНИЯ ДО ПОДТВЕРЖДЁННОЙ ОПЛАТЫ</span>
+            <span>ВАШИ КЛИЕНТЫ · ВАШИ ПРАВИЛА</span>
           </div>
         </section>
         <div className="trust-line">
-          <span>Для тех, кто двигает реальный бизнес</span>
+          <span>Для бухгалтерии и финансового руководителя</span>
           <div>
             <span>ОПТОВАЯ ТОРГОВЛЯ</span>
             <i />
@@ -192,85 +228,90 @@ export function Landing() {
         </div>
         <section className="intro section-pad reveal" id="value">
           <div className="section-kicker">
-            <span>01 / ВАША ОБОРОТКА</span>
-            <span>НЕ УПУСКАЙТЕ ГЛАВНОЕ</span>
+            <span>01 / ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</span>
+            <span>МЕНЬШЕ РУТИНЫ. БОЛЬШЕ ЯСНОСТИ.</span>
           </div>
           <div className="intro-grid">
             <h2>
-              Вы развиваете бизнес.
-              <br />
+              Каждый долг —<br />
               <span className="muted">
-                Деньги не должны
+                с контекстом.
                 <br />
-                отставать.
+                Каждый шаг —<br />с основанием.
               </span>
             </h2>
             <div className="intro-copy">
               <p className="large-copy">
-                Каждый неоплаченный счёт — это ваши деньги, которые пока работают у кого-то другого.
+                Чтобы получить оплату, мало знать сумму. Нужно видеть договор, документы, переписку
+                и последнее обещание покупателя.
               </p>
               <p>
-                Mandato собирает дебиторку в понятный процесс: кому написать сегодня, что уже
-                обещали оплатить и где требуется ваше решение.
+                Mandato объединяет это в дело по контрагенту и договору. Бухгалтер проверяет
+                исключения, руководитель принимает существенные решения, агент ведёт ежедневную
+                работу.
               </p>
               <a href="/app" className="text-link">
-                Взять под контроль <ArrowUpRight size={18} />
+                Начать с импорта <ArrowUpRight size={18} />
               </a>
             </div>
           </div>
           <div className="benefit-row">
             <div>
-              <span className="benefit-num">01</span>
+              <span className="benefit-num">01 / КАРТИНА ЦЕЛИКОМ</span>
               <h3>
-                Весь портфель. <br />
-                Один взгляд.
+                Один договор.
+                <br />
+                Вся история.
               </h3>
               <p>
-                Остатки, просрочки и поступления
-                <br />в одном рабочем пространстве.
+                Несколько счетов, частичные оплаты,
+                <br />
+                документы и контакты — в одном деле.
               </p>
             </div>
             <div>
-              <span className="benefit-num">02</span>
+              <span className="benefit-num">02 / ЕЖЕДНЕВНАЯ РАБОТА</span>
               <h3>
-                Настойчиво. <br />
-                По-человечески.
+                Правила заданы.
+                <br />
+                Процесс идёт.
               </h3>
               <p>
-                Уместный тон и согласование писем.
+                Тон, расписание и интервалы контакта
                 <br />
-                Отношения с покупателем важны.
+                определяет ваша компания.
               </p>
             </div>
             <div>
-              <span className="benefit-num">03</span>
+              <span className="benefit-num">03 / ВНИМАНИЕ ПО ДЕЛУ</span>
               <h3>
-                Договорились. <br />
-                Не забыли.
+                Исключение?
+                <br />
+                Вам на решение.
               </h3>
               <p>
-                Обещания оплаты и следующий шаг
+                Спор, расхождение или новые условия
                 <br />
-                всегда перед глазами.
+                не теряются в потоке напоминаний.
               </p>
             </div>
           </div>
         </section>
         <section className="workflow section-pad" id="how" ref={workflow}>
           <div className="section-kicker">
-            <span>02 / ОТ СЧЁТА ДО ДЕНЕГ</span>
-            <span>ВЫ КОНТРОЛИРУЕТЕ КАЖДЫЙ ШАГ</span>
+            <span>02 / ОДНО ДЕЛО. ВЕСЬ ПУТЬ.</span>
+            <span>АВТОМАТИЧЕСКИ — В УТВЕРЖДЁННЫХ ГРАНИЦАХ</span>
           </div>
           <div className="workflow-heading">
             <h2>
-              Хороший процесс.
+              От реестра
               <br />
-              Понятный результат.
+              до поступления.
             </h2>
             <p>
-              Работа с дебиторкой без лишнего напряжения.
+              Проследите работу по одному договору.
               <br />
-              Для вас и ваших покупателей.
+              Несколько счетов. Один понятный следующий шаг.
             </p>
           </div>
           <div className="workflow-grid">
@@ -283,6 +324,27 @@ export function Landing() {
                   aria-selected={step === i}
                   aria-controls="workflow-panel"
                   id={`step-${i}`}
+                  onKeyDown={(event) => {
+                    if (
+                      !['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(
+                        event.key
+                      )
+                    )
+                      return;
+                    event.preventDefault();
+                    const next =
+                      event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? steps.length - 1
+                          : (i +
+                              (event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1) +
+                              steps.length) %
+                            steps.length;
+                    setStep(next);
+                    setPlaying(false);
+                    document.getElementById(`step-${next}`)?.focus();
+                  }}
                   onClick={() => {
                     setStep(i);
                     setPlaying(false);
@@ -321,93 +383,137 @@ export function Landing() {
                 <div className="scenario-doc">
                   <div className="doc-label">
                     <span>
-                      <FileText size={15} /> СЧЁТ № 417
+                      <Layers3 size={15} /> ДЕЛО ПО ДОГОВОРУ
                     </span>
                     <span className={`pill ${step === 3 ? 'green' : 'orange'}`}>
-                      {step === 3 ? 'Оплачен' : step === 2 ? 'Обещание оплаты' : 'К оплате'}
+                      {['Проверено', 'В работе', 'Ожидаем оплату', 'Частично оплачено'][step]}
                     </span>
                   </div>
-                  <h3>Северстрой</h3>
-                  <span className="scenario-sub">Поставка материалов · 12 октября</span>
-                  <div className="scenario-amount">
-                    480 000 <span>₽</span>
+                  <h3>ООО «Северстрой»</h3>
+                  <span className="scenario-sub">Договор поставки № 12 · 3 счёта</span>
+                  <div className="case-balance-label">
+                    {step === 3 ? 'ОСТАТОК К ПОЛУЧЕНИЮ' : 'К ПОЛУЧЕНИЮ ПО ДОГОВОРУ'}
                   </div>
-                  <div className="doc-divider" />
+                  <div className="scenario-amount">
+                    {step === 3 ? '300 000' : '480 000'} <span>₽</span>
+                  </div>
+                  <div className="case-invoices" aria-label="Счета по договору">
+                    <div>
+                      <span>№ 417 · 12 октября</span>
+                      <strong>
+                        {step === 3 ? (
+                          <>
+                            <Check size={12} /> Оплачен
+                          </>
+                        ) : (
+                          '180 000 ₽'
+                        )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>№ 428 · 15 октября</span>
+                      <strong>160 000 ₽</strong>
+                    </div>
+                    <div>
+                      <span>№ 436 · 19 октября</span>
+                      <strong>140 000 ₽</strong>
+                    </div>
+                  </div>
                   <div className="scenario-state">
                     {step === 0 ? (
-                      <>
-                        <div className="state-icon">
-                          <FileText size={21} />
-                        </div>
-                        <div>
-                          <strong>Ничего не потеряется</strong>
-                          <p>
-                            Счёт добавлен в реестр.
-                            <br />
-                            Следующий шаг — связаться с покупателем.
-                          </p>
-                        </div>
-                      </>
+                      <div className="case-action">
+                        <span className="case-action-label">
+                          <FileText size={14} /> ПРОВЕРКА ЗАВЕРШЕНА
+                        </span>
+                        <strong>Документы и контакт на месте</strong>
+                        <p>
+                          Счета объединены по договору. Следующее действие — напоминание по
+                          утверждённым правилам.
+                        </p>
+                      </div>
                     ) : step === 1 ? (
-                      <>
-                        <div className="message-preview">
-                          <span>
-                            <Mail size={15} /> ПИСЬМО ПОКУПАТЕЛЮ
-                          </span>
-                          <p>
-                            Добрый день, Анна!
-                            <br />
-                            По счёту № 417 ожидаем оплату 480 000 ₽. Подскажите, когда удобно
-                            провести платёж?
-                          </p>
-                          <div>
-                            <ShieldCheck size={14} /> На вашем согласовании <Check size={15} />
-                          </div>
+                      <div className="message-preview">
+                        <span>
+                          <Mail size={14} /> ОТПРАВЛЕНО ПО ПРАВИЛАМ КОМПАНИИ
+                        </span>
+                        <p>
+                          Анна, добрый день! По договору № 12 ожидаем 480 000 ₽ по трём счетам.
+                          Подскажите, когда сможете провести оплату?
+                        </p>
+                        <div>
+                          <ShieldCheck size={14} /> Деловой тон · в рабочее время
                         </div>
-                      </>
+                      </div>
                     ) : step === 2 ? (
-                      <>
-                        <div className="promise-preview">
-                          <span>ДОГОВОРЁННОСТЬ ЗАФИКСИРОВАНА</span>
-                          <strong>
-                            28 октября <span>среда</span>
-                          </strong>
-                          <p>480 000 ₽ · полная оплата</p>
-                          <div>
-                            <CheckCheck size={16} /> Следующий шаг сохранён
-                          </div>
+                      <div className="promise-preview">
+                        <span>
+                          <Clock3 size={14} /> ОТВЕТ ПОКУПАТЕЛЯ
+                        </span>
+                        <strong>28 октября</strong>
+                        <p>«Перечислим 180 000 ₽ по счёту № 417»</p>
+                        <div>
+                          <CheckCheck size={15} /> Обещание записано. Остаток не изменён.
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <div className="paid-preview">
-                          <div>
-                            <Check size={28} />
-                          </div>
-                          <h4>Деньги снова в деле.</h4>
-                          <p>
-                            Поступление учтено. Счёт закрыт.
-                            <br />
-                            Напоминания остановлены.
-                          </p>
-                        </div>
-                      </>
+                      <div className="case-action case-receipt">
+                        <span className="case-action-label">
+                          <Landmark size={14} /> ПОСТУПЛЕНИЕ ПОДТВЕРЖДЕНО
+                        </span>
+                        <strong>+180 000 ₽ по счёту № 417</strong>
+                        <p>
+                          Счёт погашен, напоминания по нему остановлены. По двум оставшимся —
+                          следующий контакт по расписанию.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
               <div className="scenario-footer">
-                <span>Счёт</span>
+                <span>Проверка</span>
                 <i className={step >= 1 ? 'done' : ''} />
-                <span>Письмо</span>
+                <span>Контакт</span>
                 <i className={step >= 2 ? 'done' : ''} />
-                <span>Обещание</span>
+                <span>Ожидание</span>
                 <i className={step >= 3 ? 'done' : ''} />
-                <span>
-                  Оплата <Check size={13} />
-                </span>
+                <span>Поступление</span>
               </div>
             </div>
+          </div>
+        </section>
+        <section className="connections section-pad reveal">
+          <div>
+            <div className="section-kicker">ДАННЫЕ РЯДОМ С РАБОТОЙ</div>
+            <h2>
+              Начните с выгрузки.
+              <br />
+              <span className="muted">Подключите источники.</span>
+            </h2>
+            <p>
+              Импортируйте CSV или XLSX, проверьте реестр и настройте регулярный обмен с доступными
+              вашей компании сервисами.
+            </p>
+          </div>
+          <div className="connection-list">
+            <div>
+              <span>01</span>
+              <strong>1С</strong>
+              <p>Счета и сверка задолженности</p>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Диадок</strong>
+              <p>Документы по договору</p>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Банк</strong>
+              <p>Подтверждение поступлений</p>
+            </div>
+            <p className="connection-note">
+              <ShieldCheck size={15} /> Для обмена нужны ваш доступ и проверка подключения.
+            </p>
           </div>
         </section>
         <section className="calculator section-pad reveal">
@@ -485,15 +591,18 @@ export function Landing() {
           </h2>
           <div className="control-bottom">
             <p>
-              Письмо не уйдёт без согласования. Спорный долг можно поставить на паузу. Покупатель
-              платит напрямую вам.
+              Руководитель утверждает политику и включает автоматизацию. Перед контактом Mandato
+              проверяет остаток, паузы и полномочия. Спор или расхождение возвращает дело человеку.
             </p>
-            <div className="zero">
-              <strong>0</strong>
+            <div className="policy-points">
               <span>
-                писем без
-                <br />
-                вашего согласия
+                <Check size={16} /> Расписание и частота контактов
+              </span>
+              <span>
+                <Check size={16} /> Пауза при споре
+              </span>
+              <span>
+                <Check size={16} /> Скидка и рассрочка — через руководителя
               </span>
             </div>
           </div>
@@ -529,9 +638,9 @@ export function Landing() {
               </p>
               <ul>
                 {[
-                  'Реестр счетов и приоритеты',
-                  'Подготовка и согласование писем',
-                  'Обещания оплаты и поступления',
+                  'Дела по контрагентам и договорам',
+                  'Напоминания по утверждённой политике',
+                  'Обещания, оплаты и очередь исключений',
                   'Импорт, экспорт и история действий',
                 ].map((t) => (
                   <li key={t}>
@@ -601,12 +710,12 @@ export function Landing() {
             <i className="status-dot" /> ВАШ СЛЕДУЮЩИЙ ШАГ
           </span>
           <h2>
-            Поставки завершены.
+            У вашей дебиторки
             <br />
-            <span>Пора получать оплату.</span>
+            <span>будет следующий шаг.</span>
           </h2>
           <a href="/app" className="button button-lime">
-            Начать с первого счёта <MoveUpRight size={20} />
+            Разобрать свой реестр <MoveUpRight size={20} />
           </a>
           <div className="cta-decoration" aria-hidden="true">
             ↗
@@ -667,8 +776,9 @@ export function Landing() {
                   взыскание.
                 </p>
                 <p>
-                  Перед отправкой проверьте реквизиты, сумму, получателя и текст письма. Поступления
-                  отмечаются на основании ваших платёжных документов.
+                  Перед включением автоматизации проверьте реквизиты, контакты и правила работы.
+                  Существенные изменения условий требуют решения руководителя. Поступления
+                  учитываются на основании платёжных документов.
                 </p>
                 <p>
                   Стоимость и условия обслуживания согласуются отдельно до оплаты. Доступ к аккаунту

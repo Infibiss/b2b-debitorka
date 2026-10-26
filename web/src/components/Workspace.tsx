@@ -29,6 +29,10 @@ import {
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { Auth } from './Auth';
+import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
+import { WorkflowOnboarding } from './WorkflowOnboarding';
+import { YandexDesk } from './YandexDesk';
+import './workflow.css';
 import { CreateInvoice, ImportInvoices, downloadTemplate } from './InvoiceForms';
 import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
 import { FinanceDesk } from './FinanceDesk';
@@ -53,6 +57,9 @@ import {
 } from '../api';
 import './workspace.css';
 type Tab =
+  | 'workflow'
+  | 'management'
+  | 'yandex'
   | 'overview'
   | 'audit'
   | 'connections'
@@ -64,14 +71,19 @@ type Tab =
   | 'messages'
   | 'settings';
 const navigation = [
-  { id: 'overview' as Tab, label: 'Обзор', icon: LayoutDashboard },
+  { id: 'workflow' as Tab, label: 'Работа', icon: LayoutDashboard },
   { id: 'audit' as Tab, label: 'Аудит', icon: ClipboardCheck },
+  { id: 'connections' as Tab, label: 'Подключения', icon: PlugZap },
+  { id: 'management' as Tab, label: 'Управление', icon: ShieldCheck },
+];
+const tools = [
+  { id: 'overview' as Tab, label: 'Обзор', icon: LayoutDashboard },
   { id: 'registry' as Tab, label: 'Реестр', icon: Files },
   { id: 'finance' as Tab, label: 'Финансы', icon: Wallet },
   { id: 'agent' as Tab, label: 'Агент', icon: Bot },
   { id: 'legal' as Tab, label: 'Дела', icon: Scale },
   { id: 'intelligence' as Tab, label: 'Поступления и условия', icon: TrendingUp },
-  { id: 'connections' as Tab, label: 'Подключения', icon: PlugZap },
+  { id: 'yandex' as Tab, label: 'Документы и голос', icon: Bot },
   { id: 'messages' as Tab, label: 'Письма', icon: Mail },
   { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
 ];
@@ -79,7 +91,9 @@ export function Workspace() {
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
     [loadError, setLoadError] = useState(''),
-    [tab, setTab] = useState<Tab>('overview'),
+    [tab, setTab] = useState<Tab>('workflow'),
+    [tourReplay, setTourReplay] = useState(0),
+    [toolsOpen, setToolsOpen] = useState(false),
     [invoices, setInvoices] = useState<Invoice[]>([]),
     [overview, setOverview] = useState<Overview | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
@@ -145,7 +159,8 @@ export function Workspace() {
       setInvoices([]);
       setOverview(null);
       setSelected(null);
-      setTab('overview');
+      setTab('workflow');
+      setToolsOpen(false);
     } catch (e) {
       notify((e as Error).message, true);
     }
@@ -157,7 +172,11 @@ export function Workspace() {
         Открываем рабочее пространство…
       </div>
     );
-  if (!session)
+  if (
+    !session ||
+    new URLSearchParams(location.hash.slice(1)).has('invite') ||
+    new URLSearchParams(location.search).has('invite')
+  )
     return loadError ? (
       <div className="loading">
         <p>{loadError}</p>
@@ -202,35 +221,60 @@ export function Workspace() {
             <button
               key={id}
               onClick={() => setTab(id)}
+              data-tour={id}
               className={tab === id ? 'active' : ''}
               aria-current={tab === id ? 'page' : undefined}
             >
               <Icon size={17} />
               <span>{label}</span>
-              {id === 'registry' && invoices.length > 0 && <small>{invoices.length}</small>}
               {tab === id && <i />}
             </button>
           ))}
+          <details
+            className="workspace-tools"
+            open={toolsOpen}
+            onToggle={(e) => setToolsOpen(e.currentTarget.open)}
+          >
+            <summary>Инструменты</summary>
+            {tools.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setTab(id);
+                  if (window.matchMedia('(max-width: 600px)').matches) setToolsOpen(false);
+                }}
+                className={tab === id ? 'active' : ''}
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </details>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-help">
             <ShieldCheck size={20} />
             <strong>Всё под вашим контролем</strong>
-            <p>
-              Письма уходят только
-              <br />
-              после согласования.
-            </p>
-            <button onClick={() => setTab('settings')}>
+            <p>Mandato работает по вашим правилам. Исключения — на согласование.</p>
+            <button onClick={() => setTab('management')}>
               Правила работы
               <ArrowUpRight size={13} />
             </button>
           </div>
+          <button
+            className="workflow-help"
+            onClick={() => {
+              setTab('workflow');
+              setTourReplay((value) => value + 1);
+            }}
+          >
+            Обучение
+          </button>
           <div className="user-block">
             <div className="user-avatar">{session.user.name.slice(0, 1).toUpperCase()}</div>
             <span>
               <strong>{session.user.name}</strong>
-              <small>Администратор</small>
+              <small>{session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}</small>
             </span>
             <button
               className="icon-button"
@@ -248,7 +292,7 @@ export function Workspace() {
           <div>
             <span>РАБОЧЕЕ ПРОСТРАНСТВО</span>
             <ChevronRight size={12} />
-            <strong>{navigation.find((n) => n.id === tab)?.label}</strong>
+            <strong>{[...navigation, ...tools].find((n) => n.id === tab)?.label}</strong>
           </div>
           <div>
             <span className="server-status">
@@ -265,7 +309,12 @@ export function Workspace() {
             </button>
           </div>
         </header>
-        <main id="workspace-main" className="workspace-main">
+        <main id="workspace-main" className="workspace-main" data-tour="workspace">
+          <WorkflowOnboarding
+            userId={session.user.id}
+            replayToken={tourReplay}
+            onNavigate={(next) => setTab(next as Tab)}
+          />
           {loadError && (
             <div className="page-error" role="alert">
               <AlertCircle size={16} />
@@ -273,7 +322,21 @@ export function Workspace() {
               <button onClick={() => void refresh()}>Повторить</button>
             </div>
           )}
-          {tab === 'overview' ? (
+          {tab === 'workflow' ? (
+            <WorkflowDesk
+              invoices={invoices}
+              onOpenInvoice={setSelected}
+              onNavigate={(next) => setTab(next as Tab)}
+              onImport={() => setModal('import')}
+              onCreate={() => setModal('create')}
+              notify={notify}
+              refreshKey={refreshing ? 1 : 0}
+            />
+          ) : tab === 'management' ? (
+            <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
+          ) : tab === 'yandex' ? (
+            <YandexDesk invoices={invoices} notify={notify} />
+          ) : tab === 'overview' ? (
             <>
               <div className="page-heading">
                 <div>

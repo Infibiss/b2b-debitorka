@@ -1,0 +1,206 @@
+.connection-access {
+  min-width: 0;
+  padding: 26px;
+  border: 1px solid #d7dfcb;
+  border-radius: 12px;
+  background: #f8faf3;
+  color: #53634a;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.connection-access .ca-heading,
+.connection-access .ca-provider-heading,
+.connection-access .ca-actions,
+.connection-access .ca-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.connection-access .ca-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.connection-access .ca-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #6d815b;
+}
+.connection-access h2 {
+  margin: 4px 0 0;
+}
+.connection-access h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #294c35;
+}
+.connection-access h4 {
+  margin: 0 0 9px;
+  font-size: 13px;
+  color: #294c35;
+}
+.connection-access p {
+  margin: 10px 0;
+}
+.connection-access .ca-intro {
+  max-width: 900px;
+  margin: 13px 0 18px;
+}
+.connection-access .ca-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 22px;
+}
+.connection-access .ca-source-list button {
+  background: #fff;
+  border: 1px solid #d8dfce;
+  color: #56674b;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.connection-access .ca-source-list .ca-selected {
+  color: #fff;
+  background: #36593d;
+  border-color: #36593d;
+}
+.connection-access button:focus-visible,
+.connection-access a:focus-visible,
+.connection-access input:focus-visible {
+  outline: 2px solid #36593d;
+  outline-offset: 4px;
+}
+.connection-access .ca-status {
+  color: #7c643c;
+  background: #f1ebdd;
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.connection-access .ca-configured {
+  color: #365b38;
+  background: #e3eddc;
+}
+.connection-access .ca-cost {
+  padding: 11px 14px;
+  border-left: 3px solid #b6c99b;
+  background: #eff3e8;
+}
+.connection-access .ca-columns {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 25px;
+  margin: 22px 0 17px;
+}
+.connection-access .ca-owner {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #78846d;
+}
+.connection-access .ca-checklist {
+  display: grid;
+  gap: 11px;
+}
+.connection-access .ca-checklist label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.connection-access .ca-checklist input {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  accent-color: #36593d;
+  width: 15px;
+  height: 15px;
+}
+.connection-access .ca-note,
+.connection-access .ca-last-read {
+  font-size: 11px;
+  color: #6e7b63;
+}
+.connection-access small.ca-note {
+  display: block;
+  margin-top: 13px;
+}
+.connection-access .ca-handoff {
+  border: 1px solid #e0e6d7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 17px;
+}
+.connection-access .ca-handoff ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.connection-access .ca-handoff li {
+  margin-bottom: 7px;
+  overflow-wrap: anywhere;
+}
+.connection-access .ca-secure {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+}
+.connection-access .ca-secure svg,
+.connection-access .ca-acceptance svg {
+  flex: none;
+  margin-top: 4px;
+  color: #567548;
+}
+.connection-access .ca-acceptance {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.connection-access .ca-acceptance p {
+  margin: 0;
+}
+.connection-access .ca-links {
+  margin: 17px 0;
+  gap: 12px 19px;
+}
+.connection-access .ca-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #36593d;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.connection-access .ca-actions {
+  border-top: 1px solid #dce3d3;
+  padding-top: 17px;
+}
+.connection-access .ca-actions button {
+  font-size: 11px;
+}
+.connection-access .ca-error {
+  color: #974531;
+}
+.connection-access .ca-notice {
+  min-height: 1em;
+  margin-bottom: 0;
+  color: #36593d;
+}
+@media (max-width: 850px) {
+  .connection-access {
+    padding: 18px;
+  }
+  .connection-access .ca-columns {
+    grid-template-columns: 1fr;
+    gap: 17px;
+  }
+  .connection-access .ca-actions {
+    align-items: stretch;
+  }
+  .connection-access .ca-actions button {
+    flex: 1 1 200px;
+    justify-content: center;
+  }
+}

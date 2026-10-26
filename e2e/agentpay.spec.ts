@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures';
+import { navigate, expect, test, type Page } from './fixtures';
 
 const PASSWORD = 'AgentPay-e2e-correct-2026!';
 const businessDate = (instant: Date) =>
@@ -20,12 +20,12 @@ async function register(page: Page) {
     .getByRole('button', { name: /Создать аккаунт|Зарегистрироваться/ })
     .last()
     .click();
-  await expect(page.getByRole('button', { name: 'Реестр', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Работа', exact: true })).toBeVisible();
   return email;
 }
 
 async function openRegistry(page: Page) {
-  await page.getByRole('button', { name: /^Реестр/ }).click();
+  await navigate(page, 'Реестр');
 }
 
 async function createInvoice(
@@ -74,15 +74,15 @@ test('public website is readable, interactive, and offers a real signup', async 
   await expect(
     page.getByRole('link', { name: 'Начать работу', exact: true }).first()
   ).toBeVisible();
-  const lastStep = page.getByRole('tab', { name: /Закрываем оплатой/ });
+  const lastStep = page.getByRole('tab', { name: /Учитываем реальные поступления/ });
   await lastStep.click();
   await expect(lastStep).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('Деньги снова в деле.');
+  await expect(page.getByRole('tabpanel')).toContainText('300 000');
   const initialCost = await page.locator('.calc-result strong').innerText();
   await page.getByLabel('Дней ожидания').fill('60');
   await expect(page.locator('.calc-result strong')).not.toHaveText(initialCost);
   await page.getByRole('button', { name: 'Как загрузить данные из 1С?', exact: true }).click();
-  await expect(page.getByText(/Загрузите выгрузку в CSV или XLSX/)).toBeVisible();
+  await expect(page.getByText(/Начните с выгрузки CSV или XLSX/)).toBeVisible();
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);
@@ -198,7 +198,7 @@ test('a promise due today is not shown as a broken promise', async ({ page }) =>
   await page.getByRole('button', { name: 'Сохранить обещание', exact: true }).click();
   await expect(page.locator('.promise-banner')).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть карточку', exact: true }).click();
-  await page.getByRole('button', { name: 'Обзор', exact: true }).click();
+  await navigate(page, 'Обзор');
   await expect(page.locator('.attention-list')).toContainText('ООО Северные системы');
   await expect(page.locator('.attention-list')).not.toContainText('Нарушено обещание');
 });
@@ -276,7 +276,7 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
   await register(page);
   const number = `FIN-${Date.now()}`;
   await createInvoice(page, number, '1000');
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await page.getByRole('button', { name: 'Добавить поступление', exact: true }).click();
   let dialog = page.getByRole('dialog');
   await dialog.getByLabel('ID операции в выписке', { exact: true }).fill(`BANK-${Date.now()}`);
@@ -314,7 +314,7 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
   await dialog.getByLabel('Дата оплаты', { exact: true }).fill(nextWeek);
   await dialog.getByRole('button', { name: 'Сохранить договорённость', exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await page.getByRole('button', { name: 'Обзор', exact: true }).click();
+  await navigate(page, 'Обзор');
   await expect(page.locator('.metric').filter({ hasText: 'ОСТАЛОСЬ К ОПЛАТЕ' })).toContainText(
     /700/
   );
@@ -322,7 +322,7 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
     /250/
   );
   await expect(page.locator('.metric').filter({ hasText: 'ПОСТУПИЛО' })).toContainText(/300/);
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
     path: info.outputPath('finance.png'),
@@ -337,7 +337,7 @@ test('agent inbox fails safely without a provider and never fabricates payment',
   await register(page);
   const number = `AGENT-${Date.now()}`;
   await createInvoice(page, number, '1000');
-  await page.getByRole('button', { name: 'Агент', exact: true }).click();
+  await navigate(page, 'Агент');
   await page.getByRole('button', { name: 'Разобрать сообщение', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await selectInvoice(page, number, dialog);
@@ -350,12 +350,12 @@ test('agent inbox fails safely without a provider and never fabricates payment',
     dialog.getByRole('button', { name: 'Подтвердить действие', exact: true })
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Обзор', exact: true }).click();
+  await navigate(page, 'Обзор');
   await expect(page.locator('.metric').filter({ hasText: 'ОСТАЛОСЬ К ОПЛАТЕ' })).toContainText(
     /1\s?000/
   );
   await expect(page.locator('.metric').filter({ hasText: 'ПОСТУПИЛО' })).toContainText('0');
-  await page.getByRole('button', { name: 'Агент', exact: true }).click();
+  await navigate(page, 'Агент');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
     path: info.outputPath('agent.png'),
@@ -370,7 +370,7 @@ test('a failed ledger switch never offers an action on the previous invoice', as
     second = `RACE-B-${Date.now()}`;
   await createInvoice(page, first, '1000');
   await createInvoice(page, second, '2000');
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await page.getByRole('tab', { name: 'Движение по счёту', exact: true }).click();
   await selectInvoice(page, first);
   await expect(page.locator('.ops-ledger-summary')).toContainText(/1\s?000/);
@@ -397,7 +397,7 @@ test('reconciliation shows a derived balance and a settled invoice accepts a rea
   await register(page);
   const number = `RECON-${Date.now()}`;
   await createInvoice(page, number, '1000');
-  await page.getByRole('button', { name: 'Финансы', exact: true }).click();
+  await navigate(page, 'Финансы');
   await page.getByRole('tab', { name: 'Сверка реестра', exact: true }).click();
   const source = page.getByLabel('Данные реестра', { exact: true });
   await source.fill(

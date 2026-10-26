@@ -13,6 +13,7 @@ import {
 import { api, post, money, dateText, today, ApiError } from '../api';
 import { DeskHeading, DeskError, type DeskProps } from './OperationsUI';
 import './mandato-services.css';
+import { ConnectionAccess } from './ConnectionAccess';
 
 type Provider = 'one_c' | 'diadoc' | 'tbank' | 'tbank_sandbox' | 'dadata' | 'bank_exchange';
 type Coverage = {
@@ -353,6 +354,7 @@ export function ConnectionsDesk({ invoices, notify, onChanged }: DeskProps) {
       >
         Проверьте доступность источника, прочитайте данные и подтвердите нужные строки.
       </DeskHeading>
+      <ConnectionAccess />
       <DeskError>{error}</DeskError>
       <div className="ms-connections">
         {connections

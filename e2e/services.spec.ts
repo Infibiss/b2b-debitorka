@@ -1,4 +1,4 @@
-import { test, expect, type Page } from './fixtures';
+import { navigate, test, expect, type Page } from './fixtures';
 
 const businessToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Moscow' });
 async function account(page: Page) {
@@ -30,7 +30,7 @@ async function invoice(page: Page, csrf: string) {
   return response.json();
 }
 async function tab(page: Page, name: string) {
-  await page.getByRole('button', { name, exact: true }).click();
+  await navigate(page, name);
 }
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(

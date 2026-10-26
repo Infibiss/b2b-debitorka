@@ -1,4 +1,10 @@
-export type User = { id: string; name: string; company: string; email: string };
+export type User = {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  role?: 'manager' | 'accountant';
+};
 export type Session = { user: User; csrf_token: string };
 export type Invoice = {
   id: string;

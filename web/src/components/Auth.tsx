@@ -3,6 +3,9 @@ import { ArrowUpRight, ArrowLeft, ShieldCheck, Check } from 'lucide-react';
 import { Brand } from './Brand';
 import { post, type Session } from '../api';
 export function Auth({ onSession }: { onSession: (session: Session) => void }) {
+  const invitation =
+    new URLSearchParams(location.hash.slice(1)).get('invite') ||
+    new URLSearchParams(location.search).get('invite');
   const [mode, setMode] = useState(
       new URLSearchParams(location.search).get('mode') === 'login' ? 'login' : 'register'
     ),
@@ -22,6 +25,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
       setBusy(false);
     }
   }
+  if (invitation) return <InvitationRegistration token={invitation} onSession={onSession} />;
   return (
     <div className="auth-page">
       <div className="auth-aside">
@@ -170,5 +174,80 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
         <span className="auth-copyright">© {new Date().getFullYear()} Mandato</span>
       </main>
     </div>
+  );
+}
+
+function InvitationRegistration({
+  token,
+  onSession,
+}: {
+  token: string;
+  onSession: (session: Session) => void;
+}) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  async function join(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    setBusy(true);
+    setError('');
+    try {
+      const password = String(data.get('password'));
+      const result = await post<{ user: { email: string } }>('/workflow/invitations/accept', {
+        token,
+        name: String(data.get('name')),
+        password,
+      });
+      const session = await post<Session>('/auth/login', { email: result.user.email, password });
+      history.replaceState({}, '', '/app');
+      onSession(session);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="auth-page invite-page">
+      <div className="auth-main">
+        <div className="auth-box">
+          <Brand />
+          <h1>Присоединиться к команде</h1>
+          <p>
+            Вы получите доступ бухгалтера к рабочему пространству организации, которая вас
+            пригласила.
+          </p>
+          <form className="auth-form" onSubmit={join}>
+            <label className="field">
+              Ваше имя
+              <input name="name" required maxLength={100} autoComplete="name" />
+            </label>
+            <label className="field">
+              Пароль
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={10}
+                maxLength={256}
+                autoComplete="new-password"
+              />
+            </label>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button className="button button-dark" disabled={busy}>
+              {busy ? 'Присоединяем…' : 'Присоединиться'}
+              <ArrowUpRight size={16} />
+            </button>
+          </form>
+          <a className="text-link" href="/app?mode=login">
+            Уже приняли приглашение? Войти
+          </a>
+        </div>
+      </div>
+    </main>
   );
 }

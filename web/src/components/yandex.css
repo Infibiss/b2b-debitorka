@@ -1,0 +1,204 @@
+.yx-desk {
+  display: grid;
+  gap: 24px;
+}
+.yx-invoice {
+  max-width: 700px;
+}
+.yx-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 24px;
+  align-items: start;
+}
+.yx-card {
+  padding: 28px;
+  border: 1px solid var(--border, #e2e6e5);
+  border-radius: 22px;
+  background: var(--surface, #fff);
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.yx-card h2,
+.yx-card p {
+  margin: 0;
+}
+.yx-card h2 {
+  font-size: 1.25rem;
+}
+.yx-card p {
+  line-height: 1.6;
+}
+.yx-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.yx-title a {
+  margin-left: auto;
+}
+.yx-note {
+  color: var(--muted, #59645f);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.yx-connection {
+  display: grid;
+  gap: 5px;
+  background: #edf3ef;
+  border-radius: 12px;
+  padding: 14px 16px;
+  line-height: 1.5;
+  font-size: 0.85rem;
+}
+.yx-connection-missing {
+  background: #f4f1e8;
+}
+.yx-connection small {
+  overflow-wrap: anywhere;
+}
+.yx-upload {
+  position: relative;
+  cursor: pointer;
+  justify-self: start;
+}
+.yx-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+.yx-upload:focus-within {
+  outline: 2px solid #326e50;
+  outline-offset: 4px;
+}
+.yx-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.yx-documents,
+.yx-transcript {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.yx-document-link {
+  border: 1px solid #dce4de;
+  background: #f8faf8;
+  border-radius: 10px;
+  padding: 13px;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.yx-document-link small {
+  display: block;
+  margin-top: 6px;
+  color: #5b675e;
+}
+.yx-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.yx-live {
+  font-size: 0.85rem;
+  color: #355a45;
+  min-height: 1.3em;
+}
+.yx-text-form,
+.yx-review form {
+  display: grid;
+  gap: 15px;
+}
+.yx-text-form button,
+.yx-review form button {
+  justify-self: start;
+}
+.yx-transcript {
+  max-height: 640px;
+  overflow-y: auto;
+}
+.yx-transcript li {
+  background: #f5f7f4;
+  border-radius: 14px;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+.yx-turn-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #526354;
+}
+.yx-audio {
+  max-width: 100%;
+  width: 100%;
+  margin-top: 4px;
+}
+.yx-review-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.yx-ocr-text {
+  min-height: 280px;
+  resize: vertical;
+}
+.yx-warning,
+.yx-callout {
+  padding: 12px 16px;
+  background: #fcf0db;
+  border-radius: 10px;
+  color: #745016;
+}
+.yx-recording {
+  box-shadow: 0 0 0 4px #cfe7d6;
+}
+@media (max-width: 900px) {
+  .yx-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .yx-card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+  .yx-review-fields {
+    grid-template-columns: 1fr;
+  }
+  .yx-title a {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yx-desk *,
+  .yx-desk *::before,
+  .yx-desk *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.yx-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.yx-identity input {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
