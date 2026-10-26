@@ -1,0 +1,61 @@
+{
+  "runtime_revision": "327d434fa32d5bbb3cd27cfd0a7838b5c461ae36",
+  "ci": "success",
+  "ci_url": "https://github.com/Infibiss/b2b-debitorka/actions/runs/40376436425",
+  "pytest": {
+    "passed": 506,
+    "skipped": 1,
+    "skip_reason": "paid opt-in live model test"
+  },
+  "playwright": {
+    "passed": 82,
+    "projects": [
+      "desktop",
+      "mobile"
+    ]
+  },
+  "agent_safety_replays": {
+    "passed": 19,
+    "live_model_quality_eval": false
+  },
+  "typescript": "passed",
+  "production_build": "passed",
+  "format": "passed",
+  "independent_review": "no blockers after fixes",
+  "financial_tables_unchanged_across_final_deploy": 8,
+  "https_smoke": {
+    "checked_at": "2026-10-26T18:19:39.385976+00:00",
+    "tls_verified": true,
+    "financial_writes": 0,
+    "external_sends": 0,
+    "new_ui_assets": true,
+    "javascript_sha256": "a8940643263d15593ec3fe933c22dab4d3b4a04f08a5967c0437a948f793577a",
+    "status": "passed",
+    "existing_test_account": true,
+    "financial_balances_retained": true,
+    "owner_key_isolation": true
+  },
+  "private_backup_restore": {
+    "status": "passed",
+    "financial_tables_matched": 8,
+    "new_service_tables_present": 4,
+    "isolated_local_restore": true
+  },
+  "walkthrough": {
+    "status": "passed",
+    "synthetic_account": true,
+    "invoices": 3,
+    "cases": 2,
+    "outstanding_rub": 325000,
+    "overdue_rub": 250000,
+    "received_rub": 50000,
+    "external_sends": 0,
+    "provider_calls": 0,
+    "owner_key_isolation": true,
+    "registration_browser": "in-app browser",
+    "walkthrough_browser": "Google Chrome"
+  },
+  "new_cloud_resources": 0,
+  "vpn_disabled": false,
+  "ssh_source": "single current operator VPN proxy exit /32"
+}
