@@ -1,0 +1,73 @@
+{
+  "runtime_revision": "c6395f66d992bf84a056efb96b57f31108bc384d",
+  "ci_url": "https://github.com/Infibiss/b2b-debitorka/actions/runs/40335229823",
+  "ci": "success",
+  "pytest": {
+    "passed": 506,
+    "skipped": 1
+  },
+  "browser": {
+    "passed": 48,
+    "projects": [
+      "desktop",
+      "mobile"
+    ]
+  },
+  "replay_safety": {
+    "passed": 19,
+    "total": 19
+  },
+  "financial_tables_unchanged": 8,
+  "hosted_https": {
+    "checked_at": "2026-10-26T14:24:00.072009+00:00",
+    "tls_verified": true,
+    "outbound_messages": 0,
+    "financial_writes": 0,
+    "status": "passed",
+    "cases": 3,
+    "roles_migrated": true,
+    "document_and_financial_records_retained": true,
+    "unrelated_tenant_cannot_spend_owner_key": true,
+    "autopilot_requires_enablement": true,
+    "private_case_routes": true,
+    "microphone_policy": true
+  },
+  "yandex_live_transports": {
+    "ocr": {
+      "status": "completed",
+      "text_matches": true,
+      "characters": 71
+    },
+    "tts": {
+      "status": "completed",
+      "audio_bytes": 43168
+    }
+  },
+  "yandex_live_stt": {
+    "operation": "stt",
+    "status": "completed",
+    "text_matches": true,
+    "characters": 54,
+    "synthetic_audio": true
+  },
+  "yandex_live_api_canary": {
+    "synthetic_tenant": true,
+    "temporary_process_only_allowlist": true,
+    "outbound_calls": 0,
+    "ocr_route_original_and_acceptance": "passed",
+    "voice_graph_and_payment_claim": "passed",
+    "intent_source": "rules",
+    "semantic_intent_source": "yandex",
+    "semantic_intent": "documents",
+    "financial_fingerprints_unchanged": true,
+    "status": "passed"
+  },
+  "private_backup_restore": {
+    "status": "passed",
+    "financial_tables_matched": 8,
+    "new_service_tables_present": 4,
+    "isolated_local_restore": true
+  },
+  "customer_connectors_verified": false,
+  "external_phone_calls": 0
+}

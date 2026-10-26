@@ -38,4 +38,4 @@ Files: ConnectionsDesk.tsx, docs/integrations.md, infra/yandex, scripts/deploy_y
 - [x] Surface credential and scope prerequisites, distinguish configured/verified/unavailable. Add judicial/executive source connection needs without fake credentials or undocumented scraping.
 - [x] Run all pytest with disposable PostgreSQL, replay evals, TypeScript, formatting/build, Playwright desktop/mobile, audits and Docker build.
 - [x] Review full diff for financial safety, permissions and provider secret leakage; repair failures.
-- [ ] Commit/push, verify CI, fresh backup, manual exact-SHA deploy; verify HTTPS routes, authentication, new features and unchanged financial fingerprint. Retain rollback path and private backup.
+- [x] Commit/push, verify CI, fresh backup, manual exact-SHA deploy; verify HTTPS routes, authentication, new features and unchanged financial fingerprint. Retain rollback path and private backup.

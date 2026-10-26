@@ -2,9 +2,13 @@
 
 Implemented for the approved 26 October 2026 workflow. These adapters send real
 requests to fixed Yandex endpoints only when explicitly enabled for the bound
-organization. Automated tests use provider contract doubles. **No live OCR,
-SpeechKit or voice-intent request was made during implementation.** A configured
-key alone is not evidence that its OCR/SpeechKit roles or API scopes work.
+organization. Automated tests use provider contract doubles. On 26 October 2026, separate live
+requests from the existing VM successfully recognized a synthetic invoice image,
+synthesized an Ogg phrase and recognized its PCM conversion with SpeechKit.
+No customer data or external telephone calls were used. A separate isolated-process API canary verified persisted OCR acceptance and the
+voice graph without financial writes; Yandex classified a paraphrased document
+request as `documents`. This one example is not a general model-quality benchmark. A configured key alone is not evidence
+that its OCR/SpeechKit roles or API scopes work.
 
 ## Operator setup
 
