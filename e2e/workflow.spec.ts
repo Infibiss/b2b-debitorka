@@ -26,9 +26,9 @@ test('unified workspace offers optional learning, skip and replay without creati
   await page.getByRole('button', { name: 'Позже', exact: true }).click();
   await expect(page.getByText('Показать, как устроена работа?', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Обучение', exact: true }).click();
-  await expect(page.getByRole('complementary', { name: 'Обучение: Работа' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Обучение: Mandato' })).toBeVisible();
   await page.getByRole('button', { name: 'Далее', exact: true }).click();
-  await expect(page.getByText('Откройте дело', { exact: true })).toBeVisible();
+  await expect(page.getByText('Аудит — что мешает оплате', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
   expect((await (await page.request.get('/api/invoices')).json()).items).toHaveLength(0);
   await page.reload();

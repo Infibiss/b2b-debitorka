@@ -223,14 +223,14 @@ export function WorkflowDesk({
   );
   return (
     <div className="wf-desk" data-tour="workflow-board">
-      <div className="wf-heading" data-tour="work-import">
+      <div className="wf-heading">
         <div>
           <span className="wf-eyebrow">Единый рабочий процесс</span>
           <h1>Работа по дебиторке</h1>
           <p>Mandato ведёт дела. Вы подключаетесь там, где нужно решение.</p>
         </div>
         <div className="wf-actions">
-          <button className="button button-white" onClick={onImport}>
+          <button className="button button-white" data-tour="work-import" onClick={onImport}>
             <Upload size={15} />
             Импортировать
           </button>
@@ -357,7 +357,7 @@ export function WorkflowDesk({
               Загрузите счета — Mandato соберёт дела по контрагентам и договорам, покажет пробелы и
               предложит следующий шаг.
             </p>
-            <div className="wf-actions">
+            <div className="wf-actions" data-tour="workflow-empty">
               <button className="button button-dark" onClick={onImport}>
                 <Upload size={15} />
                 Загрузить реестр
@@ -379,6 +379,7 @@ export function WorkflowDesk({
             <p>Попробуйте другой запрос или снимите фильтр.</p>
             <button
               className="button button-white"
+              data-tour="workflow-filter-empty"
               onClick={() => {
                 setQuery('');
                 setQueue('');
@@ -428,6 +429,7 @@ export function WorkflowDesk({
             {items.map((item) => (
               <button
                 className="wf-table-row"
+                data-tour="workflow-case"
                 role="row"
                 key={item.id}
                 aria-label={`Открыть дело ${item.company}`}
@@ -510,7 +512,12 @@ function StageBadge({ stage }: { stage: Stage }) {
 }
 function CaseCard({ item, onOpen }: { item: WorkCase; onOpen: () => void }) {
   return (
-    <button className="wf-case" aria-label={`Открыть дело ${item.company}`} onClick={onOpen}>
+    <button
+      className="wf-case"
+      data-tour="workflow-case"
+      aria-label={`Открыть дело ${item.company}`}
+      onClick={onOpen}
+    >
       <div className="wf-case-top">
         <StageBadge stage={item.stage} />
         {item.legal_escalation && (

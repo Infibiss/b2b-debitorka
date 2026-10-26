@@ -476,7 +476,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
     <div className="legal-desk">
       <DeskHeading
         eyebrow="ЮРИДИЧЕСКОЕ СОПРОВОЖДЕНИЕ"
-        title="От фактов к взысканию"
+        title="Претензии и суд"
         action={
           <button className="button button-dark" onClick={() => setOpening(true)}>
             <Plus size={16} />
@@ -484,8 +484,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
           </button>
         }
       >
-        Расчёт требований, документы и история дела. Каждый юридический документ проходит проверку
-        человеком.
+        Рассчитайте требования, подготовьте претензию или иск и сохраните историю взыскания.
       </DeskHeading>
       <DeskError>{error}</DeskError>
       {!selected ? (
@@ -494,8 +493,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
             <div>
               <h2>Дела компании</h2>
               <p>
-                Одно дело связано с одним счётом. Сумма требования опирается на его финансовый
-                реестр.
+                Откройте дело по счёту. Оплаты и корректировки будут учтены в расчёте требований.
               </p>
             </div>
             <Scale size={22} />
@@ -503,9 +501,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
           {loading ? (
             <p className="ops-muted">Загружаем дела…</p>
           ) : !cases.length ? (
-            <EmptyCard title="Первое дело начинается с документов">
-              Выберите счёт, заполните юридически значимые факты и зарегистрируйте подтверждающие
-              документы.
+            <EmptyCard title="Юридических дел пока нет">
+              Нажмите «Новое дело», выберите счёт и добавьте сведения о договоре.
             </EmptyCard>
           ) : (
             cases.map((item) => (
@@ -564,8 +561,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 <div>
                   <h2>Юридически значимые факты</h2>
                   <p>
-                    Заполните сведения по первичным документам. Сохранение фактов само по себе не
-                    означает юридического согласования.
+                    Укажите стороны, условия договора и основания требования. Сведения нужны для
+                    подготовки документов.
                   </p>
                 </div>
               </div>
@@ -697,8 +694,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 />
                 <h3 className="full-width">Условия вознаграждения</h3>
                 <p className="ops-muted full-width">
-                  Укажите условия заключённого договора. Ставки в форме — редактируемые параметры
-                  расчёта; начисление требует договора и даты начала сопровождения.
+                  Заполните ставки из договора сопровождения и дату начала работы.
                 </p>
                 <Field
                   label="Договор сопровождения"
@@ -864,8 +860,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 <div>
                   <h2>Доказательства по делу</h2>
                   <p>
-                    Реестр хранит реквизиты и место хранения. Оригиналы и копии прикладываются
-                    человеком при отправке или подаче.
+                    Укажите подтверждающие документы и место их хранения. При отправке претензии или
+                    подаче иска приложите оригиналы или копии самостоятельно.
                   </p>
                 </div>
               </div>
@@ -924,8 +920,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 <div>
                   <h2>Версии документов</h2>
                   <p>
-                    DOCX сохраняется с расчётом и снимком фактов. Изменение долга или значимых
-                    фактов требует новой версии и новой проверки.
+                    Подготовьте документ и проверьте его перед отправкой. Если долг или сведения по
+                    делу изменились, нужна новая версия.
                   </p>
                 </div>
               </div>
@@ -966,8 +962,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
               <div className="legal-document-list">
                 {!documents.length && (
                   <EmptyCard title="Документы появятся после подготовки">
-                    Для генерации нужны сведения сторон, договор, факт исполнения и
-                    зарегистрированные доказательства.
+                    Заполните сведения сторон, договор, факт исполнения и зарегистрированные
+                    доказательства.
                   </EmptyCard>
                 )}
                 {documents.map((doc) => (
@@ -1028,10 +1024,10 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
             <section className="ops-card">
               <div className="ops-card-heading">
                 <div>
-                  <h2>Ручные действия и подтверждения</h2>
+                  <h2>Ход взыскания</h2>
                   <p>
-                    Фиксируйте уже выполненные действия. Кабинет сохраняет их дату и доказательства;
-                    подачу в суд, почту, банк или ФССП выполняет человек.
+                    Отмечайте отправку претензии, подачу иска и другие выполненные действия.
+                    Документы в суд, банк и ФССП подаются отдельно.
                   </p>
                 </div>
               </div>
@@ -1140,9 +1136,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
       )}
       {opening && (
         <Dialog title="Новое юридическое дело" onClose={() => setOpening(false)}>
-          <p className="ops-muted">
-            Начните со счёта. Юридические основания и доказательства заполняются в деле.
-          </p>
+          <p className="ops-muted">Выберите счёт, по которому готовите претензию или иск.</p>
           <OperationForm
             label="Открыть дело"
             submit={async (data) => {

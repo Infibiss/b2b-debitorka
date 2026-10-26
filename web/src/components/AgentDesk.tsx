@@ -143,8 +143,8 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
   return (
     <>
       <DeskHeading
-        eyebrow="ОТ ОТВЕТА ПОКУПАТЕЛЯ К СЛЕДУЮЩЕМУ ШАГУ"
-        title="Переписка становится действием."
+        eyebrow="ВХОДЯЩИЕ СООБЩЕНИЯ"
+        title="Разбор ответов"
         action={
           <button className="button button-dark" onClick={() => setCompose(true)}>
             <Inbox size={16} />
@@ -152,14 +152,14 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
           </button>
         }
       >
-        Агент находит сумму, срок и возражения. Вы проверяете основания и подтверждаете решение.
+        Добавьте ответ контрагента. Mandato определит, что он просит, и предложит следующий шаг.
       </DeskHeading>
       <div className="ops-context ops-agent-principle">
         <ShieldCheck size={22} />
         <div>
-          <strong>Контроль остаётся у вашей команды</strong>
+          <strong>Контрагент сообщил об оплате?</strong>
           <p>
-            Обещание не меняет остаток долга. Сообщение об оплате направляется на сверку с банком.
+            Проверьте поступление по выписке. Долг уменьшится только после подтверждения оплаты.
           </p>
         </div>
       </div>
@@ -167,8 +167,8 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
       <section className="ops-card">
         <div className="ops-card-heading">
           <div>
-            <h2>Входящие решения</h2>
-            <p>Каждый вывод связан с конкретным сообщением и состоянием счёта.</p>
+            <h2>Ответы и следующие действия</h2>
+            <p>Откройте ответ, чтобы проверить условия и подтвердить действие.</p>
           </div>
           <button
             className="icon-button"
@@ -222,9 +222,8 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
             })}
           </div>
         ) : (
-          <EmptyCard title="Ни один ответ не потеряется">
-            Добавьте новый ответ покупателя. Агент предложит следующий шаг и покажет, на какие слова
-            он опирается.
+          <EmptyCard title="Ответов пока нет">
+            Нажмите «Разобрать сообщение» и вставьте полученный текст.
           </EmptyCard>
         )}
       </section>
@@ -289,7 +288,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
           )}
           {!!selected.extraction.evidence?.length && (
             <>
-              <h3>Основания в сообщении</h3>
+              <h3>Что сообщил контрагент</h3>
               {selected.extraction.evidence.map((e, i) => (
                 <div className="ops-evidence" key={i}>
                   <span>
@@ -414,8 +413,8 @@ function MessageForm({
           />
         </label>
         <p id="agent-receipt-help" className="ops-muted full-width">
-          «Завтра» и «послезавтра» считаются от этого времени. Укажите время получения в часовом
-          поясе браузера: {Intl.DateTimeFormat().resolvedOptions().timeZone}.
+          Сроки вроде «завтра» считаются от даты получения. Часовой пояс:{' '}
+          {Intl.DateTimeFormat().resolvedOptions().timeZone}.
         </p>
         <label className="field full-width">
           Новый ответ покупателя

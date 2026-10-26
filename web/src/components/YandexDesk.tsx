@@ -48,18 +48,15 @@ const labels: Record<string, string> = {
   permission_required: 'Нужны права Яндекса',
 };
 const errors: Record<string, string> = {
-  permission: 'Яндекс отклонил доступ. Оператору нужно проверить роли и область API-ключа.',
-  authentication: 'Яндекс не подтвердил API-ключ. Обратитесь к оператору.',
-  rate_limit: 'Достигнут лимит Яндекса. Обратитесь к оператору.',
+  permission: 'Нет доступа к сервису. Обратитесь к администратору Mandato.',
+  authentication: 'Подключение к Яндексу не работает. Обратитесь к администратору Mandato.',
+  rate_limit: 'Достигнут лимит сервиса. Попробуйте позже или обратитесь к администратору Mandato.',
   timeout: 'Яндекс не ответил вовремя. Результат запроса не подтверждён.',
   speech_not_recognized: 'Речь не распознана. Запишите новую короткую реплику или введите текст.',
   invalid_response: 'Ответ Яндекса не прошёл проверку. Результат не подтверждён.',
 };
 function message(code: string) {
-  return (
-    errors[code] ||
-    'Сервис не завершил запрос. Сохранены доступные результаты; автоматический повтор отключён.'
-  );
+  return errors[code] || 'Не удалось завершить обработку. Попробуйте позже.';
 }
 function base64(bytes: Uint8Array) {
   let binary = '';
@@ -392,8 +389,8 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
   }
   return (
     <div className="yx-desk">
-      <DeskHeading eyebrow="Документы и диалог" title="Сверить и обсудить">
-        Распознайте документ и обсудите сведения по выбранному счёту с Mandato.
+      <DeskHeading eyebrow="РАБОТА СО СЧЁТОМ" title="Документы и разговор">
+        Загрузите скан для распознавания или проверьте, как Mandato ведёт разговор об оплате.
       </DeskHeading>
       <DeskError>{error}</DeskError>
       <label className="field yx-invoice">
@@ -419,8 +416,7 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
           </div>
           <Connection status={status?.ocr} />
           <p>
-            PDF до пяти страниц, PNG или JPEG, до 1 МБ. Оригинал хранится закрыто. Распознанный
-            текст нужно сверить перед использованием.
+            Загрузите договор, акт или счёт. Поддерживаются PDF до пяти страниц, PNG и JPEG до 1 МБ.
           </p>
           <label
             className={`button button-outline yx-upload ${!status?.ocr.configured || busy ? 'yx-disabled' : ''}`}
@@ -438,10 +434,12 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
               }}
             />
           </label>
-          <p className="yx-note">
-            Повторное распознавание того же документа возвращает сохранённый результат. Лимит — 10
-            страниц в день на пользователя и 20 на организацию; неудачные запросы тоже учитываются.
-          </p>
+          <details className="yx-note">
+            <summary>Лимит распознавания</summary>
+            <p>
+              10 страниц в день на сотрудника и 20 на компанию. Неудачные запросы тоже учитываются.
+            </p>
+          </details>
           <ul className="yx-documents">
             {documents
               .filter((item) => !selectedInvoice || item.invoice_id === selectedInvoice)
@@ -465,15 +463,12 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
           </div>
           <Connection status={status?.voice} />
           <p>
-            Сыграйте представителя контрагента: Mandato представится, уточнит причину задержки и
-            обсудит дату и сумму оплаты. Можно заявить об оплате, попросить документы или сообщить о
-            споре. Запись — до 20 секунд.
+            Ответьте от лица контрагента: Mandato уточнит причину задержки и предложит обсудить срок
+            оплаты. Можно говорить или писать.
           </p>
           <p className="yx-note">
-            Микрофон включается только по вашей кнопке. Реплика передаётся Яндексу для распознавания
-            и озвучивания ответа. Это разговор в браузере: телефонного номера пока нет.
-            Договорённости и запрос сотрудника сохраняются в стенограмме; оплаты, условия и статусы
-            дел здесь не меняются.
+            Разговор проходит в браузере, без звонка контрагенту. Запись до 20 секунд обрабатывается
+            Яндексом. Итоги сохраняются в стенограмме; долг и условия оплаты не меняются.
           </p>
           {!selectedInvoice && (
             <p className="yx-callout">Выберите счёт выше, чтобы начать диалог.</p>
@@ -485,8 +480,7 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
               disabled={!selectedInvoice || !!busy || recording}
               onChange={(event) => setIdentityConfirmed(event.target.checked)}
             />
-            Я играю уполномоченного представителя выбранного контрагента и разрешаю озвучить
-            сведения этого счёта в учебном разговоре. Это не проверка личности внешнего абонента.
+            Разрешаю использовать сведения выбранного счёта в учебном разговоре от лица контрагента.
           </label>
           <div className="yx-actions">
             <button
@@ -548,7 +542,7 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
                 maxLength={1000}
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
-                placeholder="Мы оплатили вчера / Оплатим 50 рублей завтра"
+                placeholder="Например: оплатим счёт в пятницу"
                 disabled={!!busy || recording}
               />
             </label>
@@ -565,10 +559,7 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
               Ответить Mandato
             </button>
           </form>
-          <p className="yx-note">
-            До 10 реплик в день на пользователя и 20 на организацию. Если звук не запустился
-            автоматически, нажмите воспроизведение у ответа.
-          </p>
+          <p className="yx-note">До 10 реплик в день на сотрудника и 20 на компанию.</p>
           <ol className="yx-transcript" aria-label="История диалога">
             {turns.map((turn, index) => (
               <li key={turn.id}>
@@ -593,7 +584,7 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
                   </p>
                 )}
                 {turn.intent_source === 'rules_fallback' && (
-                  <small>Ответ по проверенным правилам: модель недоступна.</small>
+                  <small>Модель недоступна. Ответ составлен по правилам разговора.</small>
                 )}
               </li>
             ))}
@@ -613,14 +604,13 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
             </a>
           </div>
           <p className="yx-note">
-            Источник: Yandex Vision OCR · {document.page_count} стр. · Контрольная сумма{' '}
-            {document.source_hash.slice(0, 16)}. Принятие сохраняет проверенную версию документа и
-            не создаёт финансовых событий.
+            {document.page_count} стр. Сверьте текст и реквизиты с оригиналом. Сохранение документа
+            не меняет сумму долга.
           </p>
           {document.status !== 'completed' && (
             <p className="yx-warning">
               {document.status === 'processing'
-                ? 'Результат ещё не подтверждён. Повторный запрос не отправляется автоматически.'
+                ? 'Распознавание ещё не завершено. Откройте документ позже.'
                 : message(document.error_code)}
             </p>
           )}
@@ -682,10 +672,28 @@ function Connection({ status }: { status?: ServiceStatus }) {
   return (
     <div className={`yx-connection ${status.configured ? '' : 'yx-connection-missing'}`}>
       <strong>{labels[status.status] || status.status}</strong>
-      <span>{status.message}</span>
-      {['unconfigured', 'permission_required'].includes(status.status) && (
-        <small>Оператору: {status.required_roles.join(', ')}</small>
-      )}
+      <span>
+        {status.status === 'unconfigured'
+          ? 'Для работы нужно подключить сервис. Обратитесь к администратору Mandato.'
+          : status.status === 'not_checked'
+            ? 'Подключение будет проверено при первом запросе.'
+            : status.status === 'permission_required'
+              ? 'Нужно проверить доступ к сервису. Обратитесь к администратору Mandato.'
+              : status.status === 'processing'
+                ? 'Обработка запроса ещё не завершена.'
+                : status.status === 'unavailable'
+                  ? 'Обработка не завершена. Попробуйте позже.'
+                  : status.status === 'completed'
+                    ? 'Последний запрос обработан успешно.'
+                    : status.message}
+      </span>
+      {['unconfigured', 'permission_required'].includes(status.status) &&
+        status.required_roles.length > 0 && (
+          <details>
+            <summary>Настройки для администратора</summary>
+            <small>Роли в Yandex Cloud: {status.required_roles.join(', ')}</small>
+          </details>
+        )}
     </div>
   );
 }

@@ -134,8 +134,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
   return (
     <>
       <DeskHeading
-        eyebrow="ТОЧНЫЙ ОСТАТОК — ОСНОВА КАЖДОГО ДЕЙСТВИЯ"
-        title="Финансы без расхождений."
+        eyebrow="УЧЁТ ОПЛАТ"
+        title="Оплаты и сверка"
         action={
           <button className="button button-dark" onClick={() => setModal({ type: 'bank' })}>
             <Plus size={16} />
@@ -143,7 +143,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           </button>
         }
       >
-        Сверяйте выгрузки, распределяйте поступления и сохраняйте основания каждого изменения.
+        Сопоставьте поступления со счетами и проверьте, сколько осталось к оплате.
       </DeskHeading>
       <div className="ops-tabs" role="tablist" aria-label="Финансовые операции">
         {(
@@ -166,10 +166,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           <div className="ops-card-heading">
             <div>
               <h2>Банковские поступления</h2>
-              <p>
-                Одно поступление — несколько счетов. Общая сумма распределений всегда ограничена
-                платежом.
-              </p>
+              <p>Выберите поступление и укажите, какие счета оно оплачивает.</p>
             </div>
             <Wallet size={22} />
           </div>
@@ -276,8 +273,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
         <section className="ops-card">
           <div className="ops-card-heading">
             <div>
-              <h2>Покупатели и правила контакта</h2>
-              <p>Одна договорённость действует на все счета покупателя.</p>
+              <h2>Контрагенты и правила работы</h2>
+              <p>Разрешения и пауза в переписке действуют на все счета контрагента.</p>
             </div>
             <ShieldCheck size={23} />
           </div>
@@ -297,7 +294,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                   {p.hold_reason && <p>{p.hold_reason}</p>}
                   <p>
                     {p.agent_promises_allowed
-                      ? 'Агент может предлагать договорённости в пределах мандата.'
+                      ? 'Mandato может принимать обещания оплаты в пределах ваших правил.'
                       : 'Договорённости подтверждает сотрудник.'}
                   </p>
                   <button
@@ -312,7 +309,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
             </div>
           ) : (
             <EmptyCard title="Здесь будут ваши покупатели">
-              Контрагент создаётся вместе с первым счётом и объединяется по ИНН.
+              Добавьте счёт — его контрагент появится здесь.
             </EmptyCard>
           )}
         </section>
@@ -322,7 +319,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           <div className="ops-card-heading">
             <div>
               <h2>История изменения остатка</h2>
-              <p>Платежи, корректировки и договорённости с сохранением исходных оснований.</p>
+              <p>Выберите счёт, чтобы увидеть оплаты, корректировки и договорённости.</p>
             </div>
           </div>
           <InvoiceSelect invoices={invoices} value={selected} onChange={setSelected} />
@@ -631,7 +628,7 @@ function FinanceModal({
                 type="checkbox"
                 defaultChecked={modal.party.agent_promises_allowed}
               />
-              <span>Разрешить агенту предлагать сроки и график в пределах мандата</span>
+              <span>Разрешить Mandato принимать обещания оплаты в заданных пределах</span>
             </label>
             <label className="field">
               Максимум дней отсрочки
@@ -656,7 +653,7 @@ function FinanceModal({
               />
             </label>
             <label className="field full-width">
-              Мандат действует до
+              Разрешение действует до
               <input
                 name="mandate_expires_on"
                 type="date"

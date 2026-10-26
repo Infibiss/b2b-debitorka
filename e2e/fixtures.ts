@@ -12,25 +12,28 @@ export { expect };
 
 export type { Page } from '@playwright/test';
 
-/** Exercise the compact navigation as a user would: open tools when needed. */
+/** Use the same persistent commands and profile menu as the user. */
 export async function navigate(page: import('@playwright/test').Page, name: string) {
   await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
   const labels: Record<string, string> = {
-    Финансы: 'Поступления и сверка',
-    Агент: 'Разбор ответов',
-    Дела: 'Юридическая работа',
+    Финансы: 'Оплаты и сверка',
+    'Поступления и сверка': 'Оплаты и сверка',
+    Реестр: 'Счета',
+    Дела: 'Претензии и суд',
+    'Юридическая работа': 'Претензии и суд',
+    'Документы и голос': 'Документы',
     'Поступления и условия': 'Прогноз и условия',
     Письма: 'Переписка',
   };
-  const button = page.getByRole('button', { name: labels[name] || name, exact: true });
-  if (!(await button.isVisible())) {
-    if (name === 'Настройки') {
-      await page.getByRole('button', { name: 'Управление', exact: true }).click();
-      await page.getByRole('button', { name: 'Реквизиты и почта', exact: true }).click();
-      return;
-    }
-    await page.getByRole('button', { name: 'Работа', exact: true }).click();
-    await page.getByText('Операции с дебиторкой', { exact: true }).click();
+  if (name === 'Настройки') {
+    await page.getByRole('button', { name: 'Профиль и настройки', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Настройки', exact: true }).click();
+    return;
   }
-  await button.click();
+  if (name === 'Агент' || name === 'Разбор ответов') {
+    await page.getByRole('button', { name: 'Переписка', exact: true }).click();
+    await page.getByRole('button', { name: 'Разобрать ответ', exact: true }).click();
+    return;
+  }
+  await page.getByRole('button', { name: labels[name] || name, exact: true }).click();
 }

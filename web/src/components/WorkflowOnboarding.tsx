@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import './workflow.css';
+
 export type LearningSection = 'workflow' | 'audit' | 'connections' | 'management';
 type Step = { title: string; text: string; target: string };
 const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
@@ -9,17 +10,17 @@ const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
     steps: [
       {
         title: 'Загрузите реестр',
-        text: 'Импортируйте счета или добавьте один вручную. Суммы портфеля появятся над делами.',
+        text: 'Загрузите счета файлом или добавьте один вручную. Mandato соберёт их по контрагентам и договорам.',
         target: 'work-import',
       },
       {
         title: 'Откройте дело',
-        text: 'Счета одного контрагента по одному договору собраны вместе. В карточке — документы, переписка и следующий шаг.',
-        target: 'workflow-board',
+        text: 'В карточке дела — счета по договору, документы, переписка и следующий шаг.',
+        target: 'workflow-case',
       },
       {
         title: 'Разберите исключения',
-        text: 'В очереди «Требует решения» — вопросы к бухгалтеру и руководителю. Обычные напоминания агент ведёт по вашим правилам.',
+        text: 'В очереди «Требует решения» — документы, спорные поступления и новые условия. Напоминания идут по утверждённым правилам.',
         target: 'workflow-queues',
       },
     ],
@@ -29,17 +30,17 @@ const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
     steps: [
       {
         title: 'Соберите аудит',
-        text: 'Загрузите портфель и запустите проверку. Аудит покажет расхождения, сроки и недостающие документы.',
+        text: 'Запустите проверку загруженного портфеля: расхождения, сроки и недостающие документы.',
         target: 'audit-actions',
       },
       {
         title: 'Выберите замечание',
-        text: 'Найдите контрагента или отфильтруйте замечания по важности. Откройте строку, чтобы увидеть основание проверки.',
+        text: 'Найдите контрагента или выберите важность замечаний. Откройте строку, чтобы увидеть причину.',
         target: 'audit-findings',
       },
       {
         title: 'Исправьте причину',
-        text: 'Из замечания можно открыть счёт, добавить документ или сверить поступление. После изменений обновите аудит.',
+        text: 'Добавьте документ или сверьте поступление в связанном счёте. Затем обновите аудит.',
         target: 'audit-findings',
       },
     ],
@@ -49,17 +50,17 @@ const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
     steps: [
       {
         title: 'Выберите источник',
-        text: 'Откройте 1С, ЭДО, банк, реестры или почту. У каждого источника свой статус и свои действия.',
+        text: 'Откройте 1С, ЭДО, банк, реестры или почту. Внутри — состояние подключения и доступные действия.',
         target: 'connections-content',
       },
       {
-        title: 'Проверьте доступ',
-        text: 'Если доступ ещё не настроен, откройте задание для IT-специалиста внутри выбранного источника.',
+        title: 'Настройте доступ',
+        text: 'Для подключения потребуется доступ к вашей системе. Инструкцию для IT-специалиста можно открыть здесь же.',
         target: 'connections-content',
       },
       {
-        title: 'Проверьте полученные данные',
-        text: 'Перед сохранением счетов и поступлений просмотрите строки. История загрузок остаётся у соответствующего источника.',
+        title: 'Проверьте загрузку',
+        text: 'Просмотрите счета и поступления перед сохранением. История загрузок находится внутри источника.',
         target: 'connections-content',
       },
     ],
@@ -69,28 +70,77 @@ const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
     steps: [
       {
         title: 'Задайте правила',
-        text: 'Руководитель выбирает расписание и частоту напоминаний. Автоматизацию можно включить после подключения почты.',
+        text: 'Выберите расписание и частоту напоминаний. Для их отправки подключите почту.',
         target: 'workflow-policy',
       },
       {
-        title: 'Пригласите бухгалтера',
-        text: 'Создайте приглашение для сотрудника. Бухгалтер разбирает документы и поступления, руководитель согласует новые условия.',
+        title: 'Пригласите команду',
+        text: 'Бухгалтер разбирает документы и поступления. Руководитель согласует скидки, рассрочки и юридические шаги.',
         target: 'workflow-team',
       },
       {
         title: 'Запустите нужные дела',
-        text: 'Вернитесь в «Работу» и включите агента для выбранного дела. Любое дело можно поставить на паузу.',
+        text: 'Включите агента для выбранного дела в «Работе». При необходимости поставьте дело на паузу.',
         target: 'workflow-policy',
       },
     ],
   },
 };
-type SectionProgress = { step: number; dismissed: boolean; completed: boolean };
+const orientation: (Step & { section: LearningSection })[] = [
+  {
+    title: 'Работа — дела и сроки',
+    text: 'Ежедневная очередь: кому напомнить, кто обещал оплатить и где нужно ваше решение. Откройте дело, чтобы увидеть всю историю по договору.',
+    target: 'nav-workflow',
+    section: 'workflow',
+  },
+  {
+    title: 'Аудит — что мешает оплате',
+    text: 'Проверяйте расхождения в суммах, недостающие документы и важные сроки. У каждого замечания есть причина и следующий шаг.',
+    target: 'nav-audit',
+    section: 'audit',
+  },
+  {
+    title: 'Подключения — откуда приходят данные',
+    text: 'Здесь подключаются учётная система, банк, ЭДО, реестры и почта. Для начала можно загрузить файлы.',
+    target: 'nav-connections',
+    section: 'connections',
+  },
+  {
+    title: 'Управление — правила и команда',
+    text: 'Задайте правила напоминаний и пригласите коллег. Руководитель решает, что агент может делать самостоятельно.',
+    target: 'nav-management',
+    section: 'management',
+  },
+  {
+    title: 'Начните с реестра',
+    text: 'Загрузите счета в «Работе», затем откройте «Аудит». Подробный урок каждого раздела доступен по кнопке «Помощь по разделу».',
+    target: 'work-import',
+    section: 'workflow',
+  },
+];
+type LessonProgress = { step: number; dismissed: boolean; completed: boolean };
 type Progress = {
   enabled: boolean | null;
-  sections: Partial<Record<LearningSection, SectionProgress>>;
+  general: LessonProgress;
+  sections: Partial<Record<LearningSection, LessonProgress>>;
 };
-const initialSection: SectionProgress = { step: 0, dismissed: false, completed: false };
+const initialLesson: LessonProgress = { step: 0, dismissed: false, completed: false };
+function restoreLesson(value: unknown, count: number): LessonProgress {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('step' in value) ||
+    typeof value.step !== 'number' ||
+    !Number.isInteger(value.step)
+  )
+    return { ...initialLesson };
+  const stored = value as LessonProgress;
+  return {
+    step: Math.max(0, Math.min(count - 1, stored.step)),
+    dismissed: !!stored.dismissed,
+    completed: !!stored.completed,
+  };
+}
 function readProgress(userId: string): Progress {
   try {
     const stored = JSON.parse(localStorage.getItem(`mandato-learning:v2:${userId}`) || 'null');
@@ -102,69 +152,115 @@ function readProgress(userId: string): Progress {
     ) {
       const sections: Progress['sections'] = {};
       for (const section of Object.keys(lessons) as LearningSection[]) {
-        const value = stored.sections[section];
-        if (value && Number.isInteger(value.step))
-          sections[section] = {
-            step: Math.max(0, Math.min(lessons[section].steps.length - 1, value.step)),
-            dismissed: !!value.dismissed,
-            completed: !!value.completed,
-          };
+        if (stored.sections[section])
+          sections[section] = restoreLesson(
+            stored.sections[section],
+            lessons[section].steps.length
+          );
       }
-      return { enabled: stored.enabled, sections };
+      return {
+        enabled: stored.enabled,
+        general: restoreLesson(stored.general, orientation.length),
+        sections,
+      };
     }
     const old = JSON.parse(localStorage.getItem(`mandato-onboarding:${userId}`) || 'null');
-    if (old?.dismissed || old?.completed) return { enabled: false, sections: {} };
+    if (old?.dismissed || old?.completed)
+      return { enabled: false, general: { ...initialLesson, dismissed: true }, sections: {} };
   } catch {
-    /* Learning works when browser storage is unavailable. */
+    /* Learning remains available when browser storage is unavailable. */
   }
-  return { enabled: null, sections: {} };
+  return { enabled: null, general: { ...initialLesson }, sections: {} };
+}
+function persistProgress(userId: string, progress: Progress) {
+  try {
+    localStorage.setItem(`mandato-learning:v2:${userId}`, JSON.stringify(progress));
+  } catch {
+    /* Optional persistence. */
+  }
 }
 export function WorkflowOnboarding({
   userId,
   section,
   contextKey,
   replayToken,
+  generalReplayToken = 0,
+  onSectionChange,
 }: {
   userId: string;
   section: LearningSection;
   contextKey: string;
   replayToken: number;
+  generalReplayToken?: number;
+  onSectionChange?: (section: LearningSection) => void;
 }) {
   const [progress, setProgress] = useState<Progress>(() => readProgress(userId));
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<'general' | 'section' | null>(null);
+  const [caseState, setCaseState] = useState<'visible' | 'filtered' | 'empty'>('empty');
   const previousReplay = useRef(replayToken);
+  const previousGeneralReplay = useRef(generalReplayToken);
+  const navigateSection = useRef(onSectionChange);
+  navigateSection.current = onSectionChange;
   const lesson = lessons[section];
-  const current = progress.sections[section] || initialSection;
-  const step = lesson.steps[current.step];
-  function save(next: Progress) {
-    setProgress(next);
-    try {
-      localStorage.setItem(`mandato-learning:v2:${userId}`, JSON.stringify(next));
-    } catch {
-      /* Optional persistence. */
-    }
+  const current = progress.sections[section] || initialLesson;
+  const localCaseStep = mode === 'section' && section === 'workflow' && current.step === 1;
+  const baseStep =
+    mode === 'general' ? orientation[progress.general.step] : lesson.steps[current.step];
+  const step =
+    localCaseStep && caseState !== 'visible'
+      ? caseState === 'filtered'
+        ? {
+            ...baseStep,
+            title: 'Сбросьте фильтр',
+            text: 'Поиск или выбранная очередь скрыли дела. Сбросьте фильтры, затем откройте карточку нужного контрагента.',
+          }
+        : {
+            ...baseStep,
+            title: 'Добавьте первое дело',
+            text: 'Загрузите реестр или добавьте счёт. После загрузки здесь появятся дела по контрагентам и договорам.',
+          }
+      : baseStep;
+  const stepNumber = mode === 'general' ? progress.general.step : current.step;
+  const stepCount = mode === 'general' ? orientation.length : lesson.steps.length;
+  const lessonName = mode === 'general' ? 'Mandato' : lesson.name;
+  function save(update: (value: Progress) => Progress) {
+    setProgress((value) => {
+      const next = update(value);
+      persistProgress(userId, next);
+      return next;
+    });
   }
-  function update(next: Partial<SectionProgress>) {
-    save({ ...progress, sections: { ...progress.sections, [section]: { ...current, ...next } } });
+  function updateCurrent(next: Partial<LessonProgress>) {
+    save((value) =>
+      mode === 'general'
+        ? { ...value, general: { ...value.general, ...next } }
+        : {
+            ...value,
+            sections: {
+              ...value.sections,
+              [section]: { ...(value.sections[section] || initialLesson), ...next },
+            },
+          }
+    );
   }
   function close() {
-    update({ dismissed: true });
-    setOpen(false);
+    updateCurrent({ dismissed: true });
+    setMode(null);
   }
-  function start() {
-    save({
-      ...progress,
+  function startGeneral() {
+    save((value) => ({
+      ...value,
       enabled: true,
-      sections: { ...progress.sections, [section]: { ...current, dismissed: true } },
-    });
-    setOpen(true);
+      general: { step: 0, dismissed: true, completed: false },
+    }));
+    setMode('general');
   }
   useEffect(() => {
     setProgress(readProgress(userId));
-    setOpen(false);
+    setMode(null);
   }, [userId]);
   useEffect(() => {
-    setOpen(false);
+    setMode((value) => (value === 'section' ? null : value));
   }, [contextKey]);
   useEffect(() => {
     if (previousReplay.current === replayToken) return;
@@ -172,55 +268,134 @@ export function WorkflowOnboarding({
     setProgress((value) => {
       const next = {
         ...value,
-        sections: { ...value.sections, [section]: { step: 0, dismissed: true, completed: false } },
+        enabled: true,
+        sections: {
+          ...value.sections,
+          [section]: { step: 0, dismissed: true, completed: false },
+        },
       };
-      try {
-        localStorage.setItem(`mandato-learning:v2:${userId}`, JSON.stringify(next));
-      } catch {
-        /* Optional persistence. */
-      }
+      persistProgress(userId, next);
       return next;
     });
-    setOpen(true);
+    setMode('section');
   }, [replayToken, section, userId]);
   useEffect(() => {
-    if (!open) return;
-    let target: HTMLElement | null = null;
-    const frame = requestAnimationFrame(() => {
-      target = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
-      target?.classList.add('wf-tour-highlight');
+    if (previousGeneralReplay.current === generalReplayToken) return;
+    previousGeneralReplay.current = generalReplayToken;
+    setProgress((value) => {
+      const next = {
+        ...value,
+        enabled: true,
+        general: { step: 0, dismissed: true, completed: false },
+      };
+      persistProgress(userId, next);
+      return next;
     });
+    setMode('general');
+  }, [generalReplayToken, userId]);
+  useEffect(() => {
+    if (mode === 'general') navigateSection.current?.(orientation[progress.general.step].section);
+  }, [mode, progress.general.step]);
+  useEffect(() => {
+    if (!mode) return;
+    let target: HTMLElement | null = null;
+    let frame = 0;
+    let revealFrame = 0;
+    function visibleTarget(name: string) {
+      return (
+        Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${name}"]`)).find(
+          (element) =>
+            element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden'
+        ) || null
+      );
+    }
+    function revealTarget(element: HTMLElement) {
+      if (!element.isConnected) return;
+      const sidebar = element.closest<HTMLElement>('.sidebar');
+      if (sidebar && getComputedStyle(sidebar).position === 'fixed') return;
+      const bounds = element.getBoundingClientRect();
+      const coach = document.querySelector<HTMLElement>('.wf-coach')?.getBoundingClientRect();
+      const viewportHeight = Math.min(
+        window.innerHeight,
+        window.visualViewport?.height || window.innerHeight
+      );
+      const gap = 24;
+      const sharesCoachColumn =
+        !!coach && bounds.right > coach.left - gap && bounds.left < coach.right + gap;
+      const overlapsCoach =
+        sharesCoachColumn &&
+        !!coach &&
+        bounds.bottom > coach.top - gap &&
+        bounds.top < coach.bottom + gap;
+      const outsideViewport = bounds.top < gap || bounds.bottom > viewportHeight - gap;
+      if (!overlapsCoach && !outsideViewport) return;
+      const freeBottom = sharesCoachColumn && coach ? coach.top - gap : viewportHeight - gap;
+      const freeHeight = Math.max(0, freeBottom - gap);
+      const desiredTop = gap + Math.max(0, (freeHeight - bounds.height) / 2);
+      window.scrollBy({ top: bounds.top - desiredTop, behavior: 'instant' });
+    }
+    function highlight() {
+      const visibleCase = localCaseStep ? visibleTarget('workflow-case') : null;
+      const resetFilter = localCaseStep ? visibleTarget('workflow-filter-empty') : null;
+      if (localCaseStep) setCaseState(visibleCase ? 'visible' : resetFilter ? 'filtered' : 'empty');
+      const next = localCaseStep
+        ? visibleCase ||
+          resetFilter ||
+          visibleTarget('workflow-empty') ||
+          visibleTarget('work-import')
+        : visibleTarget(baseStep.target);
+      if (target !== next) {
+        target?.classList.remove('wf-tour-highlight');
+        target = next;
+        target?.classList.add('wf-tour-highlight');
+        cancelAnimationFrame(revealFrame);
+        if (next) revealFrame = requestAnimationFrame(() => revealTarget(next));
+      }
+    }
+    function scheduleHighlight() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(highlight);
+    }
+    scheduleHighlight();
+    const observer = new MutationObserver(scheduleHighlight);
+    observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(revealFrame);
+      observer.disconnect();
       target?.classList.remove('wf-tour-highlight');
     };
-  }, [open, step]);
-  const offer =
-    contextKey === section &&
-    !open &&
-    (progress.enabled === null || (progress.enabled && !current.dismissed && !current.completed));
+  }, [mode, baseStep.target, localCaseStep, contextKey]);
+  useEffect(() => {
+    if (!mode) return;
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        updateCurrent({ dismissed: true });
+        setMode(null);
+      }
+    }
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  });
+  const offer = contextKey === section && !mode && progress.enabled === null;
   return (
     <>
       {offer && (
         <aside className="wf-learn-prompt" aria-label="Обучение">
-          <strong>
-            {progress.enabled === null
-              ? 'Показать, как устроена работа?'
-              : `Показать раздел «${lesson.name}»?`}
-          </strong>
+          <strong>Показать, как устроена работа?</strong>
           <div className="wf-actions">
-            <button className="button button-dark" onClick={start}>
+            <button className="button button-dark" onClick={startGeneral}>
               Начать обучение
               <ArrowRight size={14} />
             </button>
             <button
               className="wf-text-button"
               onClick={() => {
-                save({
-                  ...progress,
-                  enabled: progress.enabled === null ? false : progress.enabled,
-                  sections: { ...progress.sections, [section]: { ...current, dismissed: true } },
-                });
+                save((value) => ({
+                  ...value,
+                  enabled: false,
+                  general: { ...value.general, dismissed: true },
+                }));
               }}
             >
               Позже
@@ -228,20 +403,11 @@ export function WorkflowOnboarding({
           </div>
         </aside>
       )}
-      {open && (
-        <aside
-          className="wf-coach"
-          aria-label={`Обучение: ${lesson.name}`}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation();
-              close();
-            }
-          }}
-        >
+      {mode && (
+        <aside className="wf-coach" aria-label={`Обучение: ${lessonName}`}>
           <div className="wf-coach-top">
             <span>
-              {lesson.name} · {current.step + 1} / {lesson.steps.length}
+              {lessonName} · {stepNumber + 1} / {stepCount}
             </span>
             <button className="icon-button" aria-label="Закрыть обучение" onClick={close}>
               <X size={17} />
@@ -254,16 +420,16 @@ export function WorkflowOnboarding({
           <div className="wf-coach-actions">
             <button
               className="wf-text-button"
-              disabled={current.step === 0}
-              onClick={() => update({ step: current.step - 1 })}
+              disabled={stepNumber === 0}
+              onClick={() => updateCurrent({ step: stepNumber - 1 })}
             >
               <ArrowLeft size={14} />
               Назад
             </button>
-            {current.step < lesson.steps.length - 1 ? (
+            {stepNumber < stepCount - 1 ? (
               <button
                 className="button button-dark"
-                onClick={() => update({ step: current.step + 1 })}
+                onClick={() => updateCurrent({ step: stepNumber + 1 })}
               >
                 Далее
                 <ArrowRight size={14} />
@@ -272,8 +438,8 @@ export function WorkflowOnboarding({
               <button
                 className="button button-dark"
                 onClick={() => {
-                  update({ dismissed: true, completed: true });
-                  setOpen(false);
+                  updateCurrent({ dismissed: true, completed: true });
+                  setMode(null);
                 }}
               >
                 Готово

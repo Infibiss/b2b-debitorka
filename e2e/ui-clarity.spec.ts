@@ -46,13 +46,16 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   page,
 }, info) => {
   await account(page, info.project.name);
-  await page.getByRole('button', { name: 'Начать обучение', exact: true }).click();
+  await page.getByRole('button', { name: 'Позже', exact: true }).click();
+  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
   const coach = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await expect(coach).toBeVisible();
   await expect(page.locator('.modal-backdrop')).toHaveCount(0);
   await expect(coach.getByRole('button', { name: 'Назад', exact: true })).toBeDisabled();
   await coach.getByRole('button', { name: 'Далее', exact: true }).click();
-  await expect(coach.getByRole('heading', { name: 'Откройте дело', exact: true })).toBeVisible();
+  await expect(
+    coach.getByRole('heading', { name: 'Добавьте первое дело', exact: true })
+  ).toBeVisible();
   await coach.getByRole('button', { name: 'Назад', exact: true }).click();
   await expect(coach.getByRole('heading', { name: 'Загрузите реестр', exact: true })).toBeVisible();
   const box = await coach.boundingBox();
@@ -61,7 +64,7 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   expect(viewport.height - box!.y - box!.height).toBeLessThanOrEqual(25);
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await expect(coach).toHaveCount(0);
-  await page.getByRole('button', { name: 'Обучение', exact: true }).click();
+  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
   const audit = page.getByRole('complementary', { name: 'Обучение: Аудит', exact: true });
   await expect(audit).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Аудит дебиторки.', exact: true })).toBeVisible();
@@ -73,7 +76,7 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   });
   for (const section of ['Подключения', 'Управление']) {
     await page.getByRole('button', { name: section, exact: true }).click();
-    await page.getByRole('button', { name: 'Обучение', exact: true }).click();
+    await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
     await expect(
       page.getByRole('complementary', { name: `Обучение: ${section}`, exact: true })
     ).toBeVisible();
@@ -145,10 +148,10 @@ test('learning starts on its own section and independent sections retain their p
   page,
 }, info) => {
   await account(page, `context-${info.project.name}`);
-  await page.getByText('Операции с дебиторкой', { exact: true }).click();
-  await page.getByRole('button', { name: 'Поступления и сверка', exact: true }).click();
+  await page.getByRole('button', { name: 'Позже', exact: true }).click();
+  await page.getByRole('button', { name: 'Оплаты и сверка', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Начать обучение', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Обучение', exact: true }).click();
+  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
   const work = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await expect(work).toBeVisible();
   await expect(
@@ -157,14 +160,14 @@ test('learning starts on its own section and independent sections retain their p
   await work.getByRole('button', { name: 'Далее', exact: true }).click();
   await work.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
-  await page.getByRole('button', { name: 'Обучение', exact: true }).click();
+  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
   await expect(
     page
       .getByRole('complementary', { name: 'Обучение: Аудит' })
       .getByRole('heading', { name: 'Соберите аудит' })
   ).toBeVisible();
   await page.getByRole('button', { name: 'Работа', exact: true }).click();
-  await page.getByRole('button', { name: 'Обучение', exact: true }).click();
+  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
   await expect(work.getByRole('heading', { name: 'Загрузите реестр' })).toBeVisible();
 });
 

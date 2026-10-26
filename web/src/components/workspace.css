@@ -3319,3 +3319,223 @@
     font-size: 10px;
   }
 }
+
+/* A single command area keeps operations visible beside the current section. */
+.workspace-command-header {
+  height: auto;
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px 24px;
+  padding-block: 16px;
+}
+.workspace-command-header > div:first-child {
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 180px;
+}
+.workspace-command-header > div:first-child > span {
+  width: 100%;
+  font-size: 9px;
+}
+.workspace-operations {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+.workspace-operations button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 11px;
+  border: 1px solid #dce3d5;
+  border-radius: 7px;
+  background: transparent;
+  color: #435a43;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.workspace-operations button:hover,
+.workspace-operations button.active {
+  background: #e6eddb;
+  border-color: #adc19b;
+  color: #244732;
+}
+.workspace-command-header .workspace-header-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.section-help {
+  padding: 4px 0;
+  color: #466448;
+  background: transparent;
+  font-size: 12px;
+  margin-right: auto;
+}
+.profile-root.user-block {
+  position: relative;
+  display: block;
+  padding: 14px 12px;
+}
+.user-block .profile-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border-radius: 7px;
+  padding: 8px;
+}
+.profile-trigger:hover,
+.profile-trigger[aria-expanded='true'] {
+  background: #e2e9d8;
+}
+.profile-trigger .user-avatar {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+}
+.profile-identity {
+  flex: 1;
+  min-width: 0;
+}
+.profile-identity strong,
+.profile-identity > span {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: none;
+}
+.profile-identity strong {
+  font-size: 12px;
+  color: #304731;
+}
+.profile-identity > span {
+  font-size: 10px;
+  color: #6d7b65;
+  margin-top: 4px;
+}
+.profile-menu {
+  position: absolute;
+  bottom: calc(100% - 6px);
+  left: 12px;
+  right: 12px;
+  background: #fff;
+  padding: 6px;
+  border: 1px solid #d7dfcf;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px #172e1b1a;
+  z-index: 90;
+}
+.profile-menu button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #344b35;
+}
+.profile-menu button:hover,
+.profile-menu button:focus-visible {
+  background: #eef2e7;
+}
+.sidebar-help {
+  position: relative;
+  padding-top: 30px;
+}
+.sidebar-help > .advice-dismiss {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  margin: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 21px;
+  line-height: 1;
+}
+@media (max-width: 700px) {
+  .workspace-command-header {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 20px;
+    gap: 12px;
+  }
+  .workspace-command-header > div:first-child {
+    max-width: none;
+  }
+  .workspace-command-header > div:first-child > span {
+    width: auto;
+  }
+  .workspace-operations {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .workspace-operations button {
+    font-size: 11px;
+    padding: 8px 5px;
+    min-height: 44px;
+  }
+  .workspace-operations button svg {
+    display: none;
+  }
+  .profile-root.user-block {
+    padding: 6px 12px 6px 0;
+    max-width: 190px;
+  }
+  .profile-identity strong {
+    font-size: 11px;
+  }
+  .profile-identity > span {
+    font-size: 9px;
+  }
+  .profile-trigger .user-avatar {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .profile-menu {
+    bottom: auto;
+    top: 100%;
+    left: -12px;
+    right: 12px;
+    min-width: 175px;
+  }
+}
+
+/* Leave room to use highlighted controls above the nonmodal coach. */
+.workspace-main:has(.wf-coach) {
+  padding-bottom: 360px;
+}
+@media (max-width: 380px) {
+  .workspace-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-inline: 8px;
+    gap: 3px;
+  }
+  .workspace-nav button {
+    min-width: 0;
+    padding-inline: 2px;
+    font-size: 9px;
+    gap: 5px;
+  }
+  .sidebar-brand {
+    padding-left: 16px;
+  }
+  .profile-root.user-block {
+    max-width: 160px;
+  }
+}

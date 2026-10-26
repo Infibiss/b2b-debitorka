@@ -12,7 +12,7 @@ test('document and voice tools explain missing access without fabricating result
   await setup(page, info.project.name);
   await page.goto('/app');
   await navigate(page, 'Документы и голос');
-  await expect(page.getByRole('heading', { name: 'Сверить и обсудить' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Документы и разговор' })).toBeVisible();
   await expect(page.getByLabel('Загрузить документ для распознавания')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Начать разговор', exact: true })).toBeDisabled();
   await expect(page.getByText('Нужно подключение', { exact: true })).toHaveCount(2);

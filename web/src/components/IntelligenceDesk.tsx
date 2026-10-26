@@ -115,7 +115,8 @@ const reasons: Record<string, string> = {
   contact_not_authorized: 'Нет разрешения на контакт.',
   mandate_expired: 'Срок разрешения истёк.',
   invoice_not_actionable: 'Счёт закрыт, на паузе или в споре.',
-  promise_mandate_required: 'В «Финансах» требуется разрешение на обещания для этого контрагента.',
+  promise_mandate_required:
+    'Разрешите принимать обещания этого контрагента в разделе «Оплаты и сверка».',
   amount_outside_current_balance: 'Сумма выходит за пределы текущего остатка.',
   date_outside_policy_or_mandate: 'Срок превышает правила или разрешение по контрагенту.',
   installments_outside_policy_or_mandate: 'Число платежей превышает разрешённый предел.',
@@ -281,8 +282,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
   return (
     <div className="mandato-services">
       <DeskHeading
-        eyebrow="СЦЕНАРИИ ПОСТУПЛЕНИЙ И ПРАВИЛА ДОГОВОРЁННОСТЕЙ"
-        title="Следующий шаг — с основанием."
+        eyebrow="ПЛАНИРОВАНИЕ ОПЛАТ"
+        title="Прогноз и условия оплаты"
         action={
           <button
             disabled={busy || policyBusy}
@@ -294,8 +295,7 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
           </button>
         }
       >
-        Прогноз опирается на подтверждённую историю. Решения по предложениям проверяются по текущему
-        остатку и разрешениям.
+        Оцените будущие поступления и согласуйте отсрочку, рассрочку или скидку.
       </DeskHeading>
       <DeskError>{error}</DeskError>
       <section className="ms-card">
@@ -311,7 +311,7 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
           <>
             <p>
               {forecast.method === 'empirical_due_cohort_v1'
-                ? 'Сценарий по истории счетов на сопоставимом сроке относительно даты оплаты. Учитываются подтверждённые банковские распределения.'
+                ? 'Оценка по тому, как раньше оплачивались похожие счета. Учитываются оплаты, сверенные с банком.'
                 : 'Метод расчёта требует дополнительной проверки.'}
             </p>
             {forecast.status === 'available' ? (
@@ -337,8 +337,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
               <div className="ms-neutral">
                 <h3>Пока недостаточно сопоставимой истории</h3>
                 <p>
-                  Оценка появится, когда будет достаточно датированных банковских оплат и
-                  сопоставимых счетов. Отсутствие оценки не означает нулевые поступления.
+                  Загрузите историю счетов и банковских оплат. Прогноз появится, когда данных будет
+                  достаточно для сравнения.
                 </p>
               </div>
             )}
@@ -348,7 +348,7 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                 <dd>{money(forecast.coverage.open_balance)}</dd>
               </div>
               <div>
-                <dt>Остаток с оценкой</dt>
+                <dt>Долг, учтённый в прогнозе</dt>
                 <dd>{money(forecast.coverage.covered_balance)}</dd>
               </div>
               <div>
@@ -360,11 +360,11 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                 <dd>{money(forecast.coverage.excluded_balance)}</dd>
               </div>
               <div>
-                <dt>Счетов в истории сравнения</dt>
+                <dt>Счетов для сравнения</dt>
                 <dd>{forecast.coverage.training_invoices}</dd>
               </div>
               <div>
-                <dt>Банковских распределений</dt>
+                <dt>Учтённых оплат по счетам</dt>
                 <dd>{forecast.coverage.bank_allocations}</dd>
               </div>
             </dl>
@@ -429,8 +429,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                 Принимать внутри согласованных пределов
               </label>
               <p className="ms-note">
-                Принятие — внутренний статус. Исполнение выполняется отдельно; письма и документы
-                контрагенту не отправляются. Разрешения по контрагентам задаются в «Финансах».
+                Согласуйте предложение, затем примените его к счёту. Отправка контрагенту —
+                отдельно. Разрешения по контрагентам задаются в разделе «Оплаты и сверка».
               </p>
               <div className="ms-fields">
                 <label className="field">
@@ -500,14 +500,11 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
           <h2>
             <Plus size={20} /> Зарегистрировать предложение
           </h2>
-          <p>
-            Внесите подтверждённые условия из обращения покупателя. Система проверит их перед
-            принятием и повторно перед исполнением.
-          </p>
+          <p>Укажите, что предложил контрагент. Mandato проверит сумму, сроки и ваши правила.</p>
           {!invoices.length ? (
             <div className="ms-neutral">
               <h3>Сначала добавьте счета</h3>
-              <p>Предложение должно относиться к конкретному обязательству из реестра.</p>
+              <p>Предложение нужно привязать к счёту.</p>
             </div>
           ) : (
             <form className="ms-form" onSubmit={propose}>
@@ -648,16 +645,12 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                     />
                   </label>
                   <p className="ms-note">
-                    Исполнение сохранит запрос для отдельного решения. Списание задолженности здесь
-                    не выполняется.
+                    Скидка требует отдельного согласования. Сумма долга останется прежней.
                   </p>
                 </>
               )}
               {kind === 'payment_claim' && (
-                <p className="ms-note">
-                  Сообщение покупателя не подтверждает поступление. После исполнения останется
-                  задача сверки с выпиской.
-                </p>
+                <p className="ms-note">Проверьте оплату по выписке, прежде чем уменьшать долг.</p>
               )}
               <label className="field">
                 Срок действия предложения
@@ -707,8 +700,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
           <Clock3 size={20} /> Предложения и решения
         </h2>
         <p>
-          Принятие и исполнение фиксируются отдельно. Исходящая отправка через этот раздел не
-          выполняется.
+          Сначала согласуйте условия, затем примените их к счёту. Сообщение контрагенту отправляется
+          отдельно.
         </p>
         {!proposals.length ? (
           <div className="ms-neutral">
@@ -835,8 +828,7 @@ function ProposalCard({
       )}
       {proposal.status === 'handoff' && (
         <p className="ms-note">
-          Уточните условия или разрешения и зарегистрируйте новое предложение. Ограничения этого
-          предложения не обходятся ручным согласием.
+          Уточните указанные условия или разрешения и создайте новое предложение.
         </p>
       )}
       {proposal.outcome && (

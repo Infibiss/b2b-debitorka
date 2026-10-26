@@ -36,7 +36,7 @@ test('manual agent intake persists the explicit receipt time and shows it after 
   await expect(receipt).toHaveAttribute('type', 'datetime-local');
   await expect(receipt).toHaveAttribute('required', '');
   await expect(receipt).toHaveValue(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-  await expect(dialog).toContainText('«Завтра» и «послезавтра» считаются от этого времени');
+  await expect(dialog).toContainText('Сроки вроде «завтра» считаются от даты получения.');
   await expect(dialog).toContainText('Asia/Vladivostok');
   await receipt.fill('2026-10-23T23:45');
   await dialog.getByRole('combobox', { name: 'Счёт', exact: true }).selectOption(invoice.id);

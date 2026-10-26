@@ -9,7 +9,6 @@ import {
   Search,
   Upload,
   Download,
-  LogOut,
   ArrowRight,
   Check,
   ShieldCheck,
@@ -25,6 +24,7 @@ import {
   PlugZap,
 } from 'lucide-react';
 import { Brand } from './Brand';
+import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
 import { Auth } from './Auth';
 import { useInvitationToken } from './useInvitationToken';
 import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
@@ -73,13 +73,13 @@ const navigation = [
   { id: 'management' as Tab, label: 'Управление', icon: ShieldCheck },
 ];
 const tools = [
-  { id: 'registry' as Tab, label: 'Реестр', icon: Files },
-  { id: 'finance' as Tab, label: 'Поступления и сверка', icon: Wallet },
-  { id: 'agent' as Tab, label: 'Разбор ответов', icon: Bot },
-  { id: 'legal' as Tab, label: 'Юридическая работа', icon: Scale },
-  { id: 'intelligence' as Tab, label: 'Прогноз и условия', icon: TrendingUp },
-  { id: 'yandex' as Tab, label: 'Документы и голос', icon: Bot },
+  { id: 'registry' as Tab, label: 'Счета', icon: Files },
+  { id: 'finance' as Tab, label: 'Оплаты и сверка', icon: Wallet },
   { id: 'messages' as Tab, label: 'Переписка', icon: Mail },
+  { id: 'yandex' as Tab, label: 'Документы', icon: Bot },
+  { id: 'intelligence' as Tab, label: 'Прогноз и условия', icon: TrendingUp },
+  { id: 'legal' as Tab, label: 'Претензии и суд', icon: Scale },
+  { id: 'agent' as Tab, label: 'Разбор ответов', icon: Bot },
   { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
 ];
 function parentSection(tab: Tab): 'workflow' | 'audit' | 'connections' | 'management' {
@@ -93,7 +93,7 @@ export function Workspace() {
     [loadError, setLoadError] = useState(''),
     [tab, setTab] = useState<Tab>('workflow'),
     [tourReplay, setTourReplay] = useState(0),
-    [toolsOpen, setToolsOpen] = useState(false),
+    [generalTourReplay, setGeneralTourReplay] = useState(0),
     [invoices, setInvoices] = useState<Invoice[]>([]),
     [overview, setOverview] = useState<Overview | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
@@ -160,7 +160,6 @@ export function Workspace() {
       setOverview(null);
       setSelected(null);
       setTab('workflow');
-      setToolsOpen(false);
     } catch (e) {
       notify((e as Error).message, true);
     }
@@ -198,24 +197,12 @@ export function Workspace() {
           <Brand />
         </div>
         <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <div className="company-switch">
-          <span>
-            {session.user.company
-              .replace(/ООО\s*[«"]?/, '')
-              .slice(0, 1)
-              .toUpperCase()}
-          </span>
-          <div>
-            <strong>{settings?.company || session.user.company}</strong>
-            <small>Управление дебиторкой</small>
-          </div>
-        </div>
         <nav className="workspace-nav" aria-label="Разделы кабинета">
           {navigation.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              data-tour={id}
+              data-tour={`nav-${id}`}
               className={parentSection(tab) === id ? 'active' : ''}
               aria-current={parentSection(tab) === id ? 'page' : undefined}
             >
@@ -226,49 +213,59 @@ export function Workspace() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-help">
-            <ShieldCheck size={20} />
-            <strong>Всё под вашим контролем</strong>
-            <p>Mandato работает по вашим правилам. Исключения — на согласование.</p>
-            <button onClick={() => setTab('management')}>
-              Правила работы
-              <ArrowUpRight size={13} />
-            </button>
-          </div>
+          <WorkspaceAdvice
+            key={session.user.id}
+            userId={session.user.id}
+            onRules={() => setTab('management')}
+          />
           <button
             className="workflow-help"
-            onClick={() => {
-              setTab(parentSection(tab));
-              setTourReplay((value) => value + 1);
-            }}
+            onClick={() => setGeneralTourReplay((value) => value + 1)}
           >
             Обучение
           </button>
-          <div className="user-block">
-            <div className="user-avatar">{session.user.name.slice(0, 1).toUpperCase()}</div>
-            <span>
-              <strong>{session.user.name}</strong>
-              <small>{session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}</small>
-            </span>
-            <button
-              className="icon-button"
-              title="Выйти"
-              aria-label="Выйти"
-              onClick={() => void logout()}
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
+          <WorkspaceProfile
+            name={session.user.name}
+            company={settings?.company || session.user.company}
+            role={session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}
+            onSettings={() => setTab('settings')}
+            onLogout={() => void logout()}
+          />
         </div>
       </aside>
       <div className="workspace-body">
-        <header className="workspace-header">
+        <header className="workspace-header workspace-command-header">
           <div>
             <span>РАБОЧЕЕ ПРОСТРАНСТВО</span>
             <ChevronRight size={12} />
             <strong>{[...navigation, ...tools].find((n) => n.id === tab)?.label}</strong>
           </div>
-          <div>
+          <nav className="workspace-operations" aria-label="Операции с дебиторкой">
+            {tools
+              .filter((tool) => !['settings', 'agent'].includes(tool.id))
+              .map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  className={tab === id || (id === 'messages' && tab === 'agent') ? 'active' : ''}
+                  aria-current={tab === id ? 'page' : undefined}
+                  onClick={() => setTab(id)}
+                >
+                  <Icon size={15} />
+                  <span>{label}</span>
+                </button>
+              ))}
+          </nav>
+          <div className="workspace-header-actions">
+            <button
+              className="section-help"
+              aria-label="Как работать в разделе"
+              onClick={() => {
+                setTab(parentSection(tab));
+                setTourReplay((value) => value + 1);
+              }}
+            >
+              Помощь по разделу
+            </button>
             <span className="server-status">
               <i />
               {loadError ? 'Нет связи' : refreshing ? 'Обновляем…' : 'Данные сохранены'}
@@ -287,35 +284,11 @@ export function Workspace() {
           <WorkflowOnboarding
             userId={session.user.id}
             replayToken={tourReplay}
+            generalReplayToken={generalTourReplay}
+            onSectionChange={setTab}
             section={parentSection(tab)}
             contextKey={tab}
           />
-          {parentSection(tab) === 'workflow' && (
-            <details
-              className="workspace-section-tools"
-              open={toolsOpen}
-              onToggle={(event) => setToolsOpen(event.currentTarget.open)}
-            >
-              <summary>Операции с дебиторкой</summary>
-              <div>
-                {tools
-                  .filter((tool) => tool.id !== 'settings')
-                  .map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      className={tab === id ? 'active' : ''}
-                      onClick={() => {
-                        setTab(id);
-                        setToolsOpen(false);
-                      }}
-                    >
-                      <Icon size={16} />
-                      {label}
-                    </button>
-                  ))}
-              </div>
-            </details>
-          )}
           {parentSection(tab) === 'management' && (
             <div className="workspace-management-links">
               <button
@@ -397,6 +370,7 @@ export function Workspace() {
               invoices={invoices}
               onOpen={setSelected}
               smtp={settings?.smtp_configured || false}
+              onReply={() => setTab('agent')}
             />
           ) : settings ? (
             <SettingsPanel
@@ -476,8 +450,8 @@ function Registry({
       <div className="page-heading">
         <div>
           <span className="page-date">ДЕБИТОРСКАЯ ЗАДОЛЖЕННОСТЬ</span>
-          <h1>Каждый счёт — на виду.</h1>
-          <p>Контекст, договорённости и следующий шаг по каждому покупателю.</p>
+          <h1>Счета</h1>
+          <p>Счета, остатки и сроки оплаты.</p>
         </div>
         <div className="heading-actions">
           <button className="button button-outline" onClick={onImport}>
@@ -671,10 +645,12 @@ function Correspondence({
   invoices,
   onOpen,
   smtp,
+  onReply,
 }: {
   invoices: Invoice[];
   onOpen: (id: string) => void;
   smtp: boolean;
+  onReply: () => void;
 }) {
   const active = invoices.filter(
     (i) => i.balance > 0 && i.status !== 'paused' && i.status !== 'disputed'
@@ -684,9 +660,13 @@ function Correspondence({
       <div className="page-heading">
         <div>
           <span className="page-date">ДЕЛОВАЯ ПЕРЕПИСКА</span>
-          <h1>Нужные слова. В нужный момент.</h1>
-          <p>Подготовьте письмо из карточки счёта и согласуйте текст перед отправкой.</p>
+          <h1>Переписка с покупателями</h1>
+          <p>Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.</p>
         </div>
+        <button className="button button-dark" onClick={onReply}>
+          Разобрать ответ
+          <ArrowRight size={15} />
+        </button>
       </div>
       <div className={`mail-connection ${smtp ? 'connected' : ''}`}>
         <Mail size={21} />
@@ -694,7 +674,7 @@ function Correspondence({
           <strong>{smtp ? 'Почта подключена' : 'Почта не подключена'}</strong>
           <p>
             {smtp
-              ? 'Согласованные письма можно отправлять из кабинета.'
+              ? 'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
               : 'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'}
           </p>
         </div>
@@ -834,7 +814,7 @@ function SettingsPanel({
               />
             </label>
             <label className="field">
-              Стоимость денег, % годовых
+              Ставка по кредиту, % годовых
               <input
                 type="number"
                 required

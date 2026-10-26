@@ -78,11 +78,13 @@ test('public website is readable, interactive, and offers a real signup', async 
   await lastStep.click();
   await expect(lastStep).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel')).toContainText('300 000');
-  const initialCost = await page.locator('.calc-result strong').innerText();
-  await page.getByLabel('Дней ожидания').fill('60');
-  await expect(page.locator('.calc-result strong')).not.toHaveText(initialCost);
-  await page.getByRole('button', { name: 'Как загрузить данные из 1С?', exact: true }).click();
-  await expect(page.getByText(/Начните с выгрузки CSV или XLSX/)).toBeVisible();
+  const initialCost = await page.locator('.calc-result output').innerText();
+  await page.getByLabel('Задержка оплаты').fill('60');
+  await expect(page.locator('.calc-result output')).not.toHaveText(initialCost);
+  await page
+    .getByRole('button', { name: 'Нужно сразу подключать 1С и банк?', exact: true })
+    .click();
+  await expect(page.getByText(/Для начала достаточно выгрузки счетов/)).toBeVisible();
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);
@@ -164,7 +166,8 @@ test('invoice, approved draft, promise, payments and login persist without a fak
   ).toBeDisabled();
 
   await page.getByRole('button', { name: 'Закрыть карточку', exact: true }).click();
-  await page.getByRole('button', { name: /Выйти/ }).click();
+  await page.getByRole('button', { name: 'Профиль и настройки', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Выйти', exact: true }).click();
   await page
     .getByRole('button', { name: /^Войти$/ })
     .first()
