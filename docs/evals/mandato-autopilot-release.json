@@ -8,10 +8,7 @@
   },
   "browser": {
     "passed": 48,
-    "projects": [
-      "desktop",
-      "mobile"
-    ]
+    "projects": ["desktop", "mobile"]
   },
   "replay_safety": {
     "passed": 19,
