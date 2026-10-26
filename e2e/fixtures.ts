@@ -15,7 +15,22 @@ export type { Page } from '@playwright/test';
 /** Exercise the compact navigation as a user would: open tools when needed. */
 export async function navigate(page: import('@playwright/test').Page, name: string) {
   await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
-  const button = page.getByRole('button', { name, exact: true });
-  if (!(await button.isVisible())) await page.getByText('Инструменты', { exact: true }).click();
+  const labels: Record<string, string> = {
+    Финансы: 'Поступления и сверка',
+    Агент: 'Разбор ответов',
+    Дела: 'Юридическая работа',
+    'Поступления и условия': 'Прогноз и условия',
+    Письма: 'Переписка',
+  };
+  const button = page.getByRole('button', { name: labels[name] || name, exact: true });
+  if (!(await button.isVisible())) {
+    if (name === 'Настройки') {
+      await page.getByRole('button', { name: 'Управление', exact: true }).click();
+      await page.getByRole('button', { name: 'Реквизиты и почта', exact: true }).click();
+      return;
+    }
+    await page.getByRole('button', { name: 'Работа', exact: true }).click();
+    await page.getByText('Операции с дебиторкой', { exact: true }).click();
+  }
   await button.click();
 }

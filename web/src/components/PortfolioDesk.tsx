@@ -276,14 +276,14 @@ export function PortfolioDesk({
       `${x.company} ${x.inn} ${x.number}`.toLowerCase().includes(query.toLowerCase())
   );
   return (
-    <section className="portfolio-desk">
+    <section className="portfolio-desk" data-tour="audit-content">
       <div className="page-heading ops-heading">
         <div>
           <span className="page-date">ПОРТФЕЛЬ ПОД КОНТРОЛЕМ</span>
           <h1>Аудит дебиторки.</h1>
           <p>Сверьте суммы, проверьте документы и выберите следующий шаг по каждому долгу.</p>
         </div>
-        <div className="portfolio-actions">
+        <div className="portfolio-actions" data-tour="audit-actions">
           <button
             className="button button-outline"
             disabled={busy}
@@ -441,7 +441,7 @@ export function PortfolioDesk({
               ))}
             </div>
           )}
-          <div className="portfolio-toolbar">
+          <div className="portfolio-toolbar" data-tour="audit-findings">
             <label className="portfolio-search">
               <Search size={16} />
               <input
@@ -499,9 +499,7 @@ export function PortfolioDesk({
               </button>
             ))}
             {visible.length === 0 && (
-              <div className="ops-card">
-                <p>По выбранным условиям счетов нет.</p>
-              </div>
+              <p className="portfolio-empty-result">По выбранным условиям счетов нет.</p>
             )}
           </div>
           {item && (
@@ -521,7 +519,7 @@ export function PortfolioDesk({
                   <X size={18} />
                 </button>
               </div>
-              <div className="portfolio-actions">
+              <div className="portfolio-actions" data-tour="audit-actions">
                 <button
                   className="button button-outline"
                   onClick={() => onOpenInvoice(item.invoice_id)}

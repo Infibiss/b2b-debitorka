@@ -47,7 +47,7 @@ test('cash abstention, policy, reviewed internal proposal and stale financial st
   await tab(page, 'Поступления и условия');
   await expect(page.getByText('Пока недостаточно сопоставимой истории')).toBeVisible();
   const rules = page
-    .locator('section')
+    .locator('.ms-card')
     .filter({ has: page.getByRole('heading', { name: 'Правила переговоров', exact: true }) });
   await expect(rules.getByLabel('Разрешить обработку предложений')).not.toBeChecked();
   await rules.getByLabel('Разрешить обработку предложений').check();
@@ -114,8 +114,12 @@ test('file statement approval records incoming cash separately and partner acces
   await account(page);
   await page.goto('/app');
   await tab(page, 'Подключения');
+  await page
+    .getByRole('group', { name: 'Источники' })
+    .getByRole('button', { name: 'Банк', exact: true })
+    .click();
   const file = page
-    .locator('section')
+    .locator('.ms-card')
     .filter({ has: page.getByRole('heading', { name: 'Выписка из файла', exact: true }) });
   const own = '40702810000000000001',
     other = '40702810000000000002';
@@ -150,8 +154,9 @@ test('file statement approval records incoming cash separately and partner acces
   expect(items[0].allocated_amount).toBe(0);
   const publicSummary = await page.request.get('/api/partner/summary');
   expect(publicSummary.status()).toBe(401);
+  await page.getByText('Доступ партнёра к сводке', { exact: true }).first().click();
   const partner = page
-    .locator('section')
+    .locator('.ms-card')
     .filter({ has: page.getByRole('heading', { name: 'Доступ партнёра к сводке', exact: true }) });
   await expect(partner.getByRole('checkbox')).not.toBeChecked();
   await expect(partner.getByRole('button', { name: 'Создать доступ к сводке' })).toBeDisabled();
@@ -449,6 +454,11 @@ test('mocked source contracts require ledger review and preserve statement pagin
   await ledger.getByRole('button', { name: 'Подтвердить изменения реестра' }).click();
   await expect(ledger.getByText('Создано: 0. Обновлено: 1. Без изменений: 0.')).toBeVisible();
   expect(approvalCount).toBe(1);
+  await page
+    .getByRole('group', { name: 'Источники' })
+    .getByRole('button', { name: 'Банк', exact: true })
+    .click();
+  await page.getByText('Прямое подключение Т-Банка', { exact: true }).click();
   const tbank = page
     .locator('.ms-connections section')
     .filter({ has: page.getByRole('heading', { name: 'Т-Банк', exact: true }) });
@@ -459,6 +469,10 @@ test('mocked source contracts require ledger review and preserve statement pagin
   await expect(stage.getByText(/Это страница продолжения/)).toBeVisible();
   expect(bankRequests).toHaveLength(2);
   expect(bankRequests[1]).toEqual({ ...bankRequests[0], cursor: 'page-two' });
+  await page
+    .getByRole('group', { name: 'Источники' })
+    .getByRole('button', { name: 'Реестры', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Проверить должников: 10', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Проверить должников: 1', exact: true })
@@ -486,6 +500,11 @@ test('mocked source contracts require ledger review and preserve statement pagin
     page.getByText('Судебные дела: не проверено', { exact: true }).first()
   ).toBeVisible();
   await expect(page.getByText('ФССП: не проверено', { exact: true }).first()).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Источники' })
+    .getByRole('button', { name: 'Банк', exact: true })
+    .click();
+  await page.getByText('Для разработчика', { exact: true }).click();
   await page.getByRole('button', { name: 'Прочитать публичную песочницу', exact: true }).click();
   await expect(stage.getByText(/Тестовые данные публичной песочницы/)).toBeVisible();
   await expect(stage.locator('input[type=checkbox]:enabled')).toHaveCount(0);
@@ -523,8 +542,12 @@ test('ambiguous file receipt requires single-document confirmation and a separat
   expect(initial.status()).toBe(201);
   await page.goto('/app');
   await tab(page, 'Подключения');
+  await page
+    .getByRole('group', { name: 'Источники' })
+    .getByRole('button', { name: 'Банк', exact: true })
+    .click();
   const source = page
-    .locator('section')
+    .locator('.ms-card')
     .filter({ has: page.getByRole('heading', { name: 'Выписка из файла', exact: true }) });
   const day = businessToday().split('-').reverse().join('.');
   const statement = `1CClientBankExchange\nВерсияФормата=1.03\nКодировка=UTF8\nРасчСчет=40702810000000000001\nСекцияДокумент=Платежное поручение\nНомер=DISTINCT-2\nДата=${day}\nСумма=1234.56\nПлательщикСчет=40702810000000000002\nПлательщикИНН=7707083893\nПлательщик=ООО Берёзка\nПолучательСчет=40702810000000000001\nДатаПоступило=${day}\nНазначениеПлатежа=Отдельная поставка по другому поручению\nКонецДокумента\nКонецФайла\n`;

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, Download, ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react';
-import { api } from '../api';
+import { useState } from 'react';
+import { Check, Copy, Download, ExternalLink, ShieldCheck } from 'lucide-react';
 import './connection-access.css';
 
 type SourceId = 'one_c' | 'diadoc' | 'tbank' | 'dadata' | 'court' | 'fssp' | 'bankruptcy';
@@ -215,42 +214,21 @@ function checkedTime(value: string | null | undefined) {
     : date.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
 }
 
-/** Administrative preparation only: no credential input or external mutations. */
-export function ConnectionAccess() {
-  const [selected, setSelected] = useState<SourceId>('one_c');
-  const [statuses, setStatuses] = useState<ConnectionStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+/** Preparation for the selected source; checklist marks never establish connectivity. */
+export function ConnectionAccess({
+  selectedSource,
+  statuses,
+}: {
+  selectedSource: 'one_c' | 'diadoc' | 'tbank' | 'dadata';
+  statuses: ConnectionStatus[];
+}) {
+  const [registrySource, setRegistrySource] = useState<SourceId>('dadata');
   const [notice, setNotice] = useState('');
   const [checks, setChecks] = useState<Record<string, boolean>>({});
-  const source = sources.find((item) => item.id === selected)!;
+  const source = sources.find(
+    (item) => item.id === (selectedSource === 'dadata' ? registrySource : selectedSource)
+  )!;
   const status = statuses.find((item) => item.provider === source.id);
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await api<{ items: ConnectionStatus[] }>('/integrations');
-      // Keep only status fields; credentials/provider payloads never enter exports.
-      setStatuses(
-        result.items.map((item) => ({
-          provider: item.provider,
-          configured: item.configured === true,
-          status: item.status,
-          checked_at: item.checked_at,
-        }))
-      );
-    } catch {
-      setStatuses([]);
-      setError(
-        'Не удалось получить настройки этой организации. Обновите статус после восстановления связи.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
   function checklist(item: Source) {
     return item.requirements.map((text, index) => ({
       text,
@@ -288,7 +266,7 @@ export function ConnectionAccess() {
     setNotice('');
     try {
       await navigator.clipboard.writeText(requestText(source));
-      setNotice('Задание скопировано. Сообщение никому не отправлено.');
+      setNotice('Задание скопировано.');
     } catch {
       setNotice('Буфер обмена недоступен. Скачайте задание в TXT.');
     }
@@ -296,15 +274,15 @@ export function ConnectionAccess() {
   function download(format: 'json' | 'txt') {
     const content =
       format === 'txt'
-        ? sources.map(requestText).join('\n\n──────────\n\n')
+        ? requestText(source)
         : JSON.stringify(
             {
               schema: 'mandato.connection-access.v1',
               generated_at: new Date().toISOString(),
               contains_credentials: false,
-              status_available: !loading && !error,
+              status_available: statuses.length > 0,
               note: 'Ручные отметки подготовки не подтверждают подключение. configured означает наличие настроек, не успешное чтение.',
-              sources: sources.map((item) => {
+              sources: [source].map((item) => {
                 const current = statuses.find((entry) => entry.provider === item.id);
                 return {
                   provider: item.id,
@@ -333,60 +311,41 @@ export function ConnectionAccess() {
     );
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `mandato-access-checklist.${format}`;
+    anchor.download = `mandato-access-${source.id}.${format}`;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice('Скачан список без паролей и токенов. Ручные отметки не подтверждают подключение.');
+    setNotice('Задание скачано.');
   }
   return (
     <section className="connection-access" aria-labelledby="connection-access-title">
-      <div className="ca-heading">
-        <div>
-          <span className="ca-eyebrow">ПОДГОТОВКА ДОСТУПА</span>
-          <h2 id="connection-access-title">Подключить реальные источники</h2>
-        </div>
-        <button
-          type="button"
-          className="button button-outline"
-          disabled={loading}
-          onClick={() => void reload()}
-        >
-          <RefreshCw size={15} /> {loading ? 'Проверяем настройки…' : 'Обновить статус'}
-        </button>
-      </div>
-      <p className="ca-intro">
-        Выберите источник, подготовьте доступ вместе с ответственным и передайте задание
-        администратору. Статус ниже относится к вашей организации.
-      </p>
-      <div className="ca-source-list" aria-label="Источник для подключения">
-        {sources.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-pressed={selected === item.id}
-            className={selected === item.id ? 'ca-selected' : ''}
-            onClick={() => {
-              setSelected(item.id);
+      {selectedSource === 'dadata' && (
+        <label className="field ca-registry-source">
+          Инструкция по источнику
+          <select
+            value={registrySource}
+            onChange={(event) => {
+              setRegistrySource(event.target.value as SourceId);
               setNotice('');
             }}
           >
-            {item.name}
-          </button>
-        ))}
-      </div>
-      {error && (
-        <p className="ca-error" role="alert">
-          {error}
-        </p>
+            {sources
+              .filter((item) => ['dadata', 'court', 'fssp', 'bankruptcy'].includes(item.id))
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </select>
+        </label>
       )}
       <div className="ca-provider-heading">
-        <h3>{source.name}</h3>
+        <h3 id="connection-access-title">{source.name}</h3>
         <span
           className={`ca-status ${!source.manual && status?.configured && ['completed', 'available', 'no_match'].includes(status.status) ? 'ca-configured' : ''}`}
         >
-          {!source.manual && loading ? 'Проверяем настройки…' : statusText(source, status)}
+          {statusText(source, status)}
         </span>
       </div>
       <p>{source.result}</p>
@@ -454,15 +413,15 @@ export function ConnectionAccess() {
           <Copy size={15} /> Скопировать задание по источнику
         </button>
         <button type="button" className="button button-outline" onClick={() => download('txt')}>
-          <Download size={15} /> Весь список · TXT
+          <Download size={15} /> Скачать задание · TXT
         </button>
         <button type="button" className="button button-outline" onClick={() => download('json')}>
-          <Download size={15} /> JSON без секретов
+          <Download size={15} /> Скачать задание · JSON
         </button>
       </div>
       <p className="ca-note">
         Наличие настроек не подтверждает успешное чтение. После подключения выполните чтение и
-        сверку в карточке источника ниже. Суды, ФССП и ЕФРСБ пока проверяются вручную.
+        сверку выбранного источника. Суды, ФССП и ЕФРСБ пока проверяются вручную.
       </p>
       <p className="ca-notice" role="status">
         {notice}

@@ -1227,10 +1227,7 @@
   border: 1px solid #d9e5c9;
   flex-shrink: 0;
 }
-.wf-learn-prompt > div:nth-child(2) {
-  flex: 1;
-  min-width: 0;
-}
+
 .wf-learn-prompt strong {
   display: block;
   font-size: 11px;
@@ -1492,10 +1489,7 @@ button:disabled {
     padding: 14px;
     gap: 10px;
   }
-  .wf-learn-prompt > .wf-actions {
-    max-width: 160px;
-    justify-content: flex-end;
-  }
+
   .wf-learn-prompt p {
     font-size: 8px;
   }
@@ -1643,11 +1637,7 @@ button:disabled {
   .wf-learn-prompt {
     flex-wrap: wrap;
   }
-  .wf-learn-prompt > .wf-actions {
-    max-width: none;
-    margin-left: 49px;
-    justify-content: flex-start;
-  }
+
   .wf-case-totals strong {
     font-size: 15px;
   }
@@ -1779,12 +1769,7 @@ button:disabled {
   .wf-learn-prompt p {
     font-size: 8px;
   }
-  .wf-learn-prompt > .wf-actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-start;
-    margin-top: 3px;
-  }
+
   .wf-case-identity {
     align-items: flex-start;
     flex-direction: column;
@@ -2221,4 +2206,215 @@ button:disabled {
     width: 100%;
     justify-content: flex-start;
   }
+}
+
+/* Contextual learning does not obscure or lock the workspace. */
+.wf-coach {
+  position: fixed;
+  z-index: 75;
+  right: 20px;
+  bottom: 20px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(380px, calc(100dvh - 40px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #c9d6bd;
+  border-radius: 14px;
+  background: #fffef9;
+  color: #253b2c;
+  box-shadow: 0 12px 42px #223b2826;
+  animation: wf-coach-in 0.2s ease-out;
+}
+.wf-coach-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 15px 4px 20px;
+  color: #63715a;
+  font-size: 12px;
+}
+.wf-coach-content {
+  padding: 10px 20px 20px;
+  overflow-y: auto;
+}
+.wf-coach h3 {
+  font-size: 19px;
+  line-height: 1.35;
+  margin-bottom: 10px;
+  letter-spacing: -0.4px;
+}
+.wf-coach p {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.wf-coach-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 20px;
+  border-top: 1px solid #e4e9dc;
+}
+.wf-coach-actions .button {
+  padding: 10px 15px;
+  min-height: 40px;
+  font-size: 13px;
+}
+.wf-coach-actions button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.wf-coach .icon-button {
+  width: 32px;
+  height: 32px;
+}
+.wf-learn-prompt {
+  flex-wrap: wrap;
+}
+.wf-learn-prompt > strong {
+  font-size: 14px;
+}
+.wf-tour-highlight {
+  outline: 2px solid #8ca767;
+  outline-offset: 4px;
+  box-shadow: none;
+}
+@keyframes wf-coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 600px) {
+  .wf-coach {
+    right: 16px;
+    bottom: 16px;
+    max-height: min(300px, calc(100dvh - 32px));
+  }
+  .wf-coach h3 {
+    font-size: 18px;
+  }
+  .wf-coach-content {
+    padding-bottom: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-coach {
+    animation: none;
+  }
+}
+
+.wf-portfolio-sums {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+  margin: 0 0 22px;
+  border-block: 1px solid #e0e5d8;
+}
+.wf-portfolio-sums > div {
+  min-width: 0;
+}
+.wf-portfolio-sums span {
+  display: block;
+  font-size: 12px;
+  color: #6b795f;
+  margin-bottom: 6px;
+}
+.wf-portfolio-sums strong {
+  font-size: clamp(16px, 1.7vw, 25px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-section-tools {
+  margin: 0 0 24px;
+}
+.workspace-section-tools summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #5e7050;
+  padding: 10px 0;
+  width: fit-content;
+}
+.workspace-section-tools > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+.workspace-section-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border: 1px solid #dce3d3;
+  border-radius: 7px;
+  background: #fffefa;
+  font-size: 13px;
+}
+.workspace-section-tools button.active {
+  background: #e8efdc;
+}
+.workspace-management-links {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+.workspace-back {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  background: none;
+  font-size: 13px;
+  margin-bottom: 22px;
+  padding: 0;
+  color: #5e7050;
+}
+.workspace-back > svg {
+  transform: rotate(180deg);
+}
+@media (max-width: 600px) {
+  .wf-portfolio-sums {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .wf-portfolio-sums strong {
+    font-size: 20px;
+  }
+  .workspace-section-tools {
+    margin-bottom: 12px;
+  }
+}
+.wf-learn-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 20px;
+}
+.wf-learn-prompt .wf-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.wf-learn-prompt .button {
+  padding: 10px 14px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.wf-learn-prompt > strong {
+  flex: 1 1 210px;
+  min-width: 0;
+}
+.wf-learn-prompt > .wf-actions {
+  flex: 0 0 auto;
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
 }

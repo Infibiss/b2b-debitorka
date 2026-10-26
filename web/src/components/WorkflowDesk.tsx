@@ -171,6 +171,7 @@ const casePath = (id: string) => `/workflow/cases/${encodeURIComponent(id)}`;
 
 export function WorkflowDesk({
   invoices,
+  totals,
   onOpenInvoice,
   onNavigate,
   onImport,
@@ -179,6 +180,12 @@ export function WorkflowDesk({
   refreshKey,
 }: {
   invoices: Invoice[];
+  totals?: {
+    total_outstanding: number;
+    overdue_amount: number;
+    promised_amount: number;
+    collected_amount: number;
+  };
   onOpenInvoice: (id: string) => void;
   onNavigate: Navigate;
   onImport: () => void;
@@ -216,7 +223,7 @@ export function WorkflowDesk({
   );
   return (
     <div className="wf-desk" data-tour="workflow-board">
-      <div className="wf-heading">
+      <div className="wf-heading" data-tour="work-import">
         <div>
           <span className="wf-eyebrow">Единый рабочий процесс</span>
           <h1>Работа по дебиторке</h1>
@@ -233,7 +240,25 @@ export function WorkflowDesk({
           </button>
         </div>
       </div>
-      <div className="wf-metrics">
+      <section className="wf-portfolio-sums" aria-label="Суммы по портфелю">
+        {[
+          ['Осталось к оплате', totals?.total_outstanding],
+          ['Просрочено', totals?.overdue_amount],
+          ['Обещано к оплате', totals?.promised_amount],
+          ['Поступило', totals?.collected_amount],
+        ].map(([label, value]) => (
+          <div key={String(label)}>
+            <span>{label}</span>
+            <strong
+              title={money(typeof value === 'number' ? value : 0)}
+              aria-label={money(typeof value === 'number' ? value : 0)}
+            >
+              {money(typeof value === 'number' ? value : 0, true)}
+            </strong>
+          </div>
+        ))}
+      </section>
+      <div className="wf-metrics" data-tour="workflow-queues">
         {queues.map(({ id, name, detail, icon: Icon }) => (
           <button
             key={id}
@@ -1271,7 +1296,7 @@ export function WorkflowManagement({
                 )}
               </form>
             </section>
-            <section className="wf-panel">
+            <section className="wf-panel" data-tour="workflow-team">
               <div className="wf-panel-title">
                 <Users size={21} />
                 <div>

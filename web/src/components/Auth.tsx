@@ -2,10 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { ArrowUpRight, ArrowLeft, ShieldCheck, Check } from 'lucide-react';
 import { Brand } from './Brand';
 import { post, type Session } from '../api';
+import { useInvitationToken } from './useInvitationToken';
 export function Auth({ onSession }: { onSession: (session: Session) => void }) {
-  const invitation =
-    new URLSearchParams(location.hash.slice(1)).get('invite') ||
-    new URLSearchParams(location.search).get('invite');
+  const invitation = useInvitationToken();
   const [mode, setMode] = useState(
       new URLSearchParams(location.search).get('mode') === 'login' ? 'login' : 'register'
     ),

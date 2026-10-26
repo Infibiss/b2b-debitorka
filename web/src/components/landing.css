@@ -1540,7 +1540,7 @@
   box-shadow: 0 25px 80px #061d2538;
   transform: rotate(-2deg);
 }
-.workspace-top {
+.hero-workspace-top {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1550,32 +1550,32 @@
   color: #c1d0b7;
   border-bottom: 1px solid #b9cea020;
 }
-.workspace-top .status-dot {
+.hero-workspace-top .status-dot {
   width: 5px;
   height: 5px;
   background: #d7ed9d;
 }
-.workspace-top > span:last-child {
+.hero-workspace-top > span:last-child {
   margin-left: auto;
   font-size: 18px;
 }
-.workspace-title {
+.hero-workspace-title {
   padding: 25px 24px 21px;
   font-size: clamp(20px, 2vw, 28px);
   line-height: 1.45;
   letter-spacing: -0.8px;
 }
-.workspace-title > span {
+.hero-workspace-title > span {
   color: #bfd2a8;
 }
-.workspace-item {
+.hero-workspace-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 19px 20px;
   border-top: 1px solid #b9cea020;
 }
-.workspace-icon {
+.hero-workspace-icon {
   width: 32px;
   height: 32px;
   flex: none;
@@ -1585,22 +1585,22 @@
   place-items: center;
   color: #d9e6b4;
 }
-.workspace-item strong {
+.hero-workspace-item strong {
   font-size: 11px;
   font-weight: 550;
 }
-.workspace-item p {
+.hero-workspace-item p {
   font-size: 9px;
   color: #b5c6ac;
   line-height: 1.6;
   margin-top: 4px;
 }
-.workspace-item > svg {
+.hero-workspace-item > svg {
   margin-left: auto;
   flex: none;
   color: #b9cba8;
 }
-.workspace-badge {
+.hero-workspace-badge {
   margin-left: auto;
   flex: none;
   font-size: 7px;
@@ -1610,7 +1610,7 @@
   padding: 5px 7px;
   border-radius: 4px;
 }
-.workspace-footer {
+.hero-workspace-footer {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1870,28 +1870,28 @@
     top: 25%;
     transform: rotate(-1deg);
   }
-  .workspace-item {
+  .hero-workspace-item {
     padding: 17px 15px;
     gap: 9px;
   }
-  .workspace-badge {
+  .hero-workspace-badge {
     display: none;
   }
-  .workspace-title {
+  .hero-workspace-title {
     padding: 22px 18px;
     font-size: 21px;
   }
-  .workspace-top {
+  .hero-workspace-top {
     font-size: 7px;
     padding: 15px;
   }
-  .workspace-item strong {
+  .hero-workspace-item strong {
     font-size: 10px;
   }
-  .workspace-item p {
+  .hero-workspace-item p {
     font-size: 8px;
   }
-  .workspace-footer {
+  .hero-workspace-footer {
     font-size: 7px;
     padding: 14px 15px;
   }
@@ -1951,24 +1951,24 @@
     margin: 6px 25px 25px;
     transform: none;
   }
-  .workspace-top {
+  .hero-workspace-top {
     font-size: 7px;
     padding: 14px 17px;
   }
-  .workspace-title {
+  .hero-workspace-title {
     font-size: 22px;
     padding: 20px 18px;
   }
-  .workspace-item {
+  .hero-workspace-item {
     padding: 16px;
   }
-  .workspace-item strong {
+  .hero-workspace-item strong {
     font-size: 11px;
   }
-  .workspace-item p {
+  .hero-workspace-item p {
     font-size: 9px;
   }
-  .workspace-footer {
+  .hero-workspace-footer {
     font-size: 8px;
   }
   .hero-index {
@@ -2062,5 +2062,136 @@
   .landing .reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Landing and cabinet use separate component names; layout does not depend on load order. */
+.landing .hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 88px);
+  min-height: 620px;
+  padding: clamp(34px, 5vw, 84px);
+}
+.landing .hero-content {
+  width: auto;
+  padding: 0;
+  min-width: 0;
+}
+.landing .hero h1 {
+  font-size: clamp(40px, 4.1vw, 68px);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  margin: 0;
+  max-width: 100%;
+  text-wrap: balance;
+}
+.landing .hero h1 > span {
+  display: block;
+}
+.landing .hero-bottom {
+  margin-top: 28px;
+}
+.landing .hero-bottom p {
+  max-width: 48ch;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.landing .hero-workspace {
+  position: relative;
+  width: 100%;
+  top: auto;
+  right: auto;
+  transform: none;
+  margin: 0;
+  min-width: 0;
+}
+.landing .hero-workspace-title {
+  padding: 25px;
+  font-size: clamp(20px, 1.7vw, 28px);
+}
+.landing .hero-workspace-item {
+  padding: 19px 22px;
+}
+.landing .hero-workspace-item > div {
+  min-width: 0;
+}
+.landing .hero-workspace-item strong {
+  font-size: 13px;
+}
+.landing .hero-workspace-item p {
+  font-size: 11px;
+}
+.landing .hero-workspace-footer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 18px 22px;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: left;
+}
+.landing .hero-workspace-footer svg {
+  margin-top: 1px;
+  flex: 0 0 16px;
+}
+.landing .hero-workspace-footer span {
+  min-width: 0;
+}
+.landing .section-pad h2 {
+  text-wrap: balance;
+}
+.landing .final-cta h2 {
+  max-width: 18ch;
+  margin-inline: auto;
+}
+@media (max-width: 1050px) {
+  .landing .hero {
+    gap: 28px;
+    padding: 40px 30px;
+    min-height: 580px;
+  }
+  .landing .hero h1 {
+    font-size: clamp(36px, 4.3vw, 49px);
+  }
+  .landing .hero-workspace-title {
+    padding: 20px;
+    font-size: 22px;
+  }
+  .landing .hero-workspace-item {
+    padding: 17px;
+  }
+  .landing .hero-workspace-badge {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .landing .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    min-height: 0;
+    padding: 34px 24px;
+  }
+  .landing .hero h1 {
+    font-size: clamp(34px, 8vw, 48px);
+  }
+  .landing .hero-bottom p {
+    font-size: 14px;
+  }
+  .landing .hero-workspace {
+    width: 100%;
+  }
+  .landing .hero-workspace-title {
+    font-size: 23px;
+  }
+  .landing .hero-workspace-item strong {
+    font-size: 12px;
+  }
+  .landing .hero-workspace-footer {
+    padding: 16px 18px;
+    font-size: 11px;
   }
 }

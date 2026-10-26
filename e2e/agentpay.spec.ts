@@ -198,9 +198,13 @@ test('a promise due today is not shown as a broken promise', async ({ page }) =>
   await page.getByRole('button', { name: 'Сохранить обещание', exact: true }).click();
   await expect(page.locator('.promise-banner')).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть карточку', exact: true }).click();
-  await navigate(page, 'Обзор');
-  await expect(page.locator('.attention-list')).toContainText('ООО Северные системы');
-  await expect(page.locator('.attention-list')).not.toContainText('Нарушено обещание');
+  await navigate(page, 'Работа');
+  await expect(page.getByRole('button', { name: /Открыть дело.*Северные системы/ })).toContainText(
+    'ООО Северные системы'
+  );
+  await expect(
+    page.getByRole('button', { name: /Открыть дело.*Северные системы/ })
+  ).not.toContainText('Нарушено обещание');
 });
 
 test('correcting a contact invalidates the old recipient and persists a fresh draft', async ({
@@ -314,14 +318,16 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
   await dialog.getByLabel('Дата оплаты', { exact: true }).fill(nextWeek);
   await dialog.getByRole('button', { name: 'Сохранить договорённость', exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await navigate(page, 'Обзор');
-  await expect(page.locator('.metric').filter({ hasText: 'ОСТАЛОСЬ К ОПЛАТЕ' })).toContainText(
-    /700/
-  );
-  await expect(page.locator('.metric').filter({ hasText: 'ОБЕЩАНО К ОПЛАТЕ' })).toContainText(
-    /250/
-  );
-  await expect(page.locator('.metric').filter({ hasText: 'ПОСТУПИЛО' })).toContainText(/300/);
+  await navigate(page, 'Работа');
+  await expect(
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Осталось к оплате' })
+  ).toContainText(/700/);
+  await expect(
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Обещано к оплате' })
+  ).toContainText(/250/);
+  await expect(
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Поступило' })
+  ).toContainText(/300/);
   await navigate(page, 'Финансы');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
@@ -350,11 +356,13 @@ test('agent inbox fails safely without a provider and never fabricates payment',
     dialog.getByRole('button', { name: 'Подтвердить действие', exact: true })
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await navigate(page, 'Обзор');
-  await expect(page.locator('.metric').filter({ hasText: 'ОСТАЛОСЬ К ОПЛАТЕ' })).toContainText(
-    /1\s?000/
-  );
-  await expect(page.locator('.metric').filter({ hasText: 'ПОСТУПИЛО' })).toContainText('0');
+  await navigate(page, 'Работа');
+  await expect(
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Осталось к оплате' })
+  ).toContainText(/1\s?000/);
+  await expect(
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Поступило' })
+  ).toContainText('0');
   await navigate(page, 'Агент');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({

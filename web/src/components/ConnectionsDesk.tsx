@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   Database,
+  Mail,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -13,7 +14,17 @@ import {
 import { api, post, money, dateText, today, ApiError } from '../api';
 import { DeskHeading, DeskError, type DeskProps } from './OperationsUI';
 import './mandato-services.css';
+import './connections.css';
 import { ConnectionAccess } from './ConnectionAccess';
+
+type SourceChoice = 'one_c' | 'diadoc' | 'bank' | 'registry' | 'email';
+const sourceChoices: { id: SourceChoice; name: string; description: string }[] = [
+  { id: 'one_c', name: '1С', description: 'Счета и задолженность' },
+  { id: 'diadoc', name: 'ЭДО', description: 'Документы Диадока' },
+  { id: 'bank', name: 'Банк', description: 'Выписка и поступления' },
+  { id: 'registry', name: 'Реестры', description: 'Проверка контрагентов' },
+  { id: 'email', name: 'Почта', description: 'Отправка писем' },
+];
 
 type Provider = 'one_c' | 'diadoc' | 'tbank' | 'tbank_sandbox' | 'dadata' | 'bank_exchange';
 type Coverage = {
@@ -113,7 +124,19 @@ const periodEnd = () => {
   return d.toISOString().slice(0, 10);
 };
 
-export function ConnectionsDesk({ invoices, notify, onChanged }: DeskProps) {
+export function ConnectionsDesk({
+  invoices,
+  notify,
+  onChanged,
+  onNavigate,
+}: DeskProps & {
+  onNavigate?: (target: 'settings') => void;
+}) {
+  const [activeSource, setActiveSource] = useState<SourceChoice>('one_c');
+  const [itOpen, setItOpen] = useState(false);
+  const [developerOpen, setDeveloperOpen] = useState(false);
+  const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<Connection[]>([]),
     [runs, setRuns] = useState<Preview[]>([]),
     [checks, setChecks] = useState<RegistryCheck[]>([]);
@@ -166,13 +189,18 @@ export function ConnectionsDesk({ invoices, notify, onChanged }: DeskProps) {
       api<{ items: Connection[] }>('/integrations'),
       api<{ items: Preview[] }>('/integrations/runs'),
       api<{ items: RegistryCheck[] }>('/integrations/registry/checks'),
+      api<{ smtp_configured: boolean }>('/settings')
+        .then((settings) => setMailConfigured(settings.smtp_configured === true))
+        .catch(() => setMailConfigured(null)),
     ]);
     setConnections(c.items);
     setRuns(r.items);
     setChecks(checks.items);
   }, []);
   useEffect(() => {
-    void reload().catch((e) => setError((e as Error).message));
+    void reload()
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
   }, [reload]);
   async function perform(key: string, action: () => Promise<void>) {
     setBusy(key);
@@ -337,11 +365,98 @@ export function ConnectionsDesk({ invoices, notify, onChanged }: DeskProps) {
       );
     });
   }
+  const sourceName = sourceChoices.find((source) => source.id === activeSource)!.name;
+  const matchesSource = (provider?: Provider) =>
+    activeSource === 'bank'
+      ? provider === 'tbank' ||
+        provider === 'bank_exchange' ||
+        (provider === 'tbank_sandbox' && developerOpen)
+      : provider === activeSource;
+  const sourceRuns = runs.filter((run) => matchesSource(run.provider));
+  const previewVisible = !!preview && matchesSource(preview.provider);
+  const itSource =
+    activeSource === 'bank' ? 'tbank' : activeSource === 'registry' ? 'dadata' : activeSource;
+  function sourceStatus(source: SourceChoice) {
+    if (source === 'email')
+      return mailConfigured === null
+        ? loading
+          ? 'Проверяем…'
+          : 'Статус недоступен'
+        : mailConfigured
+          ? 'Отправка настроена'
+          : 'Не подключено';
+    if (source === 'bank') return 'Импорт из файла доступен';
+    const provider = source === 'registry' ? 'dadata' : source;
+    const connection = connections.find((item) => item.provider === provider);
+    if (!connection) return loading ? 'Проверяем…' : 'Статус недоступен';
+    return connection.configured
+      ? (statuses[connection.status] ?? 'Статус не подтверждён')
+      : 'Не подключено';
+  }
+  function connectionCard(c: Connection) {
+    return (
+      <section className="ms-card" key={c.provider}>
+        <div className="ms-card-heading">
+          <Database size={20} />
+          <h2>{names[c.provider]}</h2>
+          <span className={`ms-status ms-status-${c.status}`}>
+            {statuses[c.status] ?? 'Ожидает проверки'}
+          </span>
+        </div>
+        <p>
+          {c.provider === 'one_c'
+            ? 'Загрузите данные и выберите строки для сверки с реестром.'
+            : c.provider === 'diadoc'
+              ? 'Реквизиты документов ЭДО. Содержимое и электронные подписи здесь не проверяются.'
+              : 'Поступления из выписки. После подтверждения их нужно распределить по счетам в «Финансах».'}
+        </p>
+        {!c.configured && (
+          <p className="ms-note">Настройте доступ по инструкции для IT-специалиста ниже.</p>
+        )}
+        {c.checked_at && <small>Последнее чтение: {dateText(c.checked_at)}</small>}
+        {c.provider === 'tbank' && (
+          <div className="ms-fields">
+            <label className="field">
+              Начало периода
+              <input
+                type="date"
+                min="2023-06-01"
+                max={today()}
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              Окончание, не включая
+              <input
+                type="date"
+                min={from}
+                max={periodEnd()}
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </label>
+            <p className="ms-note">До 31 дня за одно чтение.</p>
+          </div>
+        )}
+        <button
+          className="button button-dark"
+          disabled={
+            !!busy || !c.configured || (c.provider === 'tbank' && (!from || !to || to <= from))
+          }
+          onClick={() => void read(c.provider)}
+        >
+          <ArrowDownToLine size={16} />
+          {busy === c.provider ? 'Читаем…' : 'Прочитать данные'}
+        </button>
+      </section>
+    );
+  }
   return (
-    <div className="mandato-services">
+    <div className="mandato-services connections-desk">
       <DeskHeading
-        eyebrow="ДАННЫЕ С ИСТОЧНИКОМ И ДАТОЙ"
-        title="Связи с вашей системой."
+        eyebrow="ИСТОЧНИКИ ДАННЫХ"
+        title="Подключения"
         action={
           <button
             className="button button-outline"
@@ -352,563 +467,610 @@ export function ConnectionsDesk({ invoices, notify, onChanged }: DeskProps) {
           </button>
         }
       >
-        Проверьте доступность источника, прочитайте данные и подтвердите нужные строки.
+        Выберите источник, чтобы загрузить данные или настроить доступ.
       </DeskHeading>
-      <ConnectionAccess />
       <DeskError>{error}</DeskError>
-      <div className="ms-connections">
-        {connections
-          .filter((c) => ['one_c', 'diadoc', 'tbank'].includes(c.provider))
-          .map((c) => (
-            <section className="ms-card" key={c.provider}>
-              <div className="ms-card-heading">
-                <Database size={20} />
-                <h2>{names[c.provider]}</h2>
-                <span className={`ms-status ms-status-${c.status}`}>
-                  {statuses[c.status] ?? 'Ожидает проверки'}
-                </span>
-              </div>
-              <p>
-                {c.provider === 'one_c'
-                  ? 'Сведения из учётной системы сохраняются для проверки. Счета из них автоматически не создаются.'
-                  : c.provider === 'diadoc'
-                    ? 'Реквизиты документов ЭДО. Содержимое и электронные подписи здесь не проверяются.'
-                    : 'Поступления из выписки. После подтверждения их нужно распределить по счетам в «Финансах».'}
-              </p>
-              {!c.configured && (
-                <p className="ms-note">
-                  Для подключения обратитесь к сопровождающему вашу компанию специалисту.
-                </p>
-              )}
-              {c.checked_at && <small>Последнее чтение: {dateText(c.checked_at)}</small>}
-              {c.provider === 'tbank' && (
-                <div className="ms-fields">
-                  <label className="field">
-                    Начало периода
-                    <input
-                      type="date"
-                      min="2023-06-01"
-                      max={today()}
-                      value={from}
-                      onChange={(e) => setFrom(e.target.value)}
-                    />
-                  </label>
-                  <label className="field">
-                    Окончание, не включая
-                    <input
-                      type="date"
-                      min={from}
-                      max={periodEnd()}
-                      value={to}
-                      onChange={(e) => setTo(e.target.value)}
-                    />
-                  </label>
-                  <p className="ms-note">До 31 дня за одно чтение.</p>
-                </div>
-              )}
-              <button
-                className="button button-dark"
-                disabled={
-                  !!busy ||
-                  !c.configured ||
-                  (c.provider === 'tbank' && (!from || !to || to <= from))
-                }
-                onClick={() => void read(c.provider)}
-              >
-                <ArrowDownToLine size={16} />
-                {busy === c.provider ? 'Читаем…' : 'Прочитать данные'}
-              </button>
-            </section>
-          ))}
-      </div>
-      <section className="ms-card ms-sandbox">
-        <div className="ms-card-heading">
-          <h2>Публичная песочница Т-Банка</h2>
-          <span className="ms-status">Бесплатный тест формата</span>
-        </div>
-        <p>
-          Отдельная проверка формата ответа на тестовых данных провайдера. Она не подключает
-          расчётный счёт вашей компании. Данные песочницы нельзя подтвердить как реальные деньги.
-        </p>
-        <button
-          type="button"
-          className="button button-outline"
-          disabled={!!busy}
-          onClick={() => void readSandbox()}
-        >
-          Прочитать публичную песочницу
-        </button>
-      </section>
-      <div className="ms-columns">
-        <section className="ms-card">
-          <h2>
-            <Upload size={20} /> Выписка из файла
-          </h2>
-          <p>
-            Файл 1CClientBankExchange из банка, до 1,4 МБ. На подтверждение доступны входящие
-            платежи на ваш счёт.
-          </p>
-          <form className="ms-form" onSubmit={filePreview}>
-            <label className="field">
-              Собственный расчётный счёт
-              <input
-                name="own_account"
-                required
-                pattern="[0-9]{20}"
-                inputMode="numeric"
-                maxLength={20}
-                placeholder="20 цифр"
-              />
-            </label>
-            <label className="field">
-              Название источника
-              <input
-                name="source_ref"
-                required
-                maxLength={200}
-                placeholder="Банковская выписка за октябрь"
-              />
-            </label>
-            <label className="field">
-              Файл банковской выписки
-              <input type="file" name="statement" required accept=".txt,text/plain" />
-            </label>
-            <button className="button button-outline" disabled={!!busy}>
-              <Upload size={16} />
-              {busy === 'file' ? 'Проверяем…' : 'Проверить выписку'}
-            </button>
-          </form>
-        </section>
-        <section className="ms-card">
-          <h2>
-            <Search size={20} /> Сведения о должнике
-          </h2>
-          <p>
-            Проверка точного ИНН по доступному снимку ЕГРЮЛ/ЕГРИП. Суды, ФССП и полный реестр
-            банкротств остаются непроверенными.
-          </p>
-          <form
-            className="ms-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void perform('registry', async () => {
-                await post('/integrations/registry/check', { inn });
-                await reload();
-                onChanged();
-              });
+      <div className="connections-catalogue" role="group" aria-label="Источники">
+        {sourceChoices.map((source) => (
+          <button
+            key={source.id}
+            type="button"
+            aria-label={source.name}
+            aria-describedby={`connection-${source.id}-description connection-${source.id}-status`}
+            aria-pressed={activeSource === source.id}
+            disabled={!!busy}
+            onClick={() => {
+              setActiveSource(source.id);
+              setItOpen(false);
+              setDeveloperOpen(false);
+              setError('');
             }}
           >
-            <label className="field">
-              Контрагент из реестра
-              <select
-                value={inn && invoices.some((i) => i.inn === inn) ? inn : ''}
-                onChange={(e) => setInn(e.target.value)}
-              >
-                <option value="">Указать ИНН вручную</option>
-                {[...new Map(invoices.filter((i) => i.inn).map((i) => [i.inn, i])).values()].map(
-                  (i) => (
-                    <option key={i.inn} value={i.inn}>
-                      {i.company} · {i.inn}
-                    </option>
-                  )
-                )}
-              </select>
-            </label>
-            <label className="field">
-              Точный ИНН
-              <input
-                required
-                inputMode="numeric"
-                pattern="[0-9]{10}|[0-9]{12}"
-                maxLength={12}
-                value={inn}
-                onChange={(e) => setInn(e.target.value)}
-              />
-            </label>
-            <button
-              className="button button-outline"
-              disabled={!!busy || !connections.find((c) => c.provider === 'dadata')?.configured}
-            >
-              <Search size={16} />
-              {busy === 'registry' ? 'Проверяем…' : 'Проверить должника'}
-            </button>
-            {connections.find((c) => c.provider === 'dadata')?.configured === false && (
-              <p className="ms-note">
-                Проверка пока не подключена. Отсутствие проверки не подтверждает отсутствие рисков.
-              </p>
-            )}
-          </form>
-          <div className="ms-form">
-            <button
-              type="button"
-              className="button button-outline"
-              disabled={
-                !!busy ||
-                batchInns.length === 0 ||
-                !connections.find((connection) => connection.provider === 'dadata')?.configured
-              }
-              onClick={() =>
-                void perform('registry-batch', async () => {
-                  setBatchResult(null);
-                  const result = await post<{
-                    requested_count: number;
-                    cached_count: number;
-                    checked_count: number;
-                  }>('/integrations/registry/check-batch', { inns: batchInns });
-                  setBatchResult(result);
-                  await reload();
-                  onChanged();
-                })
-              }
-            >
-              {registryInns.length > 0 && pendingInns.length === 0
-                ? 'Свежие результаты по всем ИНН'
-                : `Проверить должников: ${batchInns.length}`}
-            </button>
-            <p className="ms-note">
-              {registryInns.length === 0
-                ? 'В реестре пока нет ИНН для пакетной проверки.'
-                : pendingInns.length === 0
-                  ? `По всем ${registryInns.length} ИНН есть результаты моложе 24 часов. Это не подтверждение отсутствия рисков.`
-                  : `Без свежего результата: ${pendingInns.length} из ${registryInns.length} ИНН. В следующий запрос войдут ${batchInns.length}. Завершённые результаты и отсутствие совпадения учитываются 24 часа, затем ИНН снова доступен для проверки. Ошибки повторяются только по вашему действию.`}
-            </p>
-            {batchResult && (
-              <p className="ms-note">
-                Результаты по {batchResult.requested_count} ИНН: без кеша{' '}
-                {batchResult.checked_count}, из свежего кеша {batchResult.cached_count}.
-              </p>
-            )}
-          </div>
-          <div className="ms-list">
-            {checks.map((check) => (
-              <article key={check.id} className="ms-list-item">
-                <div>
-                  <strong>{check.result.name || `ИНН ${check.inn}`}</strong>
-                  <small>
-                    {check.inn} · Запрошено {accessDate(check.checked_at)} МСК
-                  </small>
-                </div>
-                <span className={`ms-status ms-status-${check.status}`}>
-                  {statuses[check.status] ?? 'Статус не подтверждён'}
-                </span>
-                {check.status === 'completed' && (
-                  <p>
-                    {registration[check.result.state ?? 'UNKNOWN'] ?? 'Статус не подтверждён'}
-                    {check.result.ogrn && ` · ОГРН ${check.result.ogrn}`}
-                  </p>
-                )}
-                {check.status === 'stale' && (
-                  <p>Сведения устарели. Перед решением выполните новую проверку.</p>
-                )}
-                <small>
-                  {check.result.provider_record_date
-                    ? `Дата последнего изменения записи у провайдера: ${new Date(check.result.provider_record_date).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}`
-                    : 'Дата последнего изменения записи у провайдера не указана.'}
-                </small>
-                <ul className="ms-registry-coverage">
-                  <li>
-                    ЕГРЮЛ/ЕГРИП:{' '}
-                    {['completed', 'stale'].includes(check.status)
-                      ? 'снимок провайдера'
-                      : 'совпадение не подтверждено'}
-                  </li>
-                  <li>Банкротство: не проверено</li>
-                  <li>Судебные дела: не проверено</li>
-                  <li>ФССП: не проверено</li>
-                </ul>
-              </article>
-            ))}
-          </div>
-        </section>
+            <strong>{source.name}</strong>
+            <span id={`connection-${source.id}-description`}>{source.description}</span>
+            <small id={`connection-${source.id}-status`}>{sourceStatus(source.id)}</small>
+          </button>
+        ))}
       </div>
-      <section className="ms-card ms-preview">
-        <div className="ms-card-heading">
-          <h2>Проверка прочитанных данных</h2>
-          {runs.length > 0 && (
-            <label className="field">
-              История чтений
-              <select
-                aria-label="Открыть чтение источника"
-                value={preview && !preview.file ? preview.id : ''}
-                disabled={!!busy}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  if (id)
-                    void perform('history', async () =>
-                      stage(await api<Preview>(`/integrations/runs/${id}`))
-                    );
-                }}
-              >
-                <option value="">Выберите источник</option>
-                {runs.map((run) => (
-                  <option key={run.id} value={run.id}>
-                    {run.provider ? names[run.provider] : 'Источник'} ·{' '}
-                    {run.checked_at ? dateText(run.checked_at) : ''} ·{' '}
-                    {statuses[run.status ?? ''] ?? 'Ожидает проверки'}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        {!preview ? (
-          <p>
-            Прочитайте подключённый источник или загрузите выписку. Здесь появятся строки для
-            сверки.
-          </p>
-        ) : (
+      <section className="connections-detail" aria-label={`Источник: ${sourceName}`}>
+        {(activeSource === 'one_c' || activeSource === 'diadoc') && (
           <>
-            <p>
-              {preview.provider && names[preview.provider]}
-              {preview.status && ` · ${statuses[preview.status] ?? 'Статус не подтверждён'}`}
-            </p>
-            {sandbox && (
-              <p className="ms-warning">
-                Тестовые данные публичной песочницы. Это ответ провайдера для проверки формата, без
-                реальных счетов и поступлений. Сохранение в реестр и финансовый учёт недоступно.
-              </p>
-            )}
-            {!sandbox && preview.coverage?.complete === false && (
-              <p className="ms-warning">
-                Источник вернул часть списка. Каждая страница проверяется и подтверждается отдельно;
-                полнота всего периода пока не подтверждена.
-              </p>
-            )}
-            {preview.status && !['completed', 'partial'].includes(preview.status) && (
-              <p className="ms-warning">
-                {preview.status === 'no_match'
-                  ? 'Источник не вернул записей. Это не подтверждает отсутствие задолженности или рисков.'
-                  : preview.status === 'stale'
-                    ? 'Данные устарели. Прочитайте источник ещё раз перед подтверждением.'
-                    : 'Данные не получены. Проверьте состояние подключения и повторите чтение.'}
-              </p>
-            )}
-            {preview.provider === 'one_c' && !invoiceSupported && (
-              <p className="ms-note">
-                В этом чтении доступны только сведения источника. Для счетов нужны отдельные
-                документы с номером, датой, сроком, суммой и подтверждённым состоянием расчётов.
-              </p>
-            )}
-            {preview.coverage?.request_cursor && (
-              <p className="ms-note">
-                Это страница продолжения. Предыдущие страницы доступны в истории чтений; их строки
-                не объединяются и не подтверждаются автоматически.
-              </p>
-            )}
-            {preview.provider === 'tbank' &&
-              preview.coverage?.next_cursor &&
-              preview.coverage.from_on &&
-              preview.coverage.to_on && (
-                <button
-                  className="button button-outline"
-                  disabled={!!busy}
-                  onClick={() =>
-                    void read('tbank', preview.coverage!.next_cursor!, {
-                      from_on: preview.coverage!.from_on!,
-                      to_on: preview.coverage!.to_on!,
-                    })
-                  }
-                >
-                  Следующая страница выписки
-                </button>
-              )}
-            {!!preview.errors?.length && (
-              <ul className="ms-errors">
-                {preview.errors.map((e, i) => (
-                  <li key={i}>
-                    {e.row ? `Строка ${e.row}: ` : ''}
-                    {e.message}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {preview.items.length > 0 && (
-              <form onSubmit={approve}>
-                <label className="ms-check">
-                  <input
-                    type="checkbox"
-                    checked={selectable.length > 0 && selected.length === selectable.length}
-                    disabled={!!busy || selectable.length === 0}
-                    onChange={(e) => changeSelection(e.target.checked ? selectable : [])}
-                  />{' '}
-                  Выбрать все доступные строки
-                </label>
-                <div className="ms-table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Выбор</th>
-                        <th>Документ / контрагент</th>
-                        <th>Дата</th>
-                        <th>Сумма</th>
-                        <th>Проверка</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.items.map((item) => (
-                        <tr key={item.row}>
-                          <td>
-                            <input
-                              aria-label={`Подтвердить строку ${item.row}`}
-                              type="checkbox"
-                              checked={selected.includes(item.row)}
-                              disabled={!!busy || !canSelect(item)}
-                              onChange={(e) =>
-                                changeSelection(
-                                  e.target.checked
-                                    ? [...selected, item.row]
-                                    : selected.filter((row) => row !== item.row)
-                                )
-                              }
-                            />
-                          </td>
-                          <td>
-                            <strong>
-                              {item.company ||
-                                item.payer_name ||
-                                item.title ||
-                                item.document_type ||
-                                'Документ'}
-                            </strong>
-                            <small>
-                              {item.reference || item.number}
-                              {(item.inn || item.payer_inn) &&
-                                ` · ИНН ${item.inn || item.payer_inn}`}
-                            </small>
-                            {item.purpose && <small>{item.purpose}</small>}
-                            {item.due_on && <small>Срок оплаты: {dateText(item.due_on)}</small>}
-                            {item.paid_amount != null && (
-                              <small>Оплачено по источнику: {money(item.paid_amount)}</small>
-                            )}
-                            {item.balance != null && (
-                              <small>Остаток по источнику: {money(item.balance)}</small>
-                            )}
-                          </td>
-                          <td>
-                            {item.paid_on || item.issued_on || item.operation_date
-                              ? dateText(item.paid_on || item.issued_on || item.operation_date!)
-                              : '—'}
-                          </td>
-                          <td>{item.amount == null ? '—' : money(item.amount)}</td>
-                          <td>
-                            {badRows.has(item.row)
-                              ? 'Нужна сверка'
-                              : item.direction === 'outgoing'
-                                ? 'Исходящий платёж'
-                                : item.direction === 'own_transfer'
-                                  ? 'Собственный перевод'
-                                  : item.approvable === false
-                                    ? 'Недоступно для учёта'
-                                    : 'К проверке'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {sandbox ? null : preview.approval ? (
-                  <p className="ms-success">
-                    <Check size={16} /> Подтверждено: {preview.approval.imported}. Уже учтено:{' '}
-                    {preview.approval.skipped}.
-                  </p>
-                ) : (
-                  <div className="ms-form ms-approval">
-                    <p className="ms-note">
-                      {preview.file || preview.provider === 'tbank'
-                        ? 'Подтверждение добавит банковские поступления без распределения. Остатки счетов изменятся после распределения в «Финансах».'
-                        : 'Подтверждение сохранит сведения с источником. Оно не создаёт счета, не подписывает и не отправляет документы.'}
-                    </p>
-                    {duplicateDetected && (
-                      <fieldset className="ms-fieldset">
-                        <legend>Возможное повторное поступление</legend>
-                        <p className="ms-note">
-                          Сверьте оригиналы. Подтверждение отдельного поступления допускается только
-                          для одного выбранного документа с другим номером. Одинаковый номер не
-                          разрешает повторный учёт.
-                        </p>
-                        {selected.length !== 1 && (
-                          <p className="ms-warning">
-                            Выберите один документ и выполните подтверждение заново.
-                          </p>
-                        )}
-                        <label className="ms-check">
-                          <input
-                            type="checkbox"
-                            disabled={selected.length !== 1}
-                            checked={distinctConfirmed}
-                            onChange={(event) => setDistinctConfirmed(event.target.checked)}
-                          />
-                          Подтверждаю отдельное поступление с другим номером документа
-                        </label>
-                        <label className="field">
-                          Почему это отдельное поступление
-                          <textarea
-                            required
-                            minLength={10}
-                            maxLength={3000}
-                            value={distinctReason}
-                            onChange={(event) => setDistinctReason(event.target.value)}
-                          />
-                        </label>
-                      </fieldset>
-                    )}
-                    <label className="field">
-                      Основание подтверждения
-                      <textarea
-                        required
-                        maxLength={3000}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                      />
-                    </label>
-                    <button
-                      className="button button-dark"
-                      disabled={
-                        !!busy ||
-                        !selected.length ||
-                        !reason.trim() ||
-                        (duplicateDetected &&
-                          (!distinctConfirmed ||
-                            distinctReason.trim().length < 10 ||
-                            selected.length !== 1))
-                      }
-                    >
-                      <Check size={16} />
-                      {busy === 'approve' ? 'Сохраняем…' : `Подтвердить строки: ${selected.length}`}
-                    </button>
-                  </div>
-                )}
-              </form>
-            )}
-            {invoiceSupported && (
-              <div className="ms-form">
-                <p className="ms-note">
-                  В источнике есть отдельные документы задолженности. Перед изменением реестра
-                  выполните отдельную сверку выбранных строк. Сохранение сведений выше не изменяет
-                  счета.
-                </p>
-                <button
-                  type="button"
-                  className="button button-outline"
-                  disabled={!!busy || !selected.length}
-                  onClick={() => void prepareInvoices()}
-                >
-                  Сверить выбранные документы с реестром
-                </button>
-              </div>
+            <div className="ms-connections">
+              {connections.filter((c) => c.provider === activeSource).map(connectionCard)}
+            </div>
+
+            {!loading && !connections.some((item) => item.provider === activeSource) && (
+              <p className="ms-note">Статус источника недоступен. Обновите статусы.</p>
             )}
           </>
         )}
+        {activeSource === 'bank' && (
+          <>
+            <section className="ms-card">
+              <h2>
+                <Upload size={20} /> Выписка из файла
+              </h2>
+              <p>
+                Файл 1CClientBankExchange из банка, до 1,4 МБ. На подтверждение доступны входящие
+                платежи на ваш счёт.
+              </p>
+              <form className="ms-form" onSubmit={filePreview}>
+                <label className="field">
+                  Собственный расчётный счёт
+                  <input
+                    name="own_account"
+                    required
+                    pattern="[0-9]{20}"
+                    inputMode="numeric"
+                    maxLength={20}
+                    placeholder="20 цифр"
+                  />
+                </label>
+                <label className="field">
+                  Название источника
+                  <input
+                    name="source_ref"
+                    required
+                    maxLength={200}
+                    placeholder="Банковская выписка за октябрь"
+                  />
+                </label>
+                <label className="field">
+                  Файл банковской выписки
+                  <input type="file" name="statement" required accept=".txt,text/plain" />
+                </label>
+                <button className="button button-outline" disabled={!!busy}>
+                  <Upload size={16} />
+                  {busy === 'file' ? 'Проверяем…' : 'Проверить выписку'}
+                </button>
+              </form>
+            </section>
+
+            <details className="connections-disclosure">
+              <summary>Прямое подключение Т-Банка</summary>
+              <div className="ms-connections">
+                {connections.filter((c) => c.provider === 'tbank').map(connectionCard)}
+              </div>
+
+              {!loading && !connections.some((item) => item.provider === 'tbank') && (
+                <p className="ms-note">Статус Т-Банка недоступен. Обновите статусы.</p>
+              )}
+            </details>
+            <details
+              className="connections-disclosure"
+              open={developerOpen}
+              onToggle={(event) => setDeveloperOpen(event.currentTarget.open)}
+            >
+              <summary>Для разработчика</summary>
+              {developerOpen && (
+                <section className="ms-card ms-sandbox">
+                  <div className="ms-card-heading">
+                    <h2>Публичная песочница Т-Банка</h2>
+                    <span className="ms-status">Бесплатный тест формата</span>
+                  </div>
+                  <p>
+                    Отдельная проверка формата ответа на тестовых данных провайдера. Она не
+                    подключает расчётный счёт вашей компании. Данные песочницы нельзя подтвердить
+                    как реальные деньги.
+                  </p>
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    disabled={!!busy}
+                    onClick={() => void readSandbox()}
+                  >
+                    Прочитать публичную песочницу
+                  </button>
+                </section>
+              )}
+            </details>
+          </>
+        )}
+        {activeSource === 'registry' && (
+          <section className="ms-card">
+            <h2>
+              <Search size={20} /> Сведения о должнике
+            </h2>
+            <p>Проверка ЕГРЮЛ/ЕГРИП по ИНН через DaData.</p>
+            <div className="connections-manual">
+              <span>Проверить вручную:</span>
+              <a href="https://kad.arbitr.ru/" target="_blank" rel="noopener noreferrer">
+                Картотека арбитражных дел
+              </a>
+              <a href="https://fssp.gov.ru/iss/ip" target="_blank" rel="noopener noreferrer">
+                ФССП
+              </a>
+              <a href="https://bankrot.fedresurs.ru/" target="_blank" rel="noopener noreferrer">
+                ЕФРСБ
+              </a>
+            </div>
+            <form
+              className="ms-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void perform('registry', async () => {
+                  await post('/integrations/registry/check', { inn });
+                  await reload();
+                  onChanged();
+                });
+              }}
+            >
+              <label className="field">
+                Контрагент из реестра
+                <select
+                  value={inn && invoices.some((i) => i.inn === inn) ? inn : ''}
+                  onChange={(e) => setInn(e.target.value)}
+                >
+                  <option value="">Указать ИНН вручную</option>
+                  {[...new Map(invoices.filter((i) => i.inn).map((i) => [i.inn, i])).values()].map(
+                    (i) => (
+                      <option key={i.inn} value={i.inn}>
+                        {i.company} · {i.inn}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+              <label className="field">
+                Точный ИНН
+                <input
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]{10}|[0-9]{12}"
+                  maxLength={12}
+                  value={inn}
+                  onChange={(e) => setInn(e.target.value)}
+                />
+              </label>
+              <button
+                className="button button-outline"
+                disabled={!!busy || !connections.find((c) => c.provider === 'dadata')?.configured}
+              >
+                <Search size={16} />
+                {busy === 'registry' ? 'Проверяем…' : 'Проверить должника'}
+              </button>
+              {connections.find((c) => c.provider === 'dadata')?.configured === false && (
+                <p className="ms-note">
+                  Проверка пока не подключена. Отсутствие проверки не подтверждает отсутствие
+                  рисков.
+                </p>
+              )}
+            </form>
+            <div className="ms-form">
+              <button
+                type="button"
+                className="button button-outline"
+                disabled={
+                  !!busy ||
+                  batchInns.length === 0 ||
+                  !connections.find((connection) => connection.provider === 'dadata')?.configured
+                }
+                onClick={() =>
+                  void perform('registry-batch', async () => {
+                    setBatchResult(null);
+                    const result = await post<{
+                      requested_count: number;
+                      cached_count: number;
+                      checked_count: number;
+                    }>('/integrations/registry/check-batch', { inns: batchInns });
+                    setBatchResult(result);
+                    await reload();
+                    onChanged();
+                  })
+                }
+              >
+                {registryInns.length > 0 && pendingInns.length === 0
+                  ? 'Свежие результаты по всем ИНН'
+                  : `Проверить должников: ${batchInns.length}`}
+              </button>
+              <p className="ms-note">
+                {registryInns.length === 0
+                  ? 'В реестре пока нет ИНН для пакетной проверки.'
+                  : pendingInns.length === 0
+                    ? `Все ${registryInns.length} ИНН проверены за последние 24 часа.`
+                    : `Ожидают проверки: ${pendingInns.length} из ${registryInns.length}. За один раз — до 10 ИНН. Результаты обновляются через 24 часа.`}
+              </p>
+              {batchResult && (
+                <p className="ms-note">
+                  Результаты по {batchResult.requested_count} ИНН: без кеша{' '}
+                  {batchResult.checked_count}, из свежего кеша {batchResult.cached_count}.
+                </p>
+              )}
+            </div>
+            <div className="ms-list">
+              {checks.map((check) => (
+                <article key={check.id} className="ms-list-item">
+                  <div>
+                    <strong>{check.result.name || `ИНН ${check.inn}`}</strong>
+                    <small>
+                      {check.inn} · Запрошено {accessDate(check.checked_at)} МСК
+                    </small>
+                  </div>
+                  <span className={`ms-status ms-status-${check.status}`}>
+                    {statuses[check.status] ?? 'Статус не подтверждён'}
+                  </span>
+                  {check.status === 'completed' && (
+                    <p>
+                      {registration[check.result.state ?? 'UNKNOWN'] ?? 'Статус не подтверждён'}
+                      {check.result.ogrn && ` · ОГРН ${check.result.ogrn}`}
+                    </p>
+                  )}
+                  {check.status === 'stale' && (
+                    <p>Сведения устарели. Перед решением выполните новую проверку.</p>
+                  )}
+                  <small>
+                    {check.result.provider_record_date
+                      ? `Дата последнего изменения записи у провайдера: ${new Date(check.result.provider_record_date).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+                      : 'Дата последнего изменения записи у провайдера не указана.'}
+                  </small>
+                  <ul className="ms-registry-coverage">
+                    <li>
+                      ЕГРЮЛ/ЕГРИП:{' '}
+                      {['completed', 'stale'].includes(check.status)
+                        ? 'снимок провайдера'
+                        : 'совпадение не подтверждено'}
+                    </li>
+                    <li>Банкротство: не проверено</li>
+                    <li>Судебные дела: не проверено</li>
+                    <li>ФССП: не проверено</li>
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+        {activeSource === 'email' && (
+          <section className="ms-card connections-mail">
+            <h2>
+              <Mail size={20} /> Почта
+            </h2>
+            <span className="ms-status">{sourceStatus('email')}</span>
+            <p>
+              {mailConfigured === true
+                ? 'Отправка настроена. Письма и их статусы доступны в работе со счётом.'
+                : mailConfigured === false
+                  ? 'Подключите отправку писем в настройках.'
+                  : 'Не удалось получить состояние отправки. Обновите статусы.'}
+            </p>
+            {onNavigate && (
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() => onNavigate('settings')}
+              >
+                Настроить почту
+              </button>
+            )}
+          </section>
+        )}
+        {itSource !== 'email' && (
+          <details
+            key={activeSource}
+            className="connections-disclosure"
+            open={itOpen}
+            onToggle={(event) => setItOpen(event.currentTarget.open)}
+          >
+            <summary>Для IT-специалиста</summary>
+            {itOpen && <ConnectionAccess selectedSource={itSource} statuses={connections} />}
+          </details>
+        )}
+        {(previewVisible || sourceRuns.length > 0) && (
+          <section className="ms-card ms-preview">
+            <div className="ms-card-heading">
+              <h2>Проверка прочитанных данных</h2>
+              {sourceRuns.length > 0 && (
+                <label className="field">
+                  История чтений
+                  <select
+                    aria-label="Открыть чтение источника"
+                    value={previewVisible && preview && !preview.file ? preview.id : ''}
+                    disabled={!!busy}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (id)
+                        void perform('history', async () =>
+                          stage(await api<Preview>(`/integrations/runs/${id}`))
+                        );
+                    }}
+                  >
+                    <option value="">Выберите источник</option>
+                    {sourceRuns.map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {run.provider ? names[run.provider] : 'Источник'} ·{' '}
+                        {run.checked_at ? dateText(run.checked_at) : ''} ·{' '}
+                        {statuses[run.status ?? ''] ?? 'Ожидает проверки'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+            {!previewVisible || !preview ? (
+              <p>
+                Прочитайте подключённый источник или загрузите выписку. Здесь появятся строки для
+                сверки.
+              </p>
+            ) : (
+              <>
+                <p>
+                  {preview.provider && names[preview.provider]}
+                  {preview.status && ` · ${statuses[preview.status] ?? 'Статус не подтверждён'}`}
+                </p>
+                {sandbox && (
+                  <p className="ms-warning">
+                    Тестовые данные публичной песочницы. Это ответ провайдера для проверки формата,
+                    без реальных счетов и поступлений. Сохранение в реестр и финансовый учёт
+                    недоступно.
+                  </p>
+                )}
+                {!sandbox && preview.coverage?.complete === false && (
+                  <p className="ms-warning">
+                    Источник вернул часть списка. Каждая страница проверяется и подтверждается
+                    отдельно; полнота всего периода пока не подтверждена.
+                  </p>
+                )}
+                {preview.status && !['completed', 'partial'].includes(preview.status) && (
+                  <p className="ms-warning">
+                    {preview.status === 'no_match'
+                      ? 'Источник не вернул записей. Это не подтверждает отсутствие задолженности или рисков.'
+                      : preview.status === 'stale'
+                        ? 'Данные устарели. Прочитайте источник ещё раз перед подтверждением.'
+                        : 'Данные не получены. Проверьте состояние подключения и повторите чтение.'}
+                  </p>
+                )}
+                {preview.provider === 'one_c' && !invoiceSupported && (
+                  <p className="ms-note">
+                    В этом чтении доступны только сведения источника. Для счетов нужны отдельные
+                    документы с номером, датой, сроком, суммой и подтверждённым состоянием расчётов.
+                  </p>
+                )}
+                {preview.coverage?.request_cursor && (
+                  <p className="ms-note">
+                    Это страница продолжения. Предыдущие страницы доступны в истории чтений; их
+                    строки не объединяются и не подтверждаются автоматически.
+                  </p>
+                )}
+                {preview.provider === 'tbank' &&
+                  preview.coverage?.next_cursor &&
+                  preview.coverage.from_on &&
+                  preview.coverage.to_on && (
+                    <button
+                      className="button button-outline"
+                      disabled={!!busy}
+                      onClick={() =>
+                        void read('tbank', preview.coverage!.next_cursor!, {
+                          from_on: preview.coverage!.from_on!,
+                          to_on: preview.coverage!.to_on!,
+                        })
+                      }
+                    >
+                      Следующая страница выписки
+                    </button>
+                  )}
+                {!!preview.errors?.length && (
+                  <ul className="ms-errors">
+                    {preview.errors.map((e, i) => (
+                      <li key={i}>
+                        {e.row ? `Строка ${e.row}: ` : ''}
+                        {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {preview.items.length > 0 && (
+                  <form onSubmit={approve}>
+                    <label className="ms-check">
+                      <input
+                        type="checkbox"
+                        checked={selectable.length > 0 && selected.length === selectable.length}
+                        disabled={!!busy || selectable.length === 0}
+                        onChange={(e) => changeSelection(e.target.checked ? selectable : [])}
+                      />{' '}
+                      Выбрать все доступные строки
+                    </label>
+                    <div className="ms-table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Выбор</th>
+                            <th>Документ / контрагент</th>
+                            <th>Дата</th>
+                            <th>Сумма</th>
+                            <th>Проверка</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {preview.items.map((item) => (
+                            <tr key={item.row}>
+                              <td>
+                                <input
+                                  aria-label={`Подтвердить строку ${item.row}`}
+                                  type="checkbox"
+                                  checked={selected.includes(item.row)}
+                                  disabled={!!busy || !canSelect(item)}
+                                  onChange={(e) =>
+                                    changeSelection(
+                                      e.target.checked
+                                        ? [...selected, item.row]
+                                        : selected.filter((row) => row !== item.row)
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td>
+                                <strong>
+                                  {item.company ||
+                                    item.payer_name ||
+                                    item.title ||
+                                    item.document_type ||
+                                    'Документ'}
+                                </strong>
+                                <small>
+                                  {item.reference || item.number}
+                                  {(item.inn || item.payer_inn) &&
+                                    ` · ИНН ${item.inn || item.payer_inn}`}
+                                </small>
+                                {item.purpose && <small>{item.purpose}</small>}
+                                {item.due_on && <small>Срок оплаты: {dateText(item.due_on)}</small>}
+                                {item.paid_amount != null && (
+                                  <small>Оплачено по источнику: {money(item.paid_amount)}</small>
+                                )}
+                                {item.balance != null && (
+                                  <small>Остаток по источнику: {money(item.balance)}</small>
+                                )}
+                              </td>
+                              <td>
+                                {item.paid_on || item.issued_on || item.operation_date
+                                  ? dateText(item.paid_on || item.issued_on || item.operation_date!)
+                                  : '—'}
+                              </td>
+                              <td>{item.amount == null ? '—' : money(item.amount)}</td>
+                              <td>
+                                {badRows.has(item.row)
+                                  ? 'Нужна сверка'
+                                  : item.direction === 'outgoing'
+                                    ? 'Исходящий платёж'
+                                    : item.direction === 'own_transfer'
+                                      ? 'Собственный перевод'
+                                      : item.approvable === false
+                                        ? 'Недоступно для учёта'
+                                        : 'К проверке'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {sandbox ? null : preview.approval ? (
+                      <p className="ms-success">
+                        <Check size={16} /> Подтверждено: {preview.approval.imported}. Уже учтено:{' '}
+                        {preview.approval.skipped}.
+                      </p>
+                    ) : (
+                      <div className="ms-form ms-approval">
+                        <p className="ms-note">
+                          {preview.file || preview.provider === 'tbank'
+                            ? 'Подтверждение добавит банковские поступления без распределения. Остатки счетов изменятся после распределения в «Финансах».'
+                            : 'Подтверждение сохранит сведения с источником. Оно не создаёт счета, не подписывает и не отправляет документы.'}
+                        </p>
+                        {duplicateDetected && (
+                          <fieldset className="ms-fieldset">
+                            <legend>Возможное повторное поступление</legend>
+                            <p className="ms-note">
+                              Сверьте оригиналы. Подтверждение отдельного поступления допускается
+                              только для одного выбранного документа с другим номером. Одинаковый
+                              номер не разрешает повторный учёт.
+                            </p>
+                            {selected.length !== 1 && (
+                              <p className="ms-warning">
+                                Выберите один документ и выполните подтверждение заново.
+                              </p>
+                            )}
+                            <label className="ms-check">
+                              <input
+                                type="checkbox"
+                                disabled={selected.length !== 1}
+                                checked={distinctConfirmed}
+                                onChange={(event) => setDistinctConfirmed(event.target.checked)}
+                              />
+                              Подтверждаю отдельное поступление с другим номером документа
+                            </label>
+                            <label className="field">
+                              Почему это отдельное поступление
+                              <textarea
+                                required
+                                minLength={10}
+                                maxLength={3000}
+                                value={distinctReason}
+                                onChange={(event) => setDistinctReason(event.target.value)}
+                              />
+                            </label>
+                          </fieldset>
+                        )}
+                        <label className="field">
+                          Основание подтверждения
+                          <textarea
+                            required
+                            maxLength={3000}
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                          />
+                        </label>
+                        <button
+                          className="button button-dark"
+                          disabled={
+                            !!busy ||
+                            !selected.length ||
+                            !reason.trim() ||
+                            (duplicateDetected &&
+                              (!distinctConfirmed ||
+                                distinctReason.trim().length < 10 ||
+                                selected.length !== 1))
+                          }
+                        >
+                          <Check size={16} />
+                          {busy === 'approve'
+                            ? 'Сохраняем…'
+                            : `Подтвердить строки: ${selected.length}`}
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
+                {invoiceSupported && (
+                  <div className="ms-form">
+                    <p className="ms-note">
+                      В источнике есть отдельные документы задолженности. Перед изменением реестра
+                      выполните отдельную сверку выбранных строк. Сохранение сведений выше не
+                      изменяет счета.
+                    </p>
+                    <button
+                      type="button"
+                      className="button button-outline"
+                      disabled={!!busy || !selected.length}
+                      onClick={() => void prepareInvoices()}
+                    >
+                      Сверить выбранные документы с реестром
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
+        {ledgerPreview && previewVisible && activeSource === 'one_c' && (
+          <LedgerImportReview
+            key={ledgerPreview.id}
+            preview={ledgerPreview}
+            busy={!!busy}
+            onApprove={approveInvoices}
+          />
+        )}
       </section>
-      {ledgerPreview && (
-        <LedgerImportReview
-          key={ledgerPreview.id}
-          preview={ledgerPreview}
-          busy={!!busy}
-          onApprove={approveInvoices}
-        />
-      )}
-      <PartnerAccess notify={notify} />
+      <details className="connections-disclosure connections-partner">
+        <summary>Доступ партнёра к сводке</summary>
+        <PartnerAccess notify={notify} />
+      </details>
     </div>
   );
 }

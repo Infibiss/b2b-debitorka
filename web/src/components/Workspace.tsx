@@ -11,16 +11,13 @@ import {
   Download,
   LogOut,
   ArrowRight,
-  Clock3,
   Check,
   ShieldCheck,
   RefreshCw,
   ChevronRight,
   X,
-  FileText,
   Wallet,
   AlertCircle,
-  CircleCheck,
   TrendingUp,
   Bot,
   Scale,
@@ -29,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { Auth } from './Auth';
+import { useInvitationToken } from './useInvitationToken';
 import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
 import { WorkflowOnboarding } from './WorkflowOnboarding';
 import { YandexDesk } from './YandexDesk';
@@ -48,7 +46,6 @@ import {
   setCsrf,
   money,
   dateText,
-  today,
   type Session,
   type Invoice,
   type Overview,
@@ -60,7 +57,6 @@ type Tab =
   | 'workflow'
   | 'management'
   | 'yandex'
-  | 'overview'
   | 'audit'
   | 'connections'
   | 'intelligence'
@@ -77,17 +73,21 @@ const navigation = [
   { id: 'management' as Tab, label: 'Управление', icon: ShieldCheck },
 ];
 const tools = [
-  { id: 'overview' as Tab, label: 'Обзор', icon: LayoutDashboard },
   { id: 'registry' as Tab, label: 'Реестр', icon: Files },
-  { id: 'finance' as Tab, label: 'Финансы', icon: Wallet },
-  { id: 'agent' as Tab, label: 'Агент', icon: Bot },
-  { id: 'legal' as Tab, label: 'Дела', icon: Scale },
-  { id: 'intelligence' as Tab, label: 'Поступления и условия', icon: TrendingUp },
+  { id: 'finance' as Tab, label: 'Поступления и сверка', icon: Wallet },
+  { id: 'agent' as Tab, label: 'Разбор ответов', icon: Bot },
+  { id: 'legal' as Tab, label: 'Юридическая работа', icon: Scale },
+  { id: 'intelligence' as Tab, label: 'Прогноз и условия', icon: TrendingUp },
   { id: 'yandex' as Tab, label: 'Документы и голос', icon: Bot },
-  { id: 'messages' as Tab, label: 'Письма', icon: Mail },
+  { id: 'messages' as Tab, label: 'Переписка', icon: Mail },
   { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
 ];
+function parentSection(tab: Tab): 'workflow' | 'audit' | 'connections' | 'management' {
+  if (tab === 'audit' || tab === 'connections' || tab === 'management') return tab;
+  return tab === 'settings' ? 'management' : 'workflow';
+}
 export function Workspace() {
+  const invitation = useInvitationToken();
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
     [loadError, setLoadError] = useState(''),
@@ -172,11 +172,7 @@ export function Workspace() {
         Открываем рабочее пространство…
       </div>
     );
-  if (
-    !session ||
-    new URLSearchParams(location.hash.slice(1)).has('invite') ||
-    new URLSearchParams(location.search).has('invite')
-  )
+  if (!session || invitation)
     return loadError ? (
       <div className="loading">
         <p>{loadError}</p>
@@ -187,8 +183,6 @@ export function Workspace() {
     ) : (
       <Auth onSession={acceptSession} />
     );
-  const overdue = invoices.filter((i) => i.days_overdue > 0 && i.balance > 0),
-    high = invoices.filter((i) => i.priority === 'high' && i.balance > 0);
   const done = () => {
     setModal(null);
     void refresh();
@@ -222,34 +216,14 @@ export function Workspace() {
               key={id}
               onClick={() => setTab(id)}
               data-tour={id}
-              className={tab === id ? 'active' : ''}
-              aria-current={tab === id ? 'page' : undefined}
+              className={parentSection(tab) === id ? 'active' : ''}
+              aria-current={parentSection(tab) === id ? 'page' : undefined}
             >
               <Icon size={17} />
               <span>{label}</span>
               {tab === id && <i />}
             </button>
           ))}
-          <details
-            className="workspace-tools"
-            open={toolsOpen}
-            onToggle={(e) => setToolsOpen(e.currentTarget.open)}
-          >
-            <summary>Инструменты</summary>
-            {tools.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setTab(id);
-                  if (window.matchMedia('(max-width: 600px)').matches) setToolsOpen(false);
-                }}
-                className={tab === id ? 'active' : ''}
-              >
-                <Icon size={16} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </details>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-help">
@@ -264,7 +238,7 @@ export function Workspace() {
           <button
             className="workflow-help"
             onClick={() => {
-              setTab('workflow');
+              setTab(parentSection(tab));
               setTourReplay((value) => value + 1);
             }}
           >
@@ -313,8 +287,53 @@ export function Workspace() {
           <WorkflowOnboarding
             userId={session.user.id}
             replayToken={tourReplay}
-            onNavigate={(next) => setTab(next as Tab)}
+            section={parentSection(tab)}
+            contextKey={tab}
           />
+          {parentSection(tab) === 'workflow' && (
+            <details
+              className="workspace-section-tools"
+              open={toolsOpen}
+              onToggle={(event) => setToolsOpen(event.currentTarget.open)}
+            >
+              <summary>Операции с дебиторкой</summary>
+              <div>
+                {tools
+                  .filter((tool) => tool.id !== 'settings')
+                  .map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      className={tab === id ? 'active' : ''}
+                      onClick={() => {
+                        setTab(id);
+                        setToolsOpen(false);
+                      }}
+                    >
+                      <Icon size={16} />
+                      {label}
+                    </button>
+                  ))}
+              </div>
+            </details>
+          )}
+          {parentSection(tab) === 'management' && (
+            <div className="workspace-management-links">
+              <button
+                className="wf-text-button"
+                onClick={() => setTab(tab === 'settings' ? 'management' : 'settings')}
+              >
+                {tab === 'settings' ? 'Правила и команда' : 'Реквизиты и почта'}
+                <ArrowUpRight size={14} />
+              </button>
+            </div>
+          )}
+          {tab !== parentSection(tab) && (
+            <button className="workspace-back" onClick={() => setTab(parentSection(tab))}>
+              <ArrowRight size={14} />
+              Вернуться в раздел «{navigation.find((item) => item.id === parentSection(tab))?.label}
+              »
+            </button>
+          )}
           {loadError && (
             <div className="page-error" role="alert">
               <AlertCircle size={16} />
@@ -325,6 +344,7 @@ export function Workspace() {
           {tab === 'workflow' ? (
             <WorkflowDesk
               invoices={invoices}
+              totals={overview || undefined}
               onOpenInvoice={setSelected}
               onNavigate={(next) => setTab(next as Tab)}
               onImport={() => setModal('import')}
@@ -336,192 +356,6 @@ export function Workspace() {
             <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
           ) : tab === 'yandex' ? (
             <YandexDesk invoices={invoices} notify={notify} />
-          ) : tab === 'overview' ? (
-            <>
-              <div className="page-heading">
-                <div>
-                  <span className="page-date">
-                    {new Date().toLocaleDateString('ru-RU', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      timeZone: 'Europe/Moscow',
-                    })}
-                  </span>
-                  <h1>Деньги в движении.</h1>
-                  <p>
-                    {invoices.length > 0
-                      ? 'Ваш портфель, договорённости и следующие шаги.'
-                      : 'Начните с первого счёта — остальное соберётся в понятный процесс.'}
-                  </p>
-                </div>
-                <button className="button button-dark" onClick={() => setModal('create')}>
-                  Добавить счёт
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div className="metric-grid">
-                <Metric
-                  label="ОСТАЛОСЬ К ОПЛАТЕ"
-                  value={overview?.total_outstanding || 0}
-                  note={`${invoices.filter((i) => i.balance > 0).length} открытых счетов`}
-                  icon={<Wallet size={17} />}
-                  featured
-                />
-                <Metric
-                  label="ПРОСРОЧЕНО"
-                  value={overview?.overdue_amount || 0}
-                  note={`${overdue.length} счетов · ${money(Math.round(((overview?.overdue_amount || 0) * (settings?.annual_rate || 0)) / 100 / 365))} в день ожидания`}
-                  icon={<Clock3 size={17} />}
-                />
-                <Metric
-                  label="ОБЕЩАНО К ОПЛАТЕ"
-                  value={overview?.promised_amount || 0}
-                  note="По зафиксированным договорённостям"
-                  icon={<Check size={17} />}
-                />
-                <Metric
-                  label="ПОСТУПИЛО"
-                  value={overview?.collected_amount || 0}
-                  note="По зарегистрированным платежам"
-                  icon={<TrendingUp size={17} />}
-                />
-              </div>
-              {invoices.length === 0 ? (
-                <div className="onboarding-card">
-                  <div>
-                    <span className="onboarding-kicker">ПЕРВЫЙ ШАГ — САМЫЙ ПРОСТОЙ</span>
-                    <h2>
-                      Ваша дебиторка.
-                      <br />В одном пространстве.
-                    </h2>
-                    <p>
-                      Загрузите реестр из учётной системы
-                      <br />
-                      или добавьте первый счёт вручную.
-                    </p>
-                    <div>
-                      <button className="button button-dark" onClick={() => setModal('import')}>
-                        Загрузить реестр
-                        <Upload size={16} />
-                      </button>
-                      <button className="text-link" onClick={downloadTemplate}>
-                        Шаблон CSV
-                        <Download size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="onboarding-visual" aria-hidden="true">
-                    <div className="mini-document">
-                      <FileText size={27} />
-                      <i />
-                      <i />
-                      <i />
-                      <span>
-                        <Check size={14} />
-                        Всё на своих местах
-                      </span>
-                    </div>
-                    <span className="visual-orbit" />
-                  </div>
-                </div>
-              ) : (
-                <div className="overview-panels">
-                  <section className="panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>Внимание сегодня</h2>
-                        <p>Счета, с которых стоит начать</p>
-                      </div>
-                      <span className="count-badge">{high.length}</span>
-                    </div>
-                    {high.length > 0 ? (
-                      <div className="attention-list">
-                        {high.slice(0, 5).map((inv) => (
-                          <button key={inv.id} onClick={() => setSelected(inv.id)}>
-                            <div className="company-avatar">
-                              {inv.company.replace(/ООО\s*[«"]?/, '').slice(0, 1)}
-                            </div>
-                            <span>
-                              <strong>{inv.company}</strong>
-                              <small>
-                                {inv.promise_date && inv.promise_date < today()
-                                  ? 'Нарушено обещание'
-                                  : `Просрочка ${inv.days_overdue} дн.`}
-                              </small>
-                            </span>
-                            <b>{money(inv.balance)}</b>
-                            <ArrowUpRight size={15} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="attention-clear">
-                        <CircleCheck size={30} />
-                        <h3>Срочных задач нет</h3>
-                        <p>Продолжайте работу со счетами в реестре.</p>
-                      </div>
-                    )}
-                    <button className="panel-footer-link" onClick={() => setTab('registry')}>
-                      Открыть весь реестр
-                      <ArrowRight size={15} />
-                    </button>
-                  </section>
-                  <section className="panel aging-panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>Сроки задолженности</h2>
-                        <p>Где сейчас находятся ваши деньги</p>
-                      </div>
-                      <span className="pill gray">По остаткам</span>
-                    </div>
-                    <div className="aging-bars">
-                      {overview?.aging.map((a, i) => (
-                        <div className="aging-row" key={a.label}>
-                          <span>{a.label}</span>
-                          <div>
-                            <i
-                              style={{
-                                width: `${Math.max(a.amount > 0 ? 2 : 0, overview.total_outstanding ? (a.amount / overview.total_outstanding) * 100 : 0)}%`,
-                                background: ['#a8b99a', '#8aa576', '#64874f', '#d5c992', '#c99b7c'][
-                                  i % 5
-                                ],
-                              }}
-                            />
-                          </div>
-                          <strong>{money(a.amount, true)}</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="aging-note">
-                      <i />
-                      Чем раньше контакт, тем больше пространства для договорённости.
-                    </div>
-                  </section>
-                </div>
-              )}
-              <section className="recent-section">
-                <div className="panel-heading">
-                  <div>
-                    <h2>Последние счета</h2>
-                    <p>Весь контекст — в карточке счёта</p>
-                  </div>
-                  <button className="text-link" onClick={() => setTab('registry')}>
-                    Все счета
-                    <ArrowUpRight size={15} />
-                  </button>
-                </div>
-                {invoices.length > 0 ? (
-                  <InvoiceTable invoices={invoices.slice(0, 5)} onOpen={setSelected} />
-                ) : (
-                  <div className="recent-empty">
-                    <Files size={20} />
-                    <p>Здесь будут ваши счета и их текущий статус.</p>
-                    <span>Добавьте первый, чтобы начать работу.</span>
-                  </div>
-                )}
-              </section>
-            </>
           ) : tab === 'audit' ? (
             <PortfolioDesk
               invoices={invoices}
@@ -531,7 +365,14 @@ export function Workspace() {
               onNavigate={setTab}
             />
           ) : tab === 'connections' ? (
-            <ConnectionsDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
+            <div data-tour="connections-content">
+              <ConnectionsDesk
+                invoices={invoices}
+                onChanged={() => void refresh()}
+                notify={notify}
+                onNavigate={(next) => setTab(next)}
+              />
+            </div>
           ) : tab === 'intelligence' ? (
             <IntelligenceDesk
               invoices={invoices}
@@ -607,30 +448,6 @@ export function Workspace() {
           </button>
         </div>
       )}
-    </div>
-  );
-}
-function Metric({
-  label,
-  value,
-  note,
-  icon,
-  featured = false,
-}: {
-  label: string;
-  value: number;
-  note: string;
-  icon: React.ReactNode;
-  featured?: boolean;
-}) {
-  return (
-    <div className={`metric ${featured ? 'metric-featured' : ''}`}>
-      <div>
-        <span>{label}</span>
-        {icon}
-      </div>
-      <strong>{money(value, true)}</strong>
-      <p>{note}</p>
     </div>
   );
 }

@@ -140,21 +140,14 @@ export function Landing() {
         <section className="hero">
           <div className="hero-shade" />
           <div className="hero-content">
-            <div className="eyebrow hero-eyebrow">
-              <span className="status-dot" /> АГЕНТ ДЛЯ РАБОТЫ С ДЕБИТОРКОЙ
-            </div>
             <h1>
-              Просроченные счета —<br />
-              <span>в понятный план</span>
-              <br />
-              возврата.
+              Просроченные счета.<span>Понятный план возврата.</span>
             </h1>
             <div className="hero-bottom">
               <div>
                 <p>
-                  Mandato собирает долги по контрагентам и договорам,
-                  <br className="desktop-break" /> напоминает по вашим правилам и выводит на вас
-                  <br className="desktop-break" /> только то, что требует решения.
+                  Mandato собирает долги по контрагентам и договорам, напоминает по вашим правилам и
+                  выводит на вас только то, что требует решения.
                 </p>
                 <a href="/app" className="button button-lime">
                   Разобрать свой реестр <ArrowUpRight size={20} />
@@ -169,26 +162,23 @@ export function Landing() {
             </div>
           </div>
           <aside className="hero-workspace" aria-label="Как устроен рабочий день в Mandato">
-            <div className="workspace-top">
-              <span className="status-dot" /> РАБОЧИЙ ДЕНЬ В MANDATO <span>↗</span>
-            </div>
-            <div className="workspace-title">
-              Вы — за решениями.
+            <div className="hero-workspace-title">
+              Вы решаете исключения.
               <br />
-              <span>Mandato — за рутиной.</span>
+              <span>Mandato ведёт напоминания.</span>
             </div>
-            <div className="workspace-item">
-              <span className="workspace-icon">
+            <div className="hero-workspace-item">
+              <span className="hero-workspace-icon">
                 <Settings2 size={17} />
               </span>
               <div>
                 <strong>В работе у Mandato</strong>
                 <p>Напоминания, сроки, ожидание ответа</p>
               </div>
-              <span className="workspace-badge">По правилам</span>
+              <span className="hero-workspace-badge">По правилам</span>
             </div>
-            <div className="workspace-item">
-              <span className="workspace-icon">
+            <div className="hero-workspace-item">
+              <span className="hero-workspace-icon">
                 <FileText size={17} />
               </span>
               <div>
@@ -197,8 +187,8 @@ export function Landing() {
               </div>
               <ArrowUpRight size={16} />
             </div>
-            <div className="workspace-item">
-              <span className="workspace-icon">
+            <div className="hero-workspace-item">
+              <span className="hero-workspace-icon">
                 <ShieldCheck size={17} />
               </span>
               <div>
@@ -207,14 +197,11 @@ export function Landing() {
               </div>
               <ArrowUpRight size={16} />
             </div>
-            <div className="workspace-footer">
-              <Check size={14} /> Правила утверждаете вы. История сохраняется.
+            <div className="hero-workspace-footer">
+              <Check size={16} />
+              <span>Правила утверждаете вы. История сохраняется.</span>
             </div>
           </aside>
-          <div className="hero-index">
-            <span>ОТ ПЕРВОГО НАПОМИНАНИЯ ДО ПОДТВЕРЖДЁННОЙ ОПЛАТЫ</span>
-            <span>ВАШИ КЛИЕНТЫ · ВАШИ ПРАВИЛА</span>
-          </div>
         </section>
         <div className="trust-line">
           <span>Для бухгалтерии и финансового руководителя</span>
@@ -227,19 +214,8 @@ export function Landing() {
           </div>
         </div>
         <section className="intro section-pad reveal" id="value">
-          <div className="section-kicker">
-            <span>01 / ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</span>
-            <span>МЕНЬШЕ РУТИНЫ. БОЛЬШЕ ЯСНОСТИ.</span>
-          </div>
           <div className="intro-grid">
-            <h2>
-              Каждый долг —<br />
-              <span className="muted">
-                с контекстом.
-                <br />
-                Каждый шаг —<br />с основанием.
-              </span>
-            </h2>
+            <h2>Счета, документы и переписка — в одном деле.</h2>
             <div className="intro-copy">
               <p className="large-copy">
                 Чтобы получить оплату, мало знать сумму. Нужно видеть договор, документы, переписку
@@ -257,12 +233,7 @@ export function Landing() {
           </div>
           <div className="benefit-row">
             <div>
-              <span className="benefit-num">01 / КАРТИНА ЦЕЛИКОМ</span>
-              <h3>
-                Один договор.
-                <br />
-                Вся история.
-              </h3>
+              <h3>История по договору</h3>
               <p>
                 Несколько счетов, частичные оплаты,
                 <br />
@@ -270,12 +241,7 @@ export function Landing() {
               </p>
             </div>
             <div>
-              <span className="benefit-num">02 / ЕЖЕДНЕВНАЯ РАБОТА</span>
-              <h3>
-                Правила заданы.
-                <br />
-                Процесс идёт.
-              </h3>
+              <h3>Напоминания автоматически</h3>
               <p>
                 Тон, расписание и интервалы контакта
                 <br />
@@ -283,12 +249,7 @@ export function Landing() {
               </p>
             </div>
             <div>
-              <span className="benefit-num">03 / ВНИМАНИЕ ПО ДЕЛУ</span>
-              <h3>
-                Исключение?
-                <br />
-                Вам на решение.
-              </h3>
+              <h3>Спорные вопросы — вам</h3>
               <p>
                 Спор, расхождение или новые условия
                 <br />
@@ -298,10 +259,6 @@ export function Landing() {
           </div>
         </section>
         <section className="workflow section-pad" id="how" ref={workflow}>
-          <div className="section-kicker">
-            <span>02 / ОДНО ДЕЛО. ВЕСЬ ПУТЬ.</span>
-            <span>АВТОМАТИЧЕСКИ — В УТВЕРЖДЁННЫХ ГРАНИЦАХ</span>
-          </div>
           <div className="workflow-heading">
             <h2>
               От реестра
@@ -484,7 +441,6 @@ export function Landing() {
         </section>
         <section className="connections section-pad reveal">
           <div>
-            <div className="section-kicker">ДАННЫЕ РЯДОМ С РАБОТОЙ</div>
             <h2>
               Начните с выгрузки.
               <br />
@@ -518,7 +474,6 @@ export function Landing() {
         </section>
         <section className="calculator section-pad reveal">
           <div className="calc-copy">
-            <div className="section-kicker">03 / ЦЕНА ОЖИДАНИЯ</div>
             <h2>
               Пока деньги ждут,
               <br />
@@ -580,15 +535,7 @@ export function Landing() {
           </div>
         </section>
         <section className="control section-pad reveal">
-          <div className="section-kicker">
-            <span>ВАШИ КЛИЕНТЫ. ВАШИ ПРАВИЛА.</span>
-            <ShieldCheck size={20} />
-          </div>
-          <h2>
-            Технологии берут рутину.
-            <br />
-            <span>Решения остаются у вас.</span>
-          </h2>
+          <h2>Задайте правила работы с клиентами</h2>
           <div className="control-bottom">
             <p>
               Руководитель утверждает политику и включает автоматизацию. Перед контактом Mandato
@@ -608,15 +555,8 @@ export function Landing() {
           </div>
         </section>
         <section className="pricing section-pad reveal" id="pricing">
-          <div className="section-kicker">
-            <span>04 / НАЧНЁМ С ВАШЕЙ ЗАДАЧИ</span>
-          </div>
           <div className="pricing-head">
-            <h2>
-              Порядок в дебиторке.
-              <br />
-              Понятная стоимость.
-            </h2>
+            <h2>Стоимость Mandato</h2>
             <p>
               Выберите формат, который подходит
               <br />
@@ -686,8 +626,7 @@ export function Landing() {
         </section>
         <section className="faq section-pad reveal">
           <div>
-            <div className="section-kicker">ЕСТЬ ВОПРОСЫ?</div>
-            <h2>Разберёмся.</h2>
+            <h2>Вопросы и ответы</h2>
           </div>
           <div className="faq-list">
             {faqs.map(([q, a], i) => (
@@ -706,14 +645,7 @@ export function Landing() {
           </div>
         </section>
         <section className="final-cta">
-          <span className="section-kicker">
-            <i className="status-dot" /> ВАШ СЛЕДУЮЩИЙ ШАГ
-          </span>
-          <h2>
-            У вашей дебиторки
-            <br />
-            <span>будет следующий шаг.</span>
-          </h2>
+          <h2>Начните со своего реестра</h2>
           <a href="/app" className="button button-lime">
             Разобрать свой реестр <MoveUpRight size={20} />
           </a>
