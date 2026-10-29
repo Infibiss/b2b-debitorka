@@ -1,3 +1,5 @@
+import { useFormDraft } from './useFormDraft';
+import { navigate, useRouteField } from '../navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   ArrowRight,
@@ -117,10 +119,11 @@ export function PortfolioDesk({
     [loading, setLoading] = useState(true);
   const [query, setQuery] = useState(''),
     [severity, setSeverity] = useState(''),
-    [selected, setSelected] = useState<string | null>(null),
+    [selected, setSelected] = useRouteField<string | null>('auditInvoice', null),
     [documents, setDocuments] = useState<Evidence[]>([]),
     [intake, setIntake] = useState<'registry' | 'accounting' | null>(null),
     [historical, setHistorical] = useState(false);
+  const evidenceDraft = useFormDraft(selected ? `audit-document:${selected}` : '', report?.id);
   const reload = useCallback(async () => {
     try {
       const [latest, saved] = await Promise.all([
@@ -156,6 +159,14 @@ export function PortfolioDesk({
     };
   }, [selected, report?.id]);
   async function run() {
+    const file = evidenceDraft.ref.current?.querySelector<HTMLInputElement>('input[type=file]');
+    if (
+      file?.files?.length &&
+      !window.confirm(
+        'Файл ещё не отправлен. После обновления аудита его нужно выбрать заново. Обновить аудит?'
+      )
+    )
+      return;
     setBusy(true);
     setError('');
     try {
@@ -215,6 +226,7 @@ export function PortfolioDesk({
         filename: file?.name || '',
         content_base64: content,
       });
+      evidenceDraft.clear();
       form.reset();
       await run();
       onChanged();
@@ -536,7 +548,12 @@ export function PortfolioDesk({
                   Обновить проверку ИНН
                 </button>
                 {item.next_action.code === 'lawyer_review' && (
-                  <button className="button button-dark" onClick={() => onNavigate('legal')}>
+                  <button
+                    className="button button-dark"
+                    onClick={() =>
+                      navigate({ section: 'legal', context: item.invoice_id, case: null })
+                    }
+                  >
                     Перейти к делу
                     <ArrowRight size={14} />
                   </button>
@@ -616,7 +633,16 @@ export function PortfolioDesk({
                       </div>
                     </div>
                   ))}
-                  <form className="ops-form" onSubmit={(e) => void addEvidence(e)}>
+                  <form
+                    ref={evidenceDraft.ref}
+                    className="ops-form"
+                    onSubmit={(e) => void addEvidence(e)}
+                  >
+                    {evidenceDraft.status && (
+                      <p className="draft-status" role="status">
+                        {evidenceDraft.status}
+                      </p>
+                    )}
                     <fieldset disabled={busy}>
                       <label className="field">
                         Вид документа

@@ -57,7 +57,7 @@ def facts(**changes):
           "debtor":{"kind":"organization","name":"ООО Покупатель","inn":"7701234567","ogrn":"1027700000001","address":"Москва, улица Покупателя, 1","email":"debtor@example.ru","phone":"+7 495 000 00 00","bank_details":"Реквизиты в договоре № П-1"},
           "contract_number":"П-1","contract_date":"2026-07-01","obligation_description":"Оплата поставленного оборудования","performance_description":"Товар передан по УПД № 10 от 01.08.2026, принят без замечаний","due_basis":"Пункт 3.1 договора, отсрочка до 01.09.2026","legal_basis":"Статьи 309, 310, 516 ГК РФ и договор № П-1",
           "court_name":"Арбитражный суд города Москвы","court_address":"Москва, Большая Тульская, 17","jurisdiction_basis":"Место нахождения ответчика, статья 35 АПК РФ","undisputed":True,"business_debt_confirmed":True,"special_regimes_checked":True,
-          "pretrial_days":30,"pretrial_basis":"Часть 5 статьи 4 АПК РФ","fee_agreement_reference":"Договор сопровождения № А-1","fee_start_on":"2026-08-01","pretrial_fee_percent":"6","judicial_fee_percent":"15"}
+          "pretrial_days":30,"pretrial_basis":"Часть 5 статьи 4 АПК РФ","fee_agreement_reference":"Договор сопровождения № А-1","fee_start_on":"2026-08-01","fee_model_version":"mandato-2026-10-26","lawyer_agreement_reference":"Отдельное соглашение с адвокатом № 1"}
     data.update(changes)
     return data
 
@@ -233,6 +233,8 @@ def test_fee_uses_only_net_bank_allocations_and_handles_stage_date_ambiguity_con
     from datetime import date
     inv,item=case(client)
     evidence(client,item["id"],"contract","Договор № П-1","2026-07-01");evidence(client,item["id"])
+    proof=evidence(client,item['id'],'claim_dispatch','Претензия направлена','2026-10-22')
+    assert client.post(f"/api/legal/cases/{item['id']}/milestones",json={'stage':'claim_sent','occurred_on':'2026-10-22','reference':'Почтовая квитанция','notes':'Подтверждено направление претензии','evidence_ids':[proof['id']]}).status_code==201
     bank_allocate(client,inv['id'],'B-PRE',1000000,'2026-10-23')
     doc=document(client,item['id'],'court_order','none');assert review(client,doc['id']).status_code==200
     proofs=[evidence(client,item['id'],kind,kind,'2026-10-24')['id'] for kind in ('duty_payment','application_copy_sent','filing_receipt')]
@@ -240,16 +242,20 @@ def test_fee_uses_only_net_bank_allocations_and_handles_stage_date_ambiguity_con
     assert filing.status_code==201,filing.text
     bank_allocate(client,inv['id'],'B-SAME-DAY',2000000,'2026-10-24')
     fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert fee['confirmed_recovery_amount']==3000000 and fee['fee_amount']==180000
-    assert fee['line_items'][-1]['stage']=='pretrial'  # No intraday ordering is known.
+    assert fee['confirmed_recovery_amount']==3000000 and fee['fee_amount']==760000
+    assert fee['pretrial_fee_amount']==60000 and fee['judicial_package_amount']==700000
+    assert fee['ambiguous_recovery_amount']==2000000 and fee['lawyer_fee_amount']==0
+    assert fee['line_items'][-1]['stage']=='ambiguous'
     finance=importlib.import_module('server.finance');monkeypatch.setattr(finance,'business_today',lambda:date(2026,10,25))
     legal=importlib.import_module('server.legal');monkeypatch.setattr(legal,'business_today',lambda:date(2026,10,25))
     later=bank_allocate(client,inv['id'],'B-JUDICIAL',1000000,'2026-10-25')
-    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['fee_amount']==330000
+    later_fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
+    assert later_fee['fee_amount']==760000 and later_fee['lawyer_fee_amount']==120000
     reversed_payment=client.post(f"/api/finance/payments/{later['id']}/reverse",json={'amount':500000,'reason':'Возвращена часть подтверждённого поступления','idempotency_key':'refund-1','kind':'refund'})
     assert reversed_payment.status_code==200,reversed_payment.text
     after=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert after['confirmed_recovery_amount']==3500000 and after['fee_amount']==255000
+    assert after['confirmed_recovery_amount']==3500000 and after['fee_amount']==760000
+    assert after['lawyer_fee_amount']==60000
 
 
 def test_case_cannot_change_the_debtor_identity_or_duplicate_fee_scope(client):
@@ -303,3 +309,83 @@ def freeze_document_clock(monkeypatch):
             instant = cls(2026, 10, 24, 9, tzinfo=timezone.utc)
             return instant.astimezone(tz) if tz else instant.replace(tzinfo=None)
     monkeypatch.setattr(importlib.import_module('server.main'), 'datetime', DocumentClock)
+
+
+def file_package(c, case_id, doc):
+    proofs=[evidence(c,case_id,kind,kind,'2026-10-24')['id'] for kind in ('duty_payment','application_copy_sent','filing_receipt')]
+    result=c.post(f'/api/legal/cases/{case_id}/milestones',json={
+        'stage':'filed','occurred_on':'2026-10-24','reference':'Квитанция '+doc['id'],
+        'notes':'Подтверждена ручная подача пакета','document_id':doc['id'],'evidence_ids':proofs})
+    assert result.status_code==201,result.text
+
+
+def test_package_fixed_prices_require_filing_and_do_not_duplicate_versions_or_receipts(client,monkeypatch):
+    freeze_document_clock(monkeypatch)
+    inv,item=case(client)
+    evidence(client,item['id'],'contract','Договор','2026-07-01');evidence(client,item['id'])
+    sent=evidence(client,item['id'],'claim_dispatch','Претензия до суда','2026-09-02')
+    assert client.post(f"/api/legal/cases/{item['id']}/milestones",json={
+        'stage':'claim_sent','occurred_on':'2026-09-02','reference':'Квитанция претензии',
+        'notes':'Претензия подтверждена оператором','evidence_ids':[sent['id']]}).status_code==201
+    order=document(client,item['id'],'court_order','none')
+    assert review(client,order['id']).status_code==200
+    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['fee_amount']==0
+    file_package(client,item['id'],order)
+    file_package(client,item['id'],order)
+    revised=document(client,item['id'],'court_order','none')
+    assert review(client,revised['id']).status_code==200
+    file_package(client,item['id'],revised)
+    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['fee_amount']==700000
+    lawsuit=document(client,item['id'],'statement_of_claim','none')
+    assert review(client,lawsuit['id']).status_code==200
+    file_package(client,item['id'],lawsuit)
+    fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
+    assert fee['fee_amount']==fee['judicial_package_amount']==1900000
+    assert fee['pretrial_fee_amount']==fee['lawyer_fee_amount']==0
+    assert len(fee['package_items'])==2
+    assert client.get('/api/invoices/'+inv['id']).json()['invoice']['balance']==inv['balance']
+
+
+def test_legacy_agreement_requires_explicit_confirmation_and_preserves_finances_and_docx(client):
+    inv,item=case(client)
+    evidence(client,item['id'],'contract','Договор','2026-07-01');evidence(client,item['id'])
+    doc=document(client,item['id'])
+    original=client.get(doc['download_url']).content
+    legacy=facts();legacy.pop('fee_model_version');legacy.pop('lawyer_agreement_reference')
+    legacy.update(pretrial_fee_percent='6',judicial_fee_percent='15')
+    raw=json.dumps(legacy,ensure_ascii=False)
+    main=importlib.import_module('server.main')
+    with main.database(client.app.state.config,write=True) as c:
+        c.execute('UPDATE legal_cases SET facts_json=? WHERE id=?',(raw,item['id']))
+    fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
+    assert fee['requires_fee_model_confirmation'] is True
+    assert fee['fee_amount']==fee['lawyer_fee_amount']==0
+    with main.database(client.app.state.config) as c:
+        assert c.execute('SELECT facts_json FROM legal_cases WHERE id=?',(item['id'],)).fetchone()['facts_json']==raw
+    unspecified=facts();unspecified.pop('fee_model_version')
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':unspecified}).status_code==409
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts()}).status_code==200
+    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['requires_fee_model_confirmation'] is False
+    assert client.get(doc['download_url']).content==original
+    assert client.get('/api/invoices/'+inv['id']).json()['invoice']['balance']==inv['balance']
+
+
+def test_fee_terms_cannot_be_changed_by_accountant_or_overridden_with_old_percentages(client):
+    inv,item=case(client)
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts(judicial_fee_percent='15')}).status_code==422
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts(fee_model_version='old')}).status_code==422
+    invite=client.post('/api/workflow/invitations',json={'email':'fee-accountant@example.ru'}).json()
+    assert client.post('/api/workflow/invitations/accept',json={'token':invite['token'],'name':'Бухгалтер','password':'Accountant-fees-2026!'}).status_code==201
+    assert client.post('/api/auth/logout').status_code==200
+    session=client.post('/api/auth/login',json={'email':'fee-accountant@example.ru','password':'Accountant-fees-2026!'}).json()
+    client.headers['X-CSRF-Token']=session['csrf_token']
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts(lawyer_agreement_reference='Подменённый договор')}).status_code==403
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts(performance_description='Уточнены сведения об исполнении')}).status_code==200
+    # Even an old JSON carrying the new version string cannot bypass manager
+    # confirmation by deleting its legacy editable percentage fields.
+    main=importlib.import_module('server.main')
+    with main.database(client.app.state.config,write=True) as c:
+        c.execute('UPDATE legal_cases SET facts_json=? WHERE id=?',(json.dumps(facts(judicial_fee_percent='15')),item['id']))
+    assert client.patch(f"/api/legal/cases/{item['id']}",json={'facts':facts()}).status_code==403
+    another=invoice(client,number='OTHER-FEE')
+    assert client.post('/api/legal/cases',json={'invoice_id':another['id'],'facts':facts()}).status_code==403

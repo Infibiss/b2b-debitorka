@@ -199,5 +199,8 @@ def test_cli_writes_candidate_bundle_with_honest_nonpromotion_and_no_pii(tmp_pat
         assert {path.name for path in bundle.iterdir()}=={'candidate.json','manifest.json','report.json'}
         artifact=json.loads((bundle/'candidate.json').read_text())
         p.load_artifact(bundle/'candidate.json',tenant_id='fixture-tenant',expected_model_version=artifact['model_version'])
-        outside=subprocess.run([*command[:4],'--output-dir',str(tmp_path)],capture_output=True,text=True,check=False)
-        assert outside.returncode==1 and 'under repository var/' in outside.stdout
+        # tmp_path may itself be under var/ when pytest uses --basetemp there.
+        # This owned directory is always outside var/, regardless of the runner.
+        with tempfile.TemporaryDirectory(prefix='.model-outside-var-',dir=root) as forbidden:
+            outside=subprocess.run([*command[:4],'--output-dir',forbidden],capture_output=True,text=True,check=False)
+            assert outside.returncode==1 and 'under repository var/' in outside.stdout

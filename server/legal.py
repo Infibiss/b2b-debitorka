@@ -386,6 +386,8 @@ def create_router(ctx):
     """Keep main import-free; all auth/database operations use the shared context."""
     from . import finance
     from .legal_documents import build_docx
+    from .legal_fees import FEE_FIELDS, calculate_fees, current_model
+    from .workflow import require_manager
     router=APIRouter(prefix="/api/legal",tags=["legal"])
 
     def case_row(connection,tenant,case_id):
@@ -453,35 +455,19 @@ def create_router(ctx):
         facts=json.loads(row["facts_json"])
         recovery=finance.confirmed_recovery(connection,row["tenant_id"],row["invoice_id"])
         inv=finance.financial_snapshot(connection,row["tenant_id"],row["invoice_id"])["invoice"]
-        filing=[item for item in milestones(connection,row["tenant_id"],row["id"]) if item["stage"]=="filed"]
-        filed_on=filing[0]["occurred_on"] if filing else None
-        start=facts["fee_start_on"]
-        configured=bool(start and facts["fee_agreement_reference"])
-        items=[];exact=Decimal(0);recovered=0;before=0
-        for allocation in recovery:
-            amount=allocation["amount"]
-            if amount<=0:continue
-            if not configured or allocation["paid_on"]<start:
-                before+=amount;continue
-            # Bank source and manual filing currently have calendar dates only.
-            # A same-day payment must not silently receive the higher fee when
-            # intraday order is unknown; expose the ambiguity for contract review.
-            stage="judicial" if filed_on and allocation["paid_on"]>filed_on else "pretrial"
-            rate=_percent(facts["judicial_fee_percent"] if stage=="judicial" else facts["pretrial_fee_percent"])
-            part=Decimal(amount)*rate/100;exact+=part;recovered+=amount
-            items.append({"payment_id":allocation["payment_id"],"bank_payment_id":allocation["bank_payment_id"],"amount":amount,
-                          "paid_on":allocation["paid_on"],"stage":stage,"rate_percent":str(rate),"fee_amount":_kopeks(part),
-                          "date_ordering_ambiguous":bool(filed_on and allocation["paid_on"]==filed_on)})
-        total=_kopeks(exact)
-        return {"confirmed_recovery_amount":recovered,"fee_amount":total,"line_items":items,"agreement_reference":facts["fee_agreement_reference"],
-                "configured":configured,"excluded_before_start_amount":before,"excluded_manual_amount":max(0,inv["paid_amount"]-sum(item["amount"] for item in recovery)),
-                "rounding_difference":total-sum(item["fee_amount"] for item in items),"requires_contract_verification":True}
+        steps=milestones(connection,row['tenant_id'],row['id'])
+        filing=[dict(item) for item in connection.execute('''SELECT m.*,d.kind FROM legal_milestones m
+            JOIN legal_documents d ON d.id=m.document_id AND d.tenant_id=m.tenant_id AND d.case_id=m.case_id
+            WHERE m.tenant_id=? AND m.case_id=? AND m.stage='filed' ''',(row['tenant_id'],row['id']))]
+        return calculate_fees(facts,recovery,filing,[item for item in steps if item['stage']=='claim_sent'],inv['paid_amount'])
 
     def case_view(connection,row,detail=False):
         steps=milestones(connection,row["tenant_id"],row["id"])
         item={**{key:row[key] for key in ("id","invoice_id","facts_revision","created_at","updated_at")},"facts":json.loads(row["facts_json"]),
               "stage":steps[-1]["stage"] if steps else "intake","invoice":finance.financial_snapshot(connection,row["tenant_id"],row["invoice_id"])["invoice"],
               "pretrial":pretrial(connection,row)}
+        contract=connection.execute("SELECT k.number FROM workflow_invoice_contracts m JOIN workflow_contracts k ON k.id=m.contract_id AND k.tenant_id=m.tenant_id WHERE m.invoice_id=? AND m.tenant_id=?",(row['invoice_id'],row['tenant_id'])).fetchone()
+        item['suggested_contract_number']=contract['number'] if contract else ''
         if detail:
             docs=[doc_view(connection,doc) for doc in connection.execute("SELECT * FROM legal_documents WHERE tenant_id=? AND case_id=? ORDER BY version DESC",(row["tenant_id"],row["id"]))]
             item.update(evidence=[{k:v for k,v in value.items() if k!="tenant_id"} for value in evidence_rows(connection,row["tenant_id"],row["id"])],
@@ -511,7 +497,13 @@ def create_router(ctx):
     @router.post("/cases",status_code=201)
     def create_case(data:models.CaseCreate,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config,write=True) as connection:
+            if data.facts.fee_agreement_reference or data.facts.fee_start_on or data.facts.lawyer_agreement_reference:
+                require_manager(connection,user)
             finance.financial_snapshot(connection,user["tenant_id"],data.invoice_id)
+            # Workflow contract is a factual prefill, never a legal confirmation.
+            contract=connection.execute("SELECT k.number FROM workflow_invoice_contracts m JOIN workflow_contracts k ON k.id=m.contract_id AND k.tenant_id=m.tenant_id WHERE m.invoice_id=? AND m.tenant_id=?",(data.invoice_id,user["tenant_id"])).fetchone()
+            if contract and not data.facts.contract_number:
+                data.facts.contract_number=contract["number"]
             key=ctx.identifier();stamp=ctx.now()
             inserted=connection.execute("INSERT INTO legal_cases(id,tenant_id,invoice_id,facts_json,facts_revision,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,invoice_id) DO NOTHING",(key,user["tenant_id"],data.invoice_id,_json(data.facts.model_dump(mode="json")),1,user["id"],stamp,stamp))
             if inserted.rowcount!=1:ctx.problem(409,"По этому счёту уже открыто юридическое дело. Продолжите его, чтобы не дублировать требования и гонорар")
@@ -526,6 +518,11 @@ def create_router(ctx):
     def update_case(case_id:str,data:models.CaseUpdate,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config,write=True) as connection:
             row=case_row(connection,user["tenant_id"],case_id);value=_json(data.facts.model_dump(mode="json"))
+            previous=json.loads(row['facts_json'])
+            if not current_model(previous) and 'fee_model_version' not in data.facts.model_fields_set:
+                ctx.problem(409,'Руководитель должен явно подтвердить новую модель вознаграждения')
+            if not current_model(previous) or any(previous.get(key)!=data.facts.model_dump(mode='json').get(key) for key in FEE_FIELDS):
+                require_manager(connection,user)
             if value!=row["facts_json"]:
                 connection.execute("UPDATE legal_cases SET facts_json=?,facts_revision=facts_revision+1,updated_at=? WHERE id=? AND tenant_id=?",(value,ctx.now(),case_id,user["tenant_id"]))
                 ctx.event(connection,user["tenant_id"],row["invoice_id"],"legal_facts_updated","Обновлены юридические факты","Ранее подготовленные версии требуют повторной подготовки")

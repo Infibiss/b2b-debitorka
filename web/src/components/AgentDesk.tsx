@@ -1,3 +1,4 @@
+import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Check, CircleHelp, Inbox, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { api, post, dateText, money } from '../api';
@@ -100,6 +101,14 @@ const reasons: Record<string, string> = {
 };
 
 export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
+  const { invoiceId } = useWorkContext();
+  const [proposalRoute] = useRouteField<string>('agentProposal', '');
+  const [provider, setProvider] = useState<{ enabled: boolean; reason: string } | null>(null);
+  useEffect(() => {
+    void api<{ enabled: boolean; reason: string }>('/agent/status')
+      .then(setProvider)
+      .catch(() => setProvider({ enabled: false, reason: 'provider_unavailable' }));
+  }, []);
   const [items, setItems] = useState<Proposal[]>([]),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -118,6 +127,20 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
   useEffect(() => {
     void reload();
   }, [reload]);
+  useEffect(() => {
+    let alive = true;
+    if (proposalRoute)
+      void api<Proposal>(`/agent/proposals/${encodeURIComponent(proposalRoute)}`)
+        .then((p) => {
+          if (alive) setSelected(p);
+        })
+        .catch((e) => {
+          if (alive) setError((e as Error).message);
+        });
+    return () => {
+      alive = false;
+    };
+  }, [proposalRoute]);
   async function review(decision: 'approve' | 'reject') {
     if (!selected) return;
     setBusy(true);
@@ -163,6 +186,40 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
           </p>
         </div>
       </div>
+      <div className="ops-context" role="status">
+        <strong>
+          {!provider
+            ? 'Проверяем обработку сообщений…'
+            : provider.enabled
+              ? 'Обработка сообщений подключена'
+              : 'Автоматическая обработка недоступна'}
+        </strong>
+        <p>
+          {provider && !provider.enabled
+            ? reasons[provider.reason]
+            : 'Перед подтверждением проверьте извлечённые факты по исходному ответу.'}
+        </p>
+        <div className="wf-actions">
+          <button
+            className="button button-outline"
+            onClick={() => navigate({ section: 'intelligence' })}
+          >
+            Зарегистрировать условия вручную
+          </button>
+          <button
+            className="button button-outline"
+            onClick={() => navigate({ section: 'finance', financeTab: 'ledger' })}
+          >
+            Сверить оплату по счёту
+          </button>
+          <button
+            className="button button-outline"
+            onClick={() => navigate({ section: 'messages' })}
+          >
+            Вся история общения
+          </button>
+        </div>
+      </div>
       <DeskError>{error}</DeskError>
       <section className="ops-card">
         <div className="ops-card-heading">
@@ -180,46 +237,49 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
         </div>
         {items.length ? (
           <div className="ops-proposal-list">
-            {items.map((p) => {
-              const invoice = invoices.find((i) => i.id === p.invoice_id);
-              return (
-                <button
-                  className="ops-proposal-row"
-                  key={p.id}
-                  onClick={() => {
-                    setSelected(p);
-                    setRevision(false);
-                    setError('');
-                  }}
-                >
-                  <div className="ops-proposal-icon">
-                    {p.status === 'executed' ? (
-                      <Check size={20} />
-                    ) : p.status === 'review_required' ? (
-                      <Inbox size={20} />
-                    ) : (
-                      <CircleHelp size={20} />
-                    )}
-                  </div>
-                  <div>
-                    <strong>{intentText[p.intent]}</strong>
-                    <span>
-                      {invoice?.company} · {invoice?.number} · {dateText(p.created_at)}
-                    </span>
-                    <p>
-                      {p.source_text.slice(0, 160)}
-                      {p.source_text.length > 160 ? '…' : ''}
-                    </p>
-                  </div>
-                  <span
-                    className={`pill ${p.status === 'executed' ? 'status-paid' : p.status === 'review_required' ? 'status-promised' : 'status-paused'}`}
+            {items
+              .filter((p) => !invoiceId || p.invoice_id === invoiceId)
+              .map((p) => {
+                const invoice = invoices.find((i) => i.id === p.invoice_id);
+                return (
+                  <button
+                    className="ops-proposal-row"
+                    key={p.id}
+                    onClick={() => {
+                      navigate({ agentProposal: p.id });
+                      setSelected(p);
+                      setRevision(false);
+                      setError('');
+                    }}
                   >
-                    {statusText[p.status]}
-                  </span>
-                  <ArrowRight size={17} />
-                </button>
-              );
-            })}
+                    <div className="ops-proposal-icon">
+                      {p.status === 'executed' ? (
+                        <Check size={20} />
+                      ) : p.status === 'review_required' ? (
+                        <Inbox size={20} />
+                      ) : (
+                        <CircleHelp size={20} />
+                      )}
+                    </div>
+                    <div>
+                      <strong>{intentText[p.intent]}</strong>
+                      <span>
+                        {invoice?.company} · {invoice?.number} · {dateText(p.created_at)}
+                      </span>
+                      <p>
+                        {p.source_text.slice(0, 160)}
+                        {p.source_text.length > 160 ? '…' : ''}
+                      </p>
+                    </div>
+                    <span
+                      className={`pill ${p.status === 'executed' ? 'status-paid' : p.status === 'review_required' ? 'status-promised' : 'status-paused'}`}
+                    >
+                      {statusText[p.status]}
+                    </span>
+                    <ArrowRight size={17} />
+                  </button>
+                );
+              })}
           </div>
         ) : (
           <EmptyCard title="Ответов пока нет">
@@ -243,6 +303,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
         <Dialog
           title={intentText[selected.intent]}
           onClose={() => {
+            navigate({ agentProposal: null });
             setSelected(null);
             setRevision(false);
           }}
@@ -258,6 +319,16 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               {invoices.find((i) => i.id === selected.invoice_id)?.number}
             </span>
           </div>
+          {selected.intent === 'payment_claim' && (
+            <button
+              className="button button-outline"
+              onClick={() =>
+                navigate({ section: 'finance', financeTab: 'ledger', context: selected.invoice_id })
+              }
+            >
+              Сверить оплату этого счёта
+            </button>
+          )}
           <h3>Ответ покупателя</h3>
           <p className="ops-muted">
             Получено:{' '}
@@ -323,6 +394,28 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               </p>
             </div>
           )}
+          <div className="wf-actions">
+            <button
+              className="button button-outline"
+              onClick={() =>
+                navigate({
+                  section: 'intelligence',
+                  context: selected.invoice_id,
+                  sourceAgent: selected.id,
+                })
+              }
+            >
+              Разобрать условия вручную
+            </button>
+            <button
+              className="button button-outline"
+              onClick={() =>
+                navigate({ section: 'finance', financeTab: 'ledger', context: selected.invoice_id })
+              }
+            >
+              Открыть сверку счёта
+            </button>
+          </div>
           <DeskError>{error}</DeskError>
           {selected.status === 'review_required' && (
             <div className="dialog-actions">
@@ -358,6 +451,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
                 <MessageRevision
                   proposal={selected}
                   onDone={(p) => {
+                    navigate({ agentProposal: p.id });
                     setSelected(p);
                     setRevision(false);
                     void reload();
@@ -381,6 +475,7 @@ function MessageForm({
   onClose: () => void;
   onDone: (p: Proposal) => void;
 }) {
+  const { invoiceId } = useWorkContext();
   const [key] = useState(() => crypto.randomUUID());
   const [initialReceivedAt] = useState(() => {
     const now = new Date();
@@ -389,6 +484,7 @@ function MessageForm({
   return (
     <Dialog title="Ответ покупателя" onClose={onClose} wide>
       <OperationForm
+        draftKey={`incoming:${invoiceId || 'new'}`}
         label="Разобрать сообщение"
         onDone={() => undefined}
         submit={async (data) => {
@@ -438,9 +534,11 @@ function MessageRevision({
   proposal: Proposal;
   onDone: (p: Proposal) => void;
 }) {
+  const { invoiceId } = useWorkContext();
   const [key] = useState(() => crypto.randomUUID());
   return (
     <OperationForm
+      draftKey={`incoming-revision:${invoiceId}:${proposal.id}`}
       label="Проверить новую редакцию"
       onDone={() => undefined}
       submit={async (data) => {

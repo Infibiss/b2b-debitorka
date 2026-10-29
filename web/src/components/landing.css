@@ -1461,6 +1461,27 @@
 }
 .pricing-note {
   font-size: 10px;
+  max-width: 78ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.8;
+}
+.pricing-lawyer {
+  margin-top: 28px;
+  border-top: 1px solid #d6deca;
+  padding-top: 24px;
+}
+.pricing-lawyer h3 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+.pricing-lawyer p {
+  max-width: 78ch;
+  margin-top: 12px;
+  color: #52634c;
+  font-size: 13px;
+  line-height: 1.8;
 }
 .trust-line {
   font-size: 11px;

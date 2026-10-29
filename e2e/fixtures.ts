@@ -30,10 +30,15 @@ export async function navigate(page: import('@playwright/test').Page, name: stri
     await page.getByRole('menuitem', { name: 'Настройки', exact: true }).click();
     return;
   }
+  const menu = page.getByRole('button', { name: /^Операции ·/ });
+  if ((await menu.isVisible()) && (await menu.getAttribute('aria-expanded')) === 'false')
+    await menu.click();
   if (name === 'Агент' || name === 'Разбор ответов') {
     await page.getByRole('button', { name: 'Переписка', exact: true }).click();
     await page.getByRole('button', { name: 'Разобрать ответ', exact: true }).click();
     return;
   }
   await page.getByRole('button', { name: labels[name] || name, exact: true }).click();
+  if (name === 'Документы и голос')
+    await page.getByRole('button', { name: 'Распознавание', exact: true }).click();
 }

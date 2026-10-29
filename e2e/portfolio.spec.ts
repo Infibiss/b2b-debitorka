@@ -37,9 +37,17 @@ test('portfolio audit ties documents, deadlines and payment to immutable reports
   await expect(row).toContainText('Проверить должника');
   await row.click();
   await expect(page.getByRole('heading', { name: 'Нет договора', exact: true })).toBeVisible();
-  await expect(page.getByText('Регистрация должника: нужна актуальная проверка', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Судебные дела, исполнительные производства и полный реестр банкротств/)).toBeVisible();
-  await page.screenshot({ path: info.outputPath('portfolio.png'), fullPage: true, animations: 'disabled' });
+  await expect(
+    page.getByText('Регистрация должника: нужна актуальная проверка', { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Судебные дела, исполнительные производства и полный реестр банкротств/)
+  ).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath('portfolio.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
   await page.getByRole('combobox', { name: 'Вид документа', exact: true }).selectOption('contract');
   await page
     .getByLabel('Номер, название или ссылка на архив', { exact: true })
@@ -139,7 +147,7 @@ test('OSV-only portfolio remains visible and does not invent an invoice', async 
   expect(overflow).toBe(false);
 });
 
-test('unsaved document upload stays with its invoice and resets after a new report', async ({
+test('unsaved document stays scoped to its invoice and survives report refresh with a file warning', async ({
   page,
 }, info) => {
   const registered = await page.request.post('/api/auth/register', {
@@ -182,12 +190,22 @@ test('unsaved document upload stays with its invoice and resets after a new repo
     (element as HTMLInputElement).files = transfer.files;
     element.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  page.once('dialog', (dialog) => dialog.dismiss());
   await page.locator('.portfolio-row').filter({ hasText: 'FILE-B' }).click();
   expect(
     await page
       .getByLabel('Файл документа')
       .evaluate((element) => (element as HTMLInputElement).files?.length)
-  ).toBe(0);
+  ).toBe(1);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('.portfolio-row').filter({ hasText: 'FILE-B' }).click();
+  await expect
+    .poll(() =>
+      page
+        .getByLabel('Файл документа')
+        .evaluate((element) => (element as HTMLInputElement).files?.length)
+    )
+    .toBe(0);
   await page
     .getByLabel('Номер, название или ссылка на архив', { exact: true })
     .fill('Реквизиты договора только для FILE-B');
@@ -212,13 +230,16 @@ test('unsaved document upload stays with its invoice and resets after a new repo
   await page
     .getByLabel('Номер, название или ссылка на архив', { exact: true })
     .fill('Не сохранено в прежнем отчёте');
+  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Обновить аудит', exact: true }).click();
   await expect(page.getByLabel('Номер, название или ссылка на архив', { exact: true })).toHaveValue(
-    ''
+    'Не сохранено в прежнем отчёте'
   );
-  expect(
-    await page
-      .getByLabel('Файл документа')
-      .evaluate((element) => (element as HTMLInputElement).files?.length)
-  ).toBe(0);
+  await expect
+    .poll(() =>
+      page
+        .getByLabel('Файл документа')
+        .evaluate((element) => (element as HTMLInputElement).files?.length)
+    )
+    .toBe(0);
 });

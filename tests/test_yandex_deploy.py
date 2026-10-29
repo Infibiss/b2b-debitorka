@@ -7,8 +7,26 @@ import sys
 
 import pytest
 import yaml
+from scripts.private_files import is_private
 
 ROOT=Path(__file__).resolve().parents[1]
+
+
+def bash(*arguments):
+    if os.name=='nt':
+        # Native MSYS/Git Bash accepts Windows paths. WSL's bash.exe does not
+        # share the host path or Python runtime and must not be chosen by PATH.
+        candidates=[os.getenv('TEST_BASH',''),
+                    str(Path(os.getenv('ProgramFiles','C:/Program Files'))/'Git/bin/bash.exe'),
+                    'C:/msys64/usr/bin/bash.exe']
+        executable=next((value for value in candidates if value and Path(value).is_file()),None)
+        if not executable:
+            raise RuntimeError('Install native Git Bash/MSYS2 or set TEST_BASH')
+    else:
+        executable=os.getenv('TEST_BASH') or shutil.which('bash')
+        if not executable:
+            raise RuntimeError('Install bash or set TEST_BASH')
+    return [executable,*[str(value).replace('\\','/') if isinstance(value,Path) else value for value in arguments]]
 
 
 def prepare(path,ip='203.0.113.10'):
@@ -25,7 +43,7 @@ def test_production_env_is_private_stable_and_has_no_default_password(tmp_path):
     password=next(line.split('=',1)[1] for line in content.splitlines() if line.startswith('APP_DB_PASSWORD='))
     assert len(password)>=40 and password not in first.stdout+first.stderr
     assert 'LANGFUSE_PUBLIC_KEY=\n' in content and 'LANGFUSE_SECRET_KEY=\n' in content
-    assert path.stat().st_mode&0o777==0o600
+    assert is_private(path)
     assert prepare(path).returncode==0 and path.read_text()==content
     assert prepare(path,ip='203.0.113.11').returncode!=0 and path.read_text()==content
 
@@ -33,9 +51,10 @@ def test_production_env_is_private_stable_and_has_no_default_password(tmp_path):
 def test_invalid_ip_and_unpinned_ssh_fail_before_any_remote_action(tmp_path):
     path=tmp_path/'bad.env'
     assert prepare(path,ip='not-an-ip').returncode!=0 and not path.exists()
-    result=subprocess.run(['bash',str(ROOT/'scripts/deploy_yandex_vm.sh'),'--host','203.0.113.10','--revision','a'*40,'--identity-file',str(tmp_path/'missing-key'),'--known-hosts',str(tmp_path/'missing-hosts')],capture_output=True,text=True)
+    result=subprocess.run(bash('-s','--','--host','203.0.113.10','--revision','a'*40,'--identity-file',tmp_path/'missing-key','--known-hosts',tmp_path/'missing-hosts'),
+                          input=(ROOT/'scripts/deploy_yandex_vm.sh').read_text(encoding='utf-8').encode('utf-8'),capture_output=True)
     assert result.returncode!=0
-    assert 'Traceback' not in result.stderr
+    assert b'SSH identity and verified known_hosts files are required.' in result.stderr
 
 
 def test_compose_exposes_only_proxy_and_requires_real_app_database_secret(tmp_path):
@@ -66,7 +85,9 @@ def test_cloud_init_requires_operator_public_key_and_configures_renewal_timer():
 
 def test_shell_recipe_is_parseable_and_never_uses_unverified_ssh():
     for script in ('scripts/deploy_yandex_vm.sh','infra/yandex/backup.sh','infra/yandex/renew-cert.sh'):
-        result=subprocess.run(['bash','-n',str(ROOT/script)],capture_output=True,text=True)
+        # Feed UTF-8/LF source through stdin so a Windows CRLF checkout does not
+        # change the Linux shell program being syntax-checked.
+        result=subprocess.run(bash('-n'),input=(ROOT/script).read_text(encoding='utf-8').encode('utf-8'),capture_output=True)
         assert result.returncode==0,result.stderr
     text=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
     assert '-o StrictHostKeyChecking=yes' in text and 'hashlib.file_digest' in text
@@ -103,21 +124,39 @@ def test_cd_allows_only_successful_exact_ci_push_to_main(tmp_path):
     assert triggers['workflow_run']['types']==['completed']
     gate=spec['jobs']['deploy']['steps'][0]['run']
     tools=tmp_path/'tools';tools.mkdir()
-    stub=tools/'gh';stub.write_text('#!'+sys.executable+'\nimport os,sys\nfrom pathlib import Path\nprint("101" if sys.argv[2].endswith("/ci.yml") else Path(os.environ["GH_FIXTURE"]).read_text())\n');stub.chmod(0o755)
+    stub=tools/'gh.py'
+    stub.write_text('import os,sys\nfrom pathlib import Path\nprint("101" if sys.argv[2].endswith("/ci.yml") else Path(os.environ["GH_FIXTURE"]).read_text())\n',encoding='utf-8')
     commit='a'*40;repo='example/agentpay'
     valid={'id':12,'workflow_id':101,'head_sha':commit,'head_branch':'main','event':'push','status':'completed','conclusion':'success','head_repository':{'full_name':repo}}
-    env={**os.environ,'PATH':str(tools)+os.pathsep+os.environ['PATH'],'RELEASE_SHA':commit,'GITHUB_REPOSITORY':repo,'RUNNER_TEMP':str(tmp_path),'SOURCE_RUN_ID':'','SOURCE_WORKFLOW_ID':''}
-    fixture=tmp_path/'runs.json';env['GH_FIXTURE']=str(fixture)
+    env={**os.environ,'RELEASE_SHA':commit,'GITHUB_REPOSITORY':repo,'RUNNER_TEMP':tmp_path.as_posix(),'SOURCE_RUN_ID':'','SOURCE_WORKFLOW_ID':'',
+         'TEST_PYTHON':Path(sys.executable).as_posix(),'TEST_GH_STUB':stub.as_posix()}
+    # Exercise the exact production gate, using local functions for its two
+    # executables instead of a POSIX shebang pointing at Windows python.exe.
+    gate='python3() { "$TEST_PYTHON" "$@"; }\ngh() { "$TEST_PYTHON" "$TEST_GH_STUB" "$@"; }\n'+gate
+    fixture=tmp_path/'runs.json';env['GH_FIXTURE']=fixture.as_posix()
     for changes,allowed in [({},True),({'event':'pull_request'},False),({'head_branch':'feature'},False),({'head_repository':{'full_name':'fork/agentpay'}},False),({'head_sha':'b'*40},False),({'workflow_id':102},False),({'conclusion':'failure'},False)]:
         fixture.write_text(json.dumps({'workflow_runs':[{**valid,**changes}]}))
-        result=subprocess.run(['bash','-c',gate],env=env,capture_output=True,text=True)
+        result=subprocess.run(bash('-c',gate),env=env,capture_output=True,text=True)
         assert (result.returncode==0)==allowed,result.stdout+result.stderr
     fixture.write_text(json.dumps({'workflow_runs':[valid]}));env['SOURCE_RUN_ID']='13';env['SOURCE_WORKFLOW_ID']='101'
-    assert subprocess.run(['bash','-c',gate],env=env,capture_output=True).returncode!=0
+    assert subprocess.run(bash('-c',gate),env=env,capture_output=True).returncode!=0
     env['SOURCE_RUN_ID']='12';env['SOURCE_WORKFLOW_ID']='102'
-    assert subprocess.run(['bash','-c',gate],env=env,capture_output=True).returncode!=0
+    assert subprocess.run(bash('-c',gate),env=env,capture_output=True).returncode!=0
     env['SOURCE_WORKFLOW_ID']='101'
-    assert subprocess.run(['bash','-c',gate],env=env,capture_output=True).returncode==0
+    assert subprocess.run(bash('-c',gate),env=env,capture_output=True).returncode==0
+
+
+def test_prepare_refuses_existing_non_private_config_without_rewriting_it(tmp_path):
+    path=tmp_path/'production.env'
+    assert prepare(path).returncode==0
+    original=path.read_bytes()
+    if os.name=='nt':
+        assert subprocess.run(['icacls',str(path),'/grant','*S-1-1-0:R'],capture_output=True).returncode==0
+    else:
+        path.chmod(0o644)
+    assert not is_private(path)
+    assert prepare(path).returncode!=0
+    assert path.read_bytes()==original
 
 
 def test_ci_has_no_render_hook_and_small_vm_swap_is_private():

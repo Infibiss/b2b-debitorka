@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, navigate } from './fixtures';
 import type { Page } from '@playwright/test';
 async function account(page: Page, suffix: string) {
   const r = await page.request.post('/api/auth/register', {
@@ -11,6 +11,7 @@ async function account(page: Page, suffix: string) {
   });
   expect(r.status()).toBe(201);
   await page.goto('/app');
+  return r.json();
 }
 test('landing has controlled headline, clear copy and aligned rule note', async ({
   page,
@@ -48,6 +49,7 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   await account(page, info.project.name);
   await page.getByRole('button', { name: 'Позже', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const coach = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await expect(coach).toBeVisible();
   await expect(page.locator('.modal-backdrop')).toHaveCount(0);
@@ -65,6 +67,7 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await expect(coach).toHaveCount(0);
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const audit = page.getByRole('complementary', { name: 'Обучение: Аудит', exact: true });
   await expect(audit).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Аудит дебиторки.', exact: true })).toBeVisible();
@@ -77,6 +80,7 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   for (const section of ['Подключения', 'Управление']) {
     await page.getByRole('button', { name: section, exact: true }).click();
     await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+    await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
     await expect(
       page.getByRole('complementary', { name: `Обучение: ${section}`, exact: true })
     ).toBeVisible();
@@ -108,11 +112,14 @@ test('audit selects reserve room for chevrons and preserve native selection and 
     animations: 'disabled',
   });
 });
-test('work includes financial summary without a duplicate overview destination', async ({
+test('empty work starts without zero totals or a duplicate overview destination', async ({
   page,
 }, info) => {
   await account(page, `overview-${info.project.name}`);
-  await expect(page.getByRole('region', { name: 'Суммы по портфелю', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Суммы по портфелю', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { name: 'Начните с вашего реестра', exact: true })
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Обзор', exact: true })).toHaveCount(0);
 });
 
@@ -132,7 +139,20 @@ test('large portfolio totals fit a narrow workspace', async ({ page }, info) => 
       },
     });
   });
-  await account(page, `large-${info.project.name}`);
+  const session = await account(page, `large-${info.project.name}`);
+  const added = await page.request.post('/api/invoices', {
+    headers: { 'X-CSRF-Token': session.csrf_token },
+    data: {
+      company: 'Крупный покупатель',
+      number: 'LARGE-1',
+      issued_on: '2026-08-01',
+      due_on: '2026-09-01',
+      amount: 9876543210123,
+    },
+  });
+  expect(added.status()).toBe(201);
+  await page.reload();
+  await page.getByText('Сводка портфеля и источники оплат', { exact: true }).click();
   const sums = page.getByRole('region', { name: 'Суммы по портфелю' });
   await expect(sums).toContainText('млрд');
   expect(
@@ -149,9 +169,10 @@ test('learning starts on its own section and independent sections retain their p
 }, info) => {
   await account(page, `context-${info.project.name}`);
   await page.getByRole('button', { name: 'Позже', exact: true }).click();
-  await page.getByRole('button', { name: 'Оплаты и сверка', exact: true }).click();
+  await navigate(page, 'Оплаты и сверка');
   await expect(page.getByRole('button', { name: 'Начать обучение', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const work = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await expect(work).toBeVisible();
   await expect(
@@ -161,6 +182,7 @@ test('learning starts on its own section and independent sections retain their p
   await work.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await expect(
     page
       .getByRole('complementary', { name: 'Обучение: Аудит' })
@@ -168,6 +190,7 @@ test('learning starts on its own section and independent sections retain their p
   ).toBeVisible();
   await page.getByRole('button', { name: 'Работа', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
+  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await expect(work.getByRole('heading', { name: 'Загрузите реестр' })).toBeVisible();
 });
 

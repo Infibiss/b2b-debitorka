@@ -3,6 +3,8 @@ import { AlertCircle, ArrowRight, LoaderCircle } from 'lucide-react';
 import type { Invoice } from '../api';
 import { money } from '../api';
 import './operations.css';
+import { useWorkContext } from '../navigation';
+import { useFormDraft } from './useFormDraft';
 
 export type DeskProps = {
   invoices: Invoice[];
@@ -35,22 +37,34 @@ export function OperationForm({
   submit,
   onDone,
   label = 'Сохранить',
+  draftKey = '',
+  revision,
+  resetOnSave = false,
+  allowIncomplete = false,
   children,
 }: {
   submit: (data: FormData) => Promise<unknown>;
   onDone: () => void;
   label?: string;
+  draftKey?: string;
+  revision?: string;
+  resetOnSave?: boolean;
+  allowIncomplete?: boolean;
   children: ReactNode;
 }) {
+  const draft = useFormDraft(draftKey, revision);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const values = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const values = new FormData(form);
     setError('');
     setBusy(true);
     try {
       await submit(values);
+      draft.clear();
+      if (resetOnSave) form.reset();
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -59,7 +73,17 @@ export function OperationForm({
     }
   }
   return (
-    <form className="form-grid ops-form" onSubmit={save}>
+    <form
+      ref={draft.ref}
+      className="form-grid ops-form"
+      onSubmit={save}
+      noValidate={allowIncomplete}
+    >
+      {draft.status && (
+        <p className="draft-status full-width" role="status">
+          {draft.status}
+        </p>
+      )}
       {children}
       {error && (
         <p role="alert" className="form-error full-width">
@@ -68,6 +92,16 @@ export function OperationForm({
         </p>
       )}
       <div className="dialog-actions full-width">
+        {draft.status && (
+          <button
+            className="button button-ghost"
+            type="button"
+            disabled={busy}
+            onClick={draft.discard}
+          >
+            Отменить изменения
+          </button>
+        )}
         <button className="button button-dark" disabled={busy} type="submit">
           {busy ? (
             <>
@@ -96,6 +130,7 @@ export function InvoiceSelect({
   value?: string;
   onChange?: (value: string) => void;
 }) {
+  const { invoiceId } = useWorkContext();
   return (
     <label className="field full-width">
       Счёт
@@ -103,7 +138,13 @@ export function InvoiceSelect({
         required
         name={name}
         value={value}
-        defaultValue={value === undefined ? '' : undefined}
+        defaultValue={
+          value === undefined
+            ? invoices.some((i) => i.id === invoiceId)
+              ? invoiceId
+              : ''
+            : undefined
+        }
         onChange={(e) => onChange?.(e.target.value)}
       >
         <option value="" disabled>

@@ -13,6 +13,11 @@ import sys
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
 
+try:
+    from .private_files import create_private
+except ImportError:
+    from private_files import create_private
+
 
 def client_command(tool, url, *, docker=False):
     values = conninfo_to_dict(url)
@@ -44,10 +49,10 @@ def run_private(command, env, **kwargs):
 def backup(url, output, *, docker=False):
     output = Path(output).expanduser().absolute()
     output.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    command, env = client_command('pg_dump', url, docker=docker)
-    descriptor = os.open(output, os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0o600)
+    descriptor = create_private(output)
     try:
         with os.fdopen(descriptor,'wb') as handle:
+            command, env = client_command('pg_dump', url, docker=docker)
             run_private(command+['--format=custom','--no-owner','--no-acl'], env, stdout=handle)
             handle.flush(); os.fsync(handle.fileno())
         command, env = client_command('pg_restore', url, docker=docker)

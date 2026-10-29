@@ -3539,3 +3539,446 @@
     max-width: 160px;
   }
 }
+
+/* Compact navigation keeps the work queue visible on phones. */
+.workspace-command-header .mobile-operations-toggle {
+  display: none;
+}
+.work-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  margin-bottom: 18px;
+  background: #edf2e5;
+  border-radius: 10px;
+}
+.work-context-bar label {
+  flex: 1 1 240px;
+  font-size: 12px;
+  min-width: 0;
+}
+.work-context-bar select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 5px;
+  padding: 9px;
+  background: white;
+  border: 1px solid #cbd5bf;
+  border-radius: 6px;
+}
+.draft-status {
+  padding: 12px 14px;
+  background: #fff6dd;
+  border-radius: 8px;
+  color: #654b14;
+  font-size: 13px;
+}
+.support-contact {
+  margin: 18px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.support-contact summary {
+  cursor: pointer;
+}
+.legal-facts-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block: 12px;
+}
+.legal-facts-nav a {
+  color: #35552d;
+  text-decoration: underline;
+}
+.mail-setup {
+  margin-bottom: 24px;
+}
+@media (max-width: 700px) {
+  .workspace-command-header .mobile-operations-toggle {
+    display: inline-flex;
+    min-height: 42px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .workspace-command-header .workspace-operations {
+    display: none;
+  }
+  .workspace-command-header .workspace-operations.is-open {
+    display: grid;
+    grid-column: 1 / -1;
+  }
+  .workspace-command-header {
+    grid-template-columns: 1fr auto;
+    min-height: 58px;
+    padding: 8px 16px;
+    gap: 8px;
+  }
+  .workspace-command-header > div:first-child {
+    display: none;
+  }
+  .workspace-command-header .workspace-header-actions {
+    gap: 6px;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .workspace-header-actions .server-status {
+    display: none;
+  }
+  .workspace-header-actions .section-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+  }
+  .workspace-header-actions .section-help::before {
+    content: '?';
+    font-size: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar-brand {
+    padding: 12px 16px;
+  }
+  .sidebar-bottom {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    gap: 4px;
+  }
+  .sidebar-bottom .workflow-help {
+    display: block;
+    padding: 6px 4px;
+    font-size: 10px;
+  }
+  .workspace-nav {
+    padding: 0 10px 6px;
+    gap: 3px;
+  }
+  .workspace-nav button {
+    padding: 9px 3px;
+    min-height: 42px;
+    font-size: 10px;
+  }
+  .workspace-nav button > svg {
+    display: none;
+  }
+  .workspace-main {
+    padding: 16px 16px 0;
+  }
+  .page-heading {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .page-heading p {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .page-heading h1 {
+    font-size: 25px;
+  }
+  .wf-portfolio-sums {
+    padding: 10px 0;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+  .wf-portfolio-sums span {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+  .wf-portfolio-sums strong {
+    font-size: 17px;
+  }
+  .wf-metrics {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .wf-metric {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    min-height: 80px;
+  }
+  .wf-metric-top {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .wf-metric-top svg,
+  .wf-metric small,
+  .wf-route {
+    display: none;
+  }
+  .wf-metric strong {
+    font-size: 20px;
+    margin-top: 5px;
+  }
+  .wf-toolbar {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .wf-learn-prompt {
+    padding: 10px;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .wf-learn-prompt > strong {
+    flex-basis: 100%;
+    font-size: 12px;
+  }
+  .legal-facts-nav {
+    gap: 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-menu {
+    left: auto;
+    right: 0;
+    min-width: 190px;
+    max-width: calc(100vw - 24px);
+  }
+}
+@media (max-width: 380px) {
+  .sidebar-brand {
+    padding-inline: 10px 8px;
+  }
+  .sidebar-brand .brand {
+    font-size: 20px;
+    gap: 6px;
+  }
+  .sidebar-brand .brand svg {
+    width: 24px;
+    height: 24px;
+  }
+  .profile-root.user-block {
+    max-width: 120px;
+    min-width: 0;
+    padding-right: 8px;
+  }
+  .sidebar-bottom {
+    gap: 0;
+    min-width: 0;
+  }
+  .sidebar-bottom .workflow-help {
+    font-size: 9px;
+    padding-inline: 3px;
+  }
+}
+
+/* Audit follow-up: readable secondary text and compact task-first layout. */
+.context-help-steps {
+  padding-left: 24px;
+  line-height: 1.7;
+}
+.context-help-steps li {
+  margin-bottom: 12px;
+}
+.wf-desk {
+  --wf-muted: #52634c;
+}
+.wf-summary {
+  border: 1px solid #cbd4c6;
+  padding: 12px 16px;
+  margin: 12px 0;
+  border-radius: 12px;
+  background: #fff;
+}
+.wf-summary summary,
+.legal-readiness summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.wf-source-note {
+  color: #46573f;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+.wf-heading p,
+.wf-eyebrow,
+.wf-actions .button,
+.wf-desk .button,
+.wf-table small,
+.wf-table-next,
+.wf-metric small,
+.wf-metric-top,
+.wf-empty-note {
+  font-size: 13px;
+}
+.wf-eyebrow {
+  color: #52634c;
+}
+.wf-metric {
+  padding: 12px 16px;
+}
+.wf-metric strong {
+  font-size: 26px;
+}
+.wf-route {
+  display: none;
+}
+.wf-start-steps {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+  max-width: 500px;
+  margin: 20px auto;
+  font-size: 14px;
+}
+.portfolio-metrics article {
+  padding: 16px;
+  gap: 8px;
+}
+.portfolio-metrics span,
+.portfolio-metrics small {
+  font-size: 13px;
+  opacity: 1;
+}
+.portfolio-desk .ops-eyebrow,
+.portfolio-desk .page-date {
+  font-size: 13px;
+  color: #52634c;
+}
+.ops-muted,
+.ms-note,
+.portfolio-caption {
+  color: #52634c;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.legal-step {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.legal-step[hidden],
+.yx-card[hidden] {
+  display: none;
+}
+.legal-step > p {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: #52634c;
+}
+.legal-facts-nav button {
+  padding: 10px 14px;
+  border: 1px solid #b7c4b0;
+  border-radius: 8px;
+  background: white;
+  color: #314b2b;
+  cursor: pointer;
+}
+.legal-facts-nav button[aria-pressed='true'] {
+  background: #314b2b;
+  color: white;
+}
+.legal-readiness {
+  padding: 14px;
+  background: #f0f4ec;
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+.yx-mode-ocr .yx-columns,
+.yx-mode-voice .yx-columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+.conversation-timeline {
+  padding-left: 24px;
+}
+.conversation-timeline li {
+  padding: 12px 0 18px 12px;
+  border-left: 2px solid #c4d2b9;
+}
+.conversation-timeline time {
+  font-size: 13px;
+  color: #52634c;
+}
+.conversation-timeline p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.case-conversation .wf-actions {
+  margin: 16px 0;
+}
+.workspace :focus-visible {
+  outline: 3px solid #426b2c;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .legal-step {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wf-heading {
+    margin-bottom: 14px;
+  }
+  .wf-heading h1 {
+    font-size: 23px;
+  }
+  .wf-metric {
+    padding: 10px;
+  }
+  .wf-metrics {
+    margin: 12px 0;
+  }
+  .wf-summary {
+    padding: 10px;
+  }
+  .wf-source-note {
+    font-size: 13px;
+  }
+  .wf-table-row {
+    gap: 8px;
+  }
+}
+
+.wf-table-open {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 6px 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: inherit;
+}
+
+.wf-desk .wf-heading > .wf-actions .button {
+  font-size: 12px;
+}
+.wf-desk .wf-table-row > span {
+  font-size: 14px;
+}
+.wf-desk .wf-table-row strong,
+.wf-desk .wf-table-next {
+  font-size: 14px;
+}
+.wf-desk .wf-stage {
+  font-size: 12px;
+}
+.wf-desk .wf-empty > p,
+.wf-desk .wf-toolstrip,
+.wf-desk .wf-toolstrip > button {
+  font-size: 13px;
+  color: #52634c;
+}
+
+.wf-desk .wf-table-row small,
+.portfolio-row small,
+.portfolio-detail .field small {
+  color: #52634c;
+}
+.wf-desk .wf-table-row small.wf-overdue {
+  color: #795015;
+}

@@ -1,5 +1,31 @@
 import { test, expect } from './fixtures';
 
+test('pricing separates pretrial recovery, filed packages and the lawyer agreement', async ({
+  page,
+}, info) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const pricing = page.getByRole('region', { name: 'Стоимость Mandato', exact: true });
+  await pricing.scrollIntoViewIfNeeded();
+  await expect(pricing).toContainText('6%');
+  await expect(pricing).toContainText('После направления претензии и до подачи заявления в суд');
+  await expect(pricing).toContainText(/Судебный приказ — 7\s?000\s?₽/);
+  await expect(pricing).toContainText(/Исковое заявление — 12\s?000\s?₽/);
+  await expect(pricing).toContainText('Адвокату отдельно — 12%');
+  await expect(pricing).toContainText('по прямому соглашению с клиентом');
+  await expect(pricing).toContainText('Аудит и мониторинг в пилоте бесплатно');
+  await expect(pricing).not.toContainText('14 900');
+  await expect(pricing).not.toContainText('15%');
+  await pricing.getByRole('heading', { name: 'Стоимость Mandato', exact: true }).click();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+  ).toBeLessThanOrEqual(2);
+  await pricing.screenshot({
+    path: info.outputPath('application-pricing.png'),
+    animations: 'disabled',
+  });
+});
+
 test('landing explains credit interest and calculates only the entered financing cost', async ({
   page,
 }) => {

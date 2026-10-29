@@ -91,7 +91,7 @@ def initialize(config):
             migrate_v3(connection, LEGACY_SCHEMA_SQL)
         from .finance import initialize_schema as initialize_finance
         initialize_finance(connection)
-        for module_name in ('legal', 'agent', 'accounting_import', 'portfolio', 'integrations', 'forecasting', 'negotiation', 'partner', 'workflow', 'yandex_services'):
+        for module_name in ('legal', 'agent', 'accounting_import', 'portfolio', 'integrations', 'forecasting', 'negotiation', 'partner', 'workflow', 'yandex_services', 'account_help'):
             try:
                 module = __import__('server.'+module_name, fromlist=['initialize_schema'])
             except ModuleNotFoundError as error:

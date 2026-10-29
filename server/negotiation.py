@@ -302,6 +302,20 @@ def create_router(ctx):
                       (f.uid(), user['tenant_id'], updated['version'], f._request_json(updated), user['id'], f.timestamp()))
             return updated
 
+    @router.get('/preflight')
+    def preflight(invoice_id: str, kind: Kind, user=Depends(ctx.get_user)):
+        with ctx.database(ctx.config) as c:
+            snapshot = f.financial_snapshot(c, user['tenant_id'], invoice_id)
+            policy = current_policy(c, user['tenant_id'])
+            reasons = _validate_current(dict(snapshot=snapshot, policy=policy,
+                terms=dict(kind=kind, confirmed_by_operator=True, ambiguous=False)))['reasons']
+            cp = snapshot['counterparty']
+            if kind in ('promise', 'installment') and not cp['agent_promises_allowed']:
+                reasons.append('promise_mandate_required')
+            return dict(reasons=reasons, counterparty_id=cp['id'],
+                max_promise_days=min(policy['max_promise_days'], cp['max_promise_days']),
+                max_installments=min(policy['max_installments'], cp['max_installments']))
+
     @router.post('/proposals', status_code=201)
     def propose(data: ProposalInput, user=Depends(ctx.get_user)):
         with ctx.database(ctx.config, write=True) as c:
@@ -331,6 +345,26 @@ def create_router(ctx):
     @router.get('/proposals/{proposal_id}')
     def get_proposal(proposal_id: str, user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
+            return public_proposal(c, proposal_row(c, user['tenant_id'], proposal_id))
+
+    @router.post('/proposals/{proposal_id}/recheck')
+    def recheck(proposal_id: str, data: ReviewInput, user=Depends(ctx.get_user)):
+        if data.decision != 'approve':
+            f.fail(422, 'Подтвердите повторную проверку неизменных условий')
+        with ctx.database(ctx.config, write=True) as c:
+            row = proposal_row(c, user['tenant_id'], proposal_id)
+            if row['status'] not in ('handoff', 'review_required', 'accepted'):
+                f.fail(409, 'Повторная проверка доступна только для неисполненного действующего предложения')
+            terms = json.loads(row['terms_json'])
+            # Same proposal and terms; new authority snapshot requires a new review.
+            state = evaluate(c, user['tenant_id'], row['invoice_id'], terms)
+            status = 'review_required' if state['status'] == 'accepted' else state['status']
+            c.execute('UPDATE negotiation_proposals SET snapshot_hash=?,policy_version=?,status=?,reasons_json=? WHERE id=? AND tenant_id=?',
+                (state['snapshot']['snapshot_hash'], state['policy']['version'], status, f._request_json(state['reasons']), proposal_id, user['tenant_id']))
+            _event(c, user['tenant_id'], proposal_id, 'rechecked', dict(reason=data.reason,
+                previous_snapshot=row['snapshot_hash'], snapshot_hash=state['snapshot']['snapshot_hash'],
+                previous_policy_version=row['policy_version'], policy_version=state['policy']['version'],
+                status=status, reasons=state['reasons']), user['id'])
             return public_proposal(c, proposal_row(c, user['tenant_id'], proposal_id))
 
     @router.post('/proposals/{proposal_id}/review')

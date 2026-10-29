@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
 
+async function showOperations(page: import('@playwright/test').Page) {
+  await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
+  const toggle = page.getByRole('button', { name: /^Операции ·/ });
+  if ((await toggle.isVisible()) && (await toggle.getAttribute('aria-expanded')) === 'false')
+    await toggle.click();
+}
+
 test('operations remain visible, profile contains company and settings, advice can be dismissed', async ({
   page,
 }, info) => {
@@ -14,6 +21,7 @@ test('operations remain visible, profile contains company and settings, advice c
   expect(result.status()).toBe(201);
   await page.goto('/app');
   const operations = page.getByRole('navigation', { name: 'Операции с дебиторкой' });
+  await showOperations(page);
   await expect(operations).toBeVisible();
   for (const name of [
     'Счета',
@@ -27,11 +35,13 @@ test('operations remain visible, profile contains company and settings, advice c
   await expect(operations.getByRole('button')).toHaveCount(6);
   for (const section of ['Аудит', 'Подключения', 'Управление', 'Работа']) {
     await page.getByRole('button', { name: section, exact: true }).click();
+    await showOperations(page);
     await expect(operations.getByRole('button')).toHaveCount(6);
     await expect(operations.getByRole('button', { name: 'Документы', exact: true })).toBeVisible();
   }
   await operations.getByRole('button', { name: 'Переписка', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Разобрать ответ', exact: true })).toBeVisible();
+  await showOperations(page);
   await expect(operations).toBeVisible();
   await page.getByRole('button', { name: 'Разобрать ответ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Разбор ответов', exact: true })).toBeVisible();
@@ -96,6 +106,7 @@ test('landing and workspace remain usable at narrow and intermediate widths', as
     ).toBeLessThanOrEqual(2);
     await page.goto('/app');
     const operations = page.getByRole('navigation', { name: 'Операции с дебиторкой' });
+    await showOperations(page);
     for (const button of await operations.getByRole('button').all())
       await expect(button).toBeVisible();
     expect(

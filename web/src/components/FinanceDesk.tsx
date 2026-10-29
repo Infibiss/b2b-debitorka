@@ -1,3 +1,4 @@
+import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Upload, ShieldCheck, ArrowUpRight, Wallet, RotateCcw } from 'lucide-react';
 import { api, post, patch, money, dateText, today, type Invoice } from '../api';
@@ -83,13 +84,29 @@ type Modal =
   | { type: 'reverse'; payment: LedgerPayment };
 
 export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
-  const [tab, setTab] = useState<'bank' | 'import' | 'accounting' | 'parties' | 'ledger'>('bank');
+  const { invoiceId } = useWorkContext();
+  const [tab, setTab] = useRouteField<'bank' | 'import' | 'accounting' | 'parties' | 'ledger'>(
+    'financeTab',
+    invoiceId ? 'ledger' : 'bank'
+  );
   const [parties, setParties] = useState<Counterparty[]>([]),
     [payments, setPayments] = useState<BankPayment[]>([]),
     [error, setError] = useState('');
   const [modal, setModal] = useState<Modal | null>(null),
-    [selected, setSelected] = useState(''),
+    [selected, setSelected] = useRouteField<string>('context', invoiceId),
     [ledger, setLedger] = useState<Ledger | null>(null);
+  const [partyRoute] = useRouteField<string>('party', '');
+  const [returnTo] = useRouteField<string>('returnTo', '');
+  useEffect(() => {
+    if (partyRoute && parties.length) {
+      const party = parties.find((p) => p.id === partyRoute);
+      if (party) setModal({ type: 'mandate', party });
+    }
+  }, [partyRoute, parties]);
+  const closeModal = () => {
+    setModal(null);
+    navigate({ party: null }, true);
+  };
   const ledgerRequest = useRef(0);
   const reload = useCallback(async () => {
     try {
@@ -125,7 +142,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
     void loadLedger(selected);
   }, [selected, loadLedger]);
   const done = () => {
-    setModal(null);
+    closeModal();
     void reload();
     void loadLedger(selected);
     onChanged();
@@ -133,6 +150,14 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
   };
   return (
     <>
+      {returnTo === 'intelligence' && (
+        <button
+          className="button button-outline"
+          onClick={() => navigate({ section: 'intelligence', party: null, returnTo: null })}
+        >
+          Вернуться к предложению
+        </button>
+      )}
       <DeskHeading
         eyebrow="УЧЁТ ОПЛАТ"
         title="Оплаты и сверка"
@@ -418,7 +443,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           }
           modal={modal}
           invoices={invoices}
-          onClose={() => setModal(null)}
+          onClose={closeModal}
           onDone={done}
         />
       )}

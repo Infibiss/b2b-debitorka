@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix="agentpay-playwright-") as directory:
     os.environ["SECURE_COOKIES"] = "false"
     # Browser tests never inherit real email/model/source credentials.
     for key in list(os.environ):
-        if key in ("DATABASE_URL", "MANDATO_INTEGRATIONS_JSON") or key.startswith(("SMTP_", "YANDEX_", "LLM_", "LANGFUSE_", "LANGSMITH_", "DADATA_")):
+        if key in ("DATABASE_URL", "MANDATO_INTEGRATIONS_JSON") or key.startswith(("AUTH_SMTP_", "SMTP_", "YANDEX_", "LLM_", "LANGFUSE_", "LANGSMITH_", "DADATA_")):
             os.environ.pop(key, None)
     # Stable provider contract for browser tests only. The real CBR adapter and
     # refusal of unverified coverage are exercised by server/test_legal*.py tests.

@@ -1,7 +1,10 @@
+import { ArchiveEvidence } from './ArchiveEvidence';
+import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, FileText, Plus, Scale, Download, CheckCircle2 } from 'lucide-react';
 import { api, post, patch, money, dateText, today, type Invoice, type Settings } from '../api';
 import { Dialog } from './Dialog';
+import { tariff } from '../pricing';
 import {
   DeskHeading,
   OperationForm,
@@ -46,8 +49,8 @@ type Facts = {
   pretrial_basis: string;
   fee_agreement_reference: string;
   fee_start_on: string | null;
-  pretrial_fee_percent: string;
-  judicial_fee_percent: string;
+  fee_model_version?: string;
+  lawyer_agreement_reference?: string;
 };
 type CalculationInput = {
   through_on: string;
@@ -122,18 +125,38 @@ type Milestone = {
 };
 type Fee = {
   configured: boolean;
+  lawyer_configured: boolean;
+  requires_fee_model_confirmation: boolean;
   agreement_reference: string;
+  lawyer_agreement_reference: string;
   confirmed_recovery_amount: number;
   fee_amount: number;
+  pretrial_fee_amount: number;
+  judicial_package_amount: number;
+  lawyer_fee_amount: number;
   excluded_manual_amount: number;
   excluded_before_start_amount: number;
-  rounding_difference: string;
+  excluded_before_claim_amount: number;
+  ambiguous_recovery_amount: number;
+  lawyer_unconfigured_recovery_amount: number;
+  rounding_difference: number;
+  lawyer_rounding_difference: number;
+  package_items: {
+    kind: string;
+    document_id: string;
+    filed_on: string;
+    reference: string;
+    tariff_amount: number;
+    fee_amount: number;
+    billable: boolean;
+  }[];
   line_items: {
     payment_id: string;
     paid_on: string;
     stage: string;
     amount: number;
-    rate_percent: string;
+    recipient: 'mandato' | 'lawyer' | null;
+    rate_percent: string | null;
     fee_amount: number;
     date_ordering_ambiguous: boolean;
   }[];
@@ -143,6 +166,7 @@ type LegalCase = {
   invoice_id: string;
   facts: Facts;
   facts_revision: number;
+  suggested_contract_number?: string;
   invoice: Invoice;
   stage: string;
   pretrial: {
@@ -248,14 +272,14 @@ function Check({
 function PartyFields({ prefix, party, role }: { prefix: string; party: Party; role: string }) {
   const [kind, setKind] = useState(party.kind);
   return (
-    <fieldset className="legal-fieldset full-width">
+    <fieldset id={`facts-${prefix}`} className="legal-fieldset full-width">
       <legend>{prefix === 'creditor' ? 'Кредитор' : 'Должник'}</legend>
       <div className="legal-field-grid">
         <label className="field">
           Тип {role}
           <select
             name={`${prefix}.kind`}
-            defaultValue={kind}
+            defaultValue={party.kind}
             onChange={(e) => setKind(e.target.value)}
           >
             <option value="organization">Организация</option>
@@ -414,10 +438,13 @@ function repeatedInput(data: FormData, name: string): Record<string, string | nu
 }
 
 export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
+  const { invoiceId } = useWorkContext();
+  const [legalId] = useRouteField<string>('legal', '');
+  const [tab, setTab] = useRouteField<string>('legalTab', 'Факты');
+  const [factsStep, setFactsStep] = useRouteField<string>('factsStep', 'contract');
   const [cases, setCases] = useState<LegalCase[]>([]),
     [selected, setSelected] = useState<LegalCase | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
-    [tab, setTab] = useState('Факты'),
     [opening, setOpening] = useState(false),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true),
@@ -454,12 +481,36 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
       alive = false;
     };
   }, []);
+  useEffect(() => {
+    if (loading) return;
+    let alive = true;
+    const id = legalId || cases.find((c) => c.invoice_id === invoiceId)?.id;
+    if (id) {
+      void api<LegalCase>(`/legal/cases/${id}`)
+        .then((item) => {
+          if (alive) {
+            setSelected(item);
+            setError('');
+          }
+        })
+        .catch((e) => {
+          if (alive) {
+            setSelected(null);
+            setError((e as Error).message);
+          }
+        });
+      if (!legalId) navigate({ legal: id }, true);
+    } else setSelected(null);
+    return () => {
+      alive = false;
+    };
+  }, [legalId, invoiceId, loading]);
   async function openCase(item: LegalCase) {
     setError('');
     setCalculation(null);
     setCalculationInput(null);
     setSanction('none');
-    setTab('Факты');
+    navigate({ legal: item.id, legalTab: 'Факты', context: item.invoice_id });
     try {
       await refreshCase(item.id);
     } catch (e) {
@@ -528,7 +579,13 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
       ) : (
         <>
           <div className="ops-detail-bar">
-            <button className="button button-ghost button-small" onClick={() => setSelected(null)}>
+            <button
+              className="button button-ghost button-small"
+              onClick={() => {
+                setSelected(null);
+                navigate({ legal: null, context: null, legalTab: null });
+              }}
+            >
               <ArrowLeft size={14} />
               Все дела
             </button>
@@ -562,14 +619,29 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   <h2>Юридически значимые факты</h2>
                   <p>
                     Укажите стороны, условия договора и основания требования. Сведения нужны для
-                    подготовки документов.
+                    подготовки документов. Известные реквизиты перенесены из рабочего дела —
+                    проверьте их. Черновик сохраняется автоматически в этой вкладке.
                   </p>
                 </div>
               </div>
+              <p className="ops-context">
+                Требование по счёту {selected.invoice.number}. Рабочее дело может объединять
+                несколько счетов по договору; здесь рассчитывается только выбранный счёт. Проверьте
+                суммы перед подготовкой общего требования.
+              </p>
+              <LegalReadiness item={selected} />
               <OperationForm
+                allowIncomplete
                 key={`${selected.id}-${selected.facts_revision}`}
+                draftKey={`legal-facts:${selected.id}`}
+                revision={String(selected.facts_revision)}
                 label="Сохранить факты"
                 submit={async (data) => {
+                  if (
+                    selected.fee?.requires_fee_model_confirmation &&
+                    !data.has('confirm_fee_model')
+                  )
+                    throw new Error('Подтвердите новые условия на шаге «Вознаграждение».');
                   const f: Facts = {
                     creditor: readParty(data, 'creditor'),
                     debtor: readParty(data, 'debtor'),
@@ -589,8 +661,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                     pretrial_basis: value(data, 'pretrial_basis'),
                     fee_agreement_reference: value(data, 'fee_agreement_reference'),
                     fee_start_on: value(data, 'fee_start_on') || null,
-                    pretrial_fee_percent: value(data, 'pretrial_fee_percent'),
-                    judicial_fee_percent: value(data, 'judicial_fee_percent'),
+                    fee_model_version: tariff.version,
+                    lawyer_agreement_reference: value(data, 'lawyer_agreement_reference'),
                   };
                   await patch(`/legal/cases/${selected.id}`, { facts: f });
                   await refreshCase(selected.id);
@@ -602,123 +674,198 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   done();
                 }}
               >
-                <PartyFields prefix="creditor" party={selected.facts.creditor} role="кредитора" />
-                <PartyFields prefix="debtor" party={selected.facts.debtor} role="должника" />
-                <h3 className="full-width">Обязательство и основание требования</h3>
-                <Field
-                  label="Номер договора"
-                  name="contract_number"
-                  initial={selected.facts.contract_number}
-                  required
-                />
-                <Field
-                  label="Дата договора"
-                  name="contract_date"
-                  initial={selected.facts.contract_date}
-                  type="date"
-                  max={today()}
-                  required
-                />
-                <Field
-                  label="Содержание обязательства"
-                  name="obligation_description"
-                  initial={selected.facts.obligation_description}
-                  area
-                  required
-                />
-                <Field
-                  label="Факт исполнения"
-                  name="performance_description"
-                  initial={selected.facts.performance_description}
-                  area
-                  required
-                />
-                <Field
-                  label="Основание срока оплаты"
-                  name="due_basis"
-                  initial={selected.facts.due_basis}
-                  area
-                  required
-                />
-                <Field
-                  label="Правовое основание требования"
-                  name="legal_basis"
-                  initial={selected.facts.legal_basis}
-                  area
-                  required
-                />
-                <Check
-                  name="business_debt_confirmed"
-                  label="Долг возник в предпринимательской деятельности"
-                  checked={selected.facts.business_debt_confirmed}
-                />
-                <Check
-                  name="special_regimes_checked"
-                  label="Проверены специальные режимы, банкротство, моратории и давность"
-                  checked={selected.facts.special_regimes_checked}
-                />
-                <Check
-                  name="undisputed"
-                  label="Требование бесспорно и подтверждено документами"
-                  checked={selected.facts.undisputed}
-                />
-                <h3 className="full-width">Претензионный порядок и суд</h3>
-                <Field
-                  label="Срок претензии, календарных дней"
-                  name="pretrial_days"
-                  initial={selected.facts.pretrial_days}
-                  type="number"
-                  required
-                />
-                <Field
-                  label="Основание претензионного срока"
-                  name="pretrial_basis"
-                  initial={selected.facts.pretrial_basis}
-                  required
-                />
-                <Field
-                  label="Наименование суда"
-                  name="court_name"
-                  initial={selected.facts.court_name}
-                />
-                <Field
-                  label="Адрес суда"
-                  name="court_address"
-                  initial={selected.facts.court_address}
-                />
-                <Field
-                  label="Основание подсудности"
-                  name="jurisdiction_basis"
-                  initial={selected.facts.jurisdiction_basis}
-                  area
-                />
-                <h3 className="full-width">Условия вознаграждения</h3>
                 <p className="ops-muted full-width">
-                  Заполните ставки из договора сопровождения и дату начала работы.
+                  Сохраняйте заполненную часть после каждого шага. Неполные факты допустимы;
+                  подготовка документов проверяет весь комплект отдельно. Сохранение не подтверждает
+                  юридическую достоверность.
                 </p>
-                <Field
-                  label="Договор сопровождения"
-                  name="fee_agreement_reference"
-                  initial={selected.facts.fee_agreement_reference}
-                />
-                <Field
-                  label="Дата начала сопровождения"
-                  name="fee_start_on"
-                  initial={selected.facts.fee_start_on}
-                  type="date"
-                />
-                <Field
-                  label="Досудебный гонорар, %"
-                  name="pretrial_fee_percent"
-                  initial={selected.facts.pretrial_fee_percent}
-                  required
-                />
-                <Field
-                  label="Судебный гонорар, %"
-                  name="judicial_fee_percent"
-                  initial={selected.facts.judicial_fee_percent}
-                  required
-                />
+                <nav className="legal-facts-nav full-width" aria-label="Разделы фактов">
+                  {(
+                    [
+                      ['creditor', 'Кредитор'],
+                      ['debtor', 'Должник'],
+                      ['contract', 'Договор'],
+                      ['court', 'Суд'],
+                      ['fees', 'Вознаграждение'],
+                      ['all', 'Все поля'],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      type="button"
+                      key={id}
+                      aria-pressed={factsStep === id}
+                      onClick={() => setFactsStep(id)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                <div
+                  className="legal-step full-width"
+                  hidden={!['creditor', 'all'].includes(factsStep)}
+                >
+                  <p>
+                    Источник исходных реквизитов: настройки организации. Сверьте с документами
+                    кредитора.
+                  </p>
+                  <PartyFields prefix="creditor" party={selected.facts.creditor} role="кредитора" />
+                </div>
+                <div
+                  className="legal-step full-width"
+                  hidden={!['debtor', 'all'].includes(factsStep)}
+                >
+                  <p>
+                    Источник исходных реквизитов: реестр счетов. Сверьте с документами должника.
+                  </p>
+                  <PartyFields prefix="debtor" party={selected.facts.debtor} role="должника" />
+                </div>
+                <div
+                  className="legal-step full-width"
+                  hidden={!['contract', 'all'].includes(factsStep)}
+                >
+                  <p className="full-width">
+                    Источник номера договора:{' '}
+                    {selected.suggested_contract_number
+                      ? `рабочее дело, ${selected.suggested_contract_number}`
+                      : 'данные сотрудника'}
+                    . Остальные условия подтвердите по договору и первичным документам.
+                  </p>
+                  <h3 id="facts-contract" className="full-width">
+                    Обязательство и основание требования
+                  </h3>
+                  <Field
+                    label="Номер договора"
+                    name="contract_number"
+                    initial={selected.facts.contract_number || selected.suggested_contract_number}
+                    required
+                  />
+                  <Field
+                    label="Дата договора"
+                    name="contract_date"
+                    initial={selected.facts.contract_date}
+                    type="date"
+                    max={today()}
+                    required
+                  />
+                  <Field
+                    label="Содержание обязательства"
+                    name="obligation_description"
+                    initial={selected.facts.obligation_description}
+                    area
+                    required
+                  />
+                  <Field
+                    label="Факт исполнения"
+                    name="performance_description"
+                    initial={selected.facts.performance_description}
+                    area
+                    required
+                  />
+                  <Field
+                    label="Основание срока оплаты"
+                    name="due_basis"
+                    initial={selected.facts.due_basis}
+                    area
+                    required
+                  />
+                  <Field
+                    label="Правовое основание требования"
+                    name="legal_basis"
+                    initial={selected.facts.legal_basis}
+                    area
+                    required
+                  />
+                  <Check
+                    name="business_debt_confirmed"
+                    label="Долг возник в предпринимательской деятельности"
+                    checked={selected.facts.business_debt_confirmed}
+                  />
+                  <Check
+                    name="special_regimes_checked"
+                    label="Проверены специальные режимы, банкротство, моратории и давность"
+                    checked={selected.facts.special_regimes_checked}
+                  />
+                  <Check
+                    name="undisputed"
+                    label="Требование бесспорно и подтверждено документами"
+                    checked={selected.facts.undisputed}
+                  />
+                </div>
+                <div
+                  className="legal-step full-width"
+                  hidden={!['court', 'all'].includes(factsStep)}
+                >
+                  <h3 id="facts-court" className="full-width">
+                    Претензионный порядок и суд
+                  </h3>
+                  <Field
+                    label="Срок претензии, календарных дней"
+                    name="pretrial_days"
+                    initial={selected.facts.pretrial_days}
+                    type="number"
+                    required
+                  />
+                  <Field
+                    label="Основание претензионного срока"
+                    name="pretrial_basis"
+                    initial={selected.facts.pretrial_basis}
+                    required
+                  />
+                  <Field
+                    label="Наименование суда"
+                    name="court_name"
+                    initial={selected.facts.court_name}
+                  />
+                  <Field
+                    label="Адрес суда"
+                    name="court_address"
+                    initial={selected.facts.court_address}
+                  />
+                  <Field
+                    label="Основание подсудности"
+                    name="jurisdiction_basis"
+                    initial={selected.facts.jurisdiction_basis}
+                    area
+                  />
+                </div>
+                <div
+                  className="legal-step full-width"
+                  hidden={!['fees', 'all'].includes(factsStep)}
+                >
+                  <h3 id="facts-fees" className="full-width">
+                    Условия вознаграждения
+                  </h3>
+                  <p className="ops-muted full-width">
+                    Mandato: {tariff.pretrial_percent}% от поступлений после претензии и до подачи в
+                    суд. Поданный пакет: приказ — {money(tariff.court_order_amount)}, иск —{' '}
+                    {money(tariff.statement_of_claim_amount)}. Адвокату — {tariff.lawyer_percent}%
+                    после подачи по отдельному соглашению. Условия подтверждает руководитель.
+                  </p>
+                  {selected.fee?.requires_fee_model_confirmation && (
+                    <label className="consent full-width">
+                      <input type="checkbox" name="confirm_fee_model" required />
+                      Подтверждаю переход с прежних условий на 6%, фикс за судебные пакеты и
+                      отдельные 12% адвокату по согласованным договорам
+                    </label>
+                  )}
+                  <Field
+                    label="Договор сопровождения"
+                    name="fee_agreement_reference"
+                    initial={selected.facts.fee_agreement_reference}
+                  />
+                  <Field
+                    label="Дата начала сопровождения"
+                    name="fee_start_on"
+                    initial={selected.facts.fee_start_on}
+                    type="date"
+                    max={today()}
+                  />
+                  <Field
+                    label="Отдельное соглашение с адвокатом"
+                    name="lawyer_agreement_reference"
+                    initial={selected.facts.lawyer_agreement_reference}
+                  />
+                </div>
               </OperationForm>
             </section>
           )}
@@ -865,7 +1012,14 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   </p>
                 </div>
               </div>
+              <ArchiveEvidence
+                invoiceId={selected.invoice_id}
+                caseId={selected.id}
+                existing={proofs}
+                onAdded={() => refreshCase(selected.id)}
+              />
               <OperationForm
+                draftKey={`legal-evidence:${selected.id}`}
                 key={`${selected.id}-${proofs.length}`}
                 label="Зарегистрировать доказательство"
                 submit={async (data) => {
@@ -1297,18 +1451,25 @@ function FeeView({ fee }: { fee?: Fee }) {
     <section className="ops-card legal-fee">
       <div className="ops-card-heading">
         <div>
-          <h2>Вознаграждение по результату</h2>
+          <h2>Вознаграждение Mandato и адвоката</h2>
           <p>
-            База — подтверждённые банковские поступления, распределённые на этот счёт, за вычетом
-            отмен и возвратов.
+            Проценты — только с подтверждённых банковских поступлений за вычетом отмен и возвратов.
+            Фикс за поданный судебный пакет не зависит от взыскания.
           </p>
         </div>
       </div>
-      {!fee.configured && (
+      {fee.requires_fee_model_confirmation ? (
         <div className="ops-context">
-          Укажите договор сопровождения и дату его начала на вкладке «Факты». Без них гонорар не
-          начисляется.
+          В деле сохранены прежние условия. Руководителю нужно подтвердить новую модель на вкладке
+          «Факты». До подтверждения новые суммы не рассчитываются.
         </div>
+      ) : (
+        !fee.configured && (
+          <div className="ops-context">
+            Укажите договор сопровождения и дату его начала на вкладке «Факты». Без них гонорар не
+            начисляется.
+          </div>
+        )
       )}
       <div className="ops-result-grid">
         <div>
@@ -1316,12 +1477,32 @@ function FeeView({ fee }: { fee?: Fee }) {
           <strong>{money(fee.confirmed_recovery_amount)}</strong>
         </div>
         <div>
-          <span>Расчётный гонорар</span>
+          <span>Итого Mandato</span>
           <strong>{money(fee.fee_amount)}</strong>
+        </div>
+        <div>
+          <span>Mandato: {tariff.pretrial_percent}% до суда</span>
+          <strong>{money(fee.pretrial_fee_amount)}</strong>
+        </div>
+        <div>
+          <span>Mandato: судебные пакеты</span>
+          <strong>{money(fee.judicial_package_amount)}</strong>
+        </div>
+        <div>
+          <span>Адвокату отдельно: {tariff.lawyer_percent}% после подачи</span>
+          <strong>{money(fee.lawyer_fee_amount)}</strong>
         </div>
         <div>
           <span>Ручные оплаты вне базы</span>
           <strong>{money(fee.excluded_manual_amount)}</strong>
+        </div>
+        <div>
+          <span>Поступления до претензии</span>
+          <strong>{money(fee.excluded_before_claim_amount)}</strong>
+        </div>
+        <div>
+          <span>Порядок событий требует проверки</span>
+          <strong>{money(fee.ambiguous_recovery_amount)}</strong>
         </div>
         <div>
           <span>Поступления до сопровождения</span>
@@ -1329,10 +1510,54 @@ function FeeView({ fee }: { fee?: Fee }) {
         </div>
       </div>
       <p className="ops-muted">
-        {fee.agreement_reference || 'Договор не указан'}. Ставки и право на вознаграждение требуют
-        проверки договора. Поступление в день подачи считается досудебным без доказанного порядка
-        событий внутри дня.
+        {fee.agreement_reference || 'Договор Mandato не указан'}. 6% применяются после
+        подтверждённого направления претензии и до подачи в суд. Поступления в день претензии или
+        подачи показаны для проверки; процент автоматически не начисляется.
       </p>
+      <p className="ops-muted">
+        {fee.lawyer_agreement_reference || 'Отдельное соглашение с адвокатом не указано'}.
+        Вознаграждение адвоката оплачивается отдельно и не входит в итог Mandato.
+        {!fee.lawyer_configured && ' Без отдельного соглашения 12% не рассчитываются.'}
+        {fee.lawyer_unconfigured_recovery_amount > 0 &&
+          ` Поступления после подачи без соглашения: ${money(fee.lawyer_unconfigured_recovery_amount)}.`}
+      </p>
+      <h3>Судебные пакеты</h3>
+      <p className="ops-muted">
+        Приказ — {money(tariff.court_order_amount)}, иск — {money(tariff.statement_of_claim_amount)}{' '}
+        за подготовленный и поданный пакет. Госпошлина оплачивается клиентом отдельно. Заявление в
+        банк по исполнительному листу — бесплатно. Повторная отметка подачи или новая версия того же
+        вида пакета не увеличивает фикс.
+      </p>
+      {fee.package_items.length ? (
+        <div className="legal-table-scroll">
+          <table className="ops-table" aria-label="Стоимость поданных судебных пакетов">
+            <thead>
+              <tr>
+                <th scope="col">Пакет</th>
+                <th scope="col">Подан</th>
+                <th scope="col">Основание</th>
+                <th scope="col">Mandato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fee.package_items.map((row) => (
+                <tr key={row.kind}>
+                  <td>{kinds[row.kind]}</td>
+                  <td>{dateText(row.filed_on)}</td>
+                  <td>{row.reference}</td>
+                  <td>
+                    {money(row.fee_amount)}
+                    {!row.billable && <small>Вне подтверждённых условий сопровождения</small>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="ops-muted">Поданные судебные пакеты пока не зарегистрированы.</p>
+      )}
+      <h3>Проценты по поступлениям</h3>
       {!!fee.line_items.length && (
         <div className="legal-table-scroll">
           <table className="ops-table">
@@ -1340,7 +1565,8 @@ function FeeView({ fee }: { fee?: Fee }) {
               <tr>
                 <th scope="col">Поступление</th>
                 <th scope="col">База</th>
-                <th scope="col">Стадия</th>
+                <th scope="col">Условия</th>
+                <th scope="col">Получатель</th>
                 <th scope="col">Ставка</th>
                 <th scope="col">Гонорар</th>
               </tr>
@@ -1351,12 +1577,23 @@ function FeeView({ fee }: { fee?: Fee }) {
                   <td>{dateText(row.paid_on)}</td>
                   <td>{money(row.amount)}</td>
                   <td>
-                    {row.stage === 'judicial' ? 'Судебная' : 'Досудебная'}
-                    {row.date_ordering_ambiguous && (
-                      <small>Порядок событий в течение дня не подтверждён</small>
-                    )}
+                    {{
+                      pretrial: 'После претензии, до суда',
+                      judicial: 'После подачи в суд',
+                      before_start: 'До сопровождения',
+                      before_claim: 'До претензии',
+                      ambiguous: 'Нужна проверка порядка событий',
+                      unconfigured: 'Условия не подтверждены',
+                    }[row.stage] || row.stage}
                   </td>
-                  <td>{row.rate_percent}%</td>
+                  <td>
+                    {row.recipient === 'mandato'
+                      ? 'Mandato'
+                      : row.recipient === 'lawyer'
+                        ? 'Адвокат отдельно'
+                        : 'Не начислено'}
+                  </td>
+                  <td>{row.rate_percent === null ? '—' : `${row.rate_percent}%`}</td>
                   <td>{money(row.fee_amount)}</td>
                 </tr>
               ))}
@@ -1364,6 +1601,77 @@ function FeeView({ fee }: { fee?: Fee }) {
           </table>
         </div>
       )}
+      {(fee.rounding_difference !== 0 || fee.lawyer_rounding_difference !== 0) && (
+        <p className="ops-muted">
+          Округление итогов отдельно по получателям: Mandato — {money(fee.rounding_difference)},
+          адвокат — {money(fee.lawyer_rounding_difference)} относительно суммы строк.
+        </p>
+      )}
+      <p className="ops-muted">
+        Это расчёт по реестру. Он не списывает деньги и требует проверки договоров и оснований
+        оплаты.
+      </p>
     </section>
+  );
+}
+
+function LegalReadiness({ item }: { item: LegalCase }) {
+  const f = item.facts;
+  const partyReady = (p: Party) =>
+    Boolean(
+      p.name &&
+        p.inn &&
+        p.ogrn &&
+        p.address &&
+        (p.kind !== 'sole_proprietor' || (p.birth_on && p.birth_place) || p.birth_details_unknown)
+    );
+  const checks: [string, boolean][] = [
+    [
+      'Реквизиты сторон и банк кредитора',
+      partyReady(f.creditor) && partyReady(f.debtor) && Boolean(f.creditor.bank_details),
+    ],
+    [
+      'Договор, исполнение и основания требования',
+      Boolean(
+        f.contract_number &&
+          f.contract_date &&
+          f.obligation_description &&
+          f.performance_description &&
+          f.due_basis &&
+          f.legal_basis
+      ),
+    ],
+    [
+      'Проверка характера долга и специальных режимов',
+      f.business_debt_confirmed && f.special_regimes_checked,
+    ],
+    [
+      'Договор и первичка в доказательствах',
+      ['contract', 'performance'].every((kind) => item.evidence?.some((e) => e.kind === kind)),
+    ],
+    [
+      'Суд и основание подсудности (для судебного пакета)',
+      Boolean(f.court_name && f.court_address && f.jurisdiction_basis),
+    ],
+  ];
+  return (
+    <details className="legal-readiness">
+      <summary>
+        Готовность сохранённых данных: {checks.filter(([, ready]) => ready).length} из{' '}
+        {checks.length} разделов
+      </summary>
+      <ul>
+        {checks.map(([label, ready]) => (
+          <li key={label}>
+            {ready ? '✓ Заполнено' : '○ Требуется заполнить'} — {label}
+          </li>
+        ))}
+      </ul>
+      <p>
+        Перед выпуском пакета дополнительно проверяются актуальный расчёт, претензионный порядок и
+        применимость процедуры. Документ проверяет специалист. Черновик браузера здесь не
+        учитывается.
+      </p>
+    </details>
   );
 }

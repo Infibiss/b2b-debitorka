@@ -254,6 +254,32 @@ def create_router(ctx):
                 safe(item['next_action']['title']), safe(' · '.join(f['title'] for f in item['findings'])), report['as_of']])
         return Response('\ufeff'+buffer.getvalue(), media_type='text/csv; charset=utf-8', headers={'Content-Disposition': 'attachment; filename="mandato-audit.csv"'})
 
+    @router.get('/documents')
+    def document_archive(invoice_id: str = '', user=Depends(ctx.get_user)):
+        tenant = user['tenant_id']
+        with ctx.database(ctx.config) as c:
+            if invoice_id:
+                finance.load_invoice(c, tenant, invoice_id)
+            items = []
+            for row in c.execute('SELECT id,invoice_id,kind,reference,occurred_on,note,filename,sha256,created_at FROM portfolio_evidence WHERE tenant_id=? ORDER BY created_at DESC', (tenant,)):
+                items.append(evidence_view(row) | {'source': 'Первичный документ'})
+            for table, source in [('legal_documents', 'Юридический документ'), ('legal_evidence', 'Доказательство')]:
+                fields = 'd.id,d.case_id,d.kind,d.created_at,l.invoice_id'
+                fields += ',d.version' if table == 'legal_documents' else ',d.title,d.reference,d.occurred_on'
+                for row in c.execute(f'SELECT {fields} FROM {table} d JOIN legal_cases l ON l.id=d.case_id AND l.tenant_id=d.tenant_id WHERE d.tenant_id=?', (tenant,)):
+                    item = dict(row) | {'source': source}
+                    if table == 'legal_documents':
+                        names = {'pretrial_claim': 'Претензия', 'court_order': 'Судебный приказ', 'statement_of_claim': 'Иск'}
+                        item.update(reference=f"{names.get(row['kind'], row['kind'])} · версия {row['version']}", occurred_on=row['created_at'][:10], download_url=f"/api/legal/documents/{row['id']}/download")
+                    items.append(item)
+            for row in c.execute("SELECT id,invoice_id,payload_json,created_at FROM yandex_service_requests WHERE tenant_id=? AND kind='ocr'", (tenant,)):
+                payload = json.loads(row['payload_json'])
+                items.append(dict(row) | {'source': 'Распознавание', 'kind': 'other', 'reference': payload.get('filename', 'Распознанный документ'), 'occurred_on': row['created_at'][:10], 'download_url': f"/api/yandex/documents/{row['id']}/original"})
+            items = [item for item in items if not invoice_id or item['invoice_id'] == invoice_id]
+            for item in items:
+                item.pop('payload_json', None)
+            return {'items': sorted(items, key=lambda item: (item['created_at'], item['id']), reverse=True)}
+
     @router.get('/invoices/{invoice_id}/evidence')
     def evidence(invoice_id: str, user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
