@@ -123,6 +123,9 @@ export function Landing() {
           <a href="#pricing" onClick={() => setMenu(false)}>
             Стоимость
           </a>
+          <a href="#contacts" onClick={() => setMenu(false)}>
+            Контакты
+          </a>
         </nav>
         <div className="header-actions">
           <a href="/app?mode=login" className="login-link">
@@ -623,6 +626,23 @@ export function Landing() {
             ))}
           </div>
         </section>
+        <section className="contacts section-pad" id="contacts" aria-labelledby="contacts-heading">
+          <div>
+            <h2 id="contacts-heading">Контакты</h2>
+            <p>
+              Хотите обсудить работу с задолженностью, подключение Mandato или задать вопрос?
+              Напишите нам.
+            </p>
+          </div>
+          <a className="contact-email" href="mailto:info@mandato.ru">
+            <Mail size={24} aria-hidden="true" />
+            <span>
+              <span className="contact-email-label">Почта команды Mandato</span>
+              <span className="contact-email-address">info@mandato.ru</span>
+            </span>
+            <ArrowUpRight size={24} aria-hidden="true" />
+          </a>
+        </section>
         <section className="final-cta" aria-label="Начните со своего реестра">
           <h2>Начните со своего реестра</h2>
           <a href="/app?intent=import" className="button button-lime">
@@ -637,6 +657,9 @@ export function Landing() {
         <div>
           <Brand />
           <p>Деньги возвращаются в дело.</p>
+          <a className="footer-email" href="mailto:info@mandato.ru">
+            info@mandato.ru
+          </a>
         </div>
         <div className="footer-nav">
           <a href="#how">
@@ -644,6 +667,9 @@ export function Landing() {
           </a>
           <a href="#pricing">
             Стоимость <ArrowRight size={14} />
+          </a>
+          <a href="#contacts">
+            Контакты <ArrowRight size={14} />
           </a>
           <a href="/app?mode=login">
             Личный кабинет <ArrowUpRight size={14} />
