@@ -1,4 +1,4 @@
-# Runtime dependency closure; audited against PyPI on 2026-10-24.
+# Runtime dependency closure; audited against PyPI on 2026-11-01.
 # Python 3.11+ on Linux/macOS. Re-run tests and pip-audit before updating.
 aiosqlite==0.22.1
 annotated-doc==0.0.5
@@ -52,7 +52,7 @@ psycopg==3.3.6
 psycopg-binary==3.3.6
 psycopg-pool==3.3.3
 pycparser==3.12
-pypdf==6.21.2
+pypdf==6.21.4
 pydantic==2.12.5
 pydantic-core==2.41.5
 python-docx==1.2.0
