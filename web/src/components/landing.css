@@ -831,6 +831,77 @@
   color: #7a8870;
   padding: 0 35px 23px 0;
 }
+.contacts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  scroll-margin-top: 24px;
+}
+.landing .contacts h2 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.15;
+  margin-bottom: 20px;
+}
+.contacts p {
+  max-width: 48ch;
+  color: #526657;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.contact-email {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid #d1d9c6;
+  border-radius: 12px;
+  background: #eef2e6;
+  color: #193c30;
+}
+.contact-email:hover {
+  background: #e4ecd7;
+  border-color: #8ca27d;
+}
+.contact-email > svg {
+  flex-shrink: 0;
+}
+.contact-email > svg:last-child {
+  margin-left: auto;
+}
+.contact-email > span {
+  min-width: 0;
+}
+.contact-email-label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.contact-email-address {
+  display: block;
+  font-size: clamp(20px, 2.3vw, 32px);
+  font-weight: 550;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.footer-email {
+  display: inline-block;
+  margin-top: 16px;
+  color: #193c30;
+  font-size: 14px;
+  text-underline-offset: 4px;
+  text-decoration: underline;
+}
+@media (max-width: 760px) {
+  .contacts {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .contact-email {
+    padding: 22px 18px;
+    gap: 12px;
+  }
+}
 .final-cta {
   margin: 20px 18px 0;
   padding: 60px 4.2% 65px;
@@ -888,6 +959,7 @@
 }
 .footer-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 30px;
   font-size: 9px;
