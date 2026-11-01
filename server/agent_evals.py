@@ -16,7 +16,7 @@ FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "agent-c
 
 
 def evaluate(*, mode="replay", extractor=None, fixtures=FIXTURES):
-    dataset = json.loads(Path(fixtures).read_text())
+    dataset = json.loads(Path(fixtures).read_text(encoding='utf-8'))
     extractor = extractor or extract_yandex
     correct, true_ready, false_ready, missed_ready, failures, intent_correct = 0, 0, 0, 0, 0, 0
     outcomes = []

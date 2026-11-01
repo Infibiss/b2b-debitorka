@@ -1,3 +1,5 @@
+import { CaseConversation } from './CaseConversation';
+import { ContextHelp } from './ContextHelp';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   LayoutDashboard,
@@ -29,7 +31,6 @@ import { Auth } from './Auth';
 import { useInvitationToken } from './useInvitationToken';
 import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
 import { WorkflowOnboarding } from './WorkflowOnboarding';
-import { YandexDesk } from './YandexDesk';
 import './workflow.css';
 import { CreateInvoice, ImportInvoices, downloadTemplate } from './InvoiceForms';
 import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
@@ -53,6 +54,10 @@ import {
   ApiError,
 } from '../api';
 import './workspace.css';
+import { navigate, useRouteField, WorkContext } from '../navigation';
+import { clearFormDrafts, hasFormDrafts, useFormDraft } from './useFormDraft';
+import { DocumentsDesk } from './DocumentsDesk';
+import { MailSetup } from './MailSetup';
 type Tab =
   | 'workflow'
   | 'management'
@@ -88,19 +93,39 @@ function parentSection(tab: Tab): 'workflow' | 'audit' | 'connections' | 'manage
 }
 export function Workspace() {
   const invitation = useInvitationToken();
+  const [routeTab, setTab] = useRouteField<Tab>('section', 'workflow');
+  const tab = [...navigation, ...tools].some((item) => item.id === routeTab)
+    ? routeTab
+    : 'workflow';
+  const [selected, setSelected] = useRouteField<string | null>('invoice', null);
+  const [contextInvoice] = useRouteField<string>('context', '');
+  const [contextCase] = useRouteField<string>('case', '');
+  const [contextIds, setContextIds] = useState<string[]>([]);
+  const [returnCase, setReturnCase] = useState('');
+  const [operationsOpen, setOperationsOpen] = useState(false);
+  const [helpSection, setHelpSection] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [intent] = useRouteField<string>('intent', '');
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
     [loadError, setLoadError] = useState(''),
-    [tab, setTab] = useState<Tab>('workflow'),
     [tourReplay, setTourReplay] = useState(0),
     [generalTourReplay, setGeneralTourReplay] = useState(0),
     [invoices, setInvoices] = useState<Invoice[]>([]),
     [overview, setOverview] = useState<Overview | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
     [modal, setModal] = useState<'create' | 'import' | null>(null),
-    [selected, setSelected] = useState<string | null>(null),
     [toast, setToast] = useState<{ text: string; error: boolean } | null>(null),
     [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (!session || !intent) return;
+    if (intent === 'import') setModal('import');
+    if (intent === 'service') {
+      setHelpSection('service');
+      setHelpOpen(true);
+    }
+    navigate({ intent: null }, true);
+  }, [session, intent]);
   const notify = useCallback((text: string, error = false) => setToast({ text, error }), []);
   useEffect(() => {
     if (!toast) return;
@@ -151,15 +176,60 @@ export function Workspace() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    setContextIds([]);
+    setReturnCase('');
+    if (session && contextInvoice)
+      void api<{ items: { id: string; invoice_ids: string[] }[] }>('/workflow/cases')
+        .then((result) => {
+          const item = result.items.find((c) => c.invoice_ids.includes(contextInvoice));
+          if (alive && item) {
+            setContextIds(item.invoice_ids);
+            setReturnCase(item.id);
+          }
+        })
+        .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [session, contextCase, contextInvoice]);
   async function logout() {
+    if (
+      hasFormDrafts() &&
+      !window.confirm('В этой вкладке есть черновики. При выходе они будут удалены. Выйти?')
+    )
+      return;
     try {
       await post('/auth/logout');
+      clearFormDrafts();
       setSession(null);
       setCsrf('');
       setInvoices([]);
       setOverview(null);
-      setSelected(null);
-      setTab('workflow');
+      navigate({
+        section: null,
+        mode: 'login',
+        invoice: null,
+        case: null,
+        caseTab: null,
+        context: null,
+        legal: null,
+        legalTab: null,
+        financeTab: null,
+        source: null,
+        documentsTab: null,
+        auditInvoice: null,
+        factsStep: null,
+        party: null,
+        returnTo: null,
+        agentProposal: null,
+        proposal: null,
+        sourceAgent: null,
+        workSearch: null,
+        workQueue: null,
+        workView: null,
+      });
     } catch (e) {
       notify((e as Error).message, true);
     }
@@ -171,7 +241,7 @@ export function Workspace() {
         Открываем рабочее пространство…
       </div>
     );
-  if (!session || invitation)
+  if (!session || invitation || new URLSearchParams(location.hash.slice(1)).has('reset'))
     return loadError ? (
       <div className="loading">
         <p>{loadError}</p>
@@ -188,241 +258,333 @@ export function Workspace() {
     notify(modal === 'import' ? 'Реестр загружен' : 'Счёт добавлен');
   };
   return (
-    <div className="workspace">
-      <a className="skip-link" href="#workspace-main">
-        К содержимому
-      </a>
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <Brand />
-        </div>
-        <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav className="workspace-nav" aria-label="Разделы кабинета">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              data-tour={`nav-${id}`}
-              className={parentSection(tab) === id ? 'active' : ''}
-              aria-current={parentSection(tab) === id ? 'page' : undefined}
-            >
-              <Icon size={17} />
-              <span>{label}</span>
-              {tab === id && <i />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <WorkspaceAdvice
-            key={session.user.id}
-            userId={session.user.id}
-            onRules={() => setTab('management')}
-          />
-          <button
-            className="workflow-help"
-            onClick={() => setGeneralTourReplay((value) => value + 1)}
-          >
-            Обучение
-          </button>
-          <WorkspaceProfile
-            name={session.user.name}
-            company={settings?.company || session.user.company}
-            role={session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}
-            onSettings={() => setTab('settings')}
-            onLogout={() => void logout()}
-          />
-        </div>
-      </aside>
-      <div className="workspace-body">
-        <header className="workspace-header workspace-command-header">
-          <div>
-            <span>РАБОЧЕЕ ПРОСТРАНСТВО</span>
-            <ChevronRight size={12} />
-            <strong>{[...navigation, ...tools].find((n) => n.id === tab)?.label}</strong>
+    <WorkContext.Provider
+      value={{ userId: session.user.id, invoiceId: contextInvoice, caseId: contextCase }}
+    >
+      <div className="workspace">
+        <a className="skip-link" href="#workspace-main">
+          К содержимому
+        </a>
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <Brand />
           </div>
-          <nav className="workspace-operations" aria-label="Операции с дебиторкой">
-            {tools
-              .filter((tool) => !['settings', 'agent'].includes(tool.id))
-              .map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  className={tab === id || (id === 'messages' && tab === 'agent') ? 'active' : ''}
-                  aria-current={tab === id ? 'page' : undefined}
-                  onClick={() => setTab(id)}
-                >
-                  <Icon size={15} />
-                  <span>{label}</span>
-                </button>
-              ))}
-          </nav>
-          <div className="workspace-header-actions">
-            <button
-              className="section-help"
-              aria-label="Как работать в разделе"
-              onClick={() => {
-                setTab(parentSection(tab));
-                setTourReplay((value) => value + 1);
-              }}
-            >
-              Помощь по разделу
-            </button>
-            <span className="server-status">
-              <i />
-              {loadError ? 'Нет связи' : refreshing ? 'Обновляем…' : 'Данные сохранены'}
-            </span>
-            <button
-              className={`icon-button ${refreshing ? 'refreshing' : ''}`}
-              onClick={() => void refresh()}
-              aria-label="Обновить данные"
-              disabled={refreshing}
-            >
-              <RefreshCw size={15} />
-            </button>
-          </div>
-        </header>
-        <main id="workspace-main" className="workspace-main" data-tour="workspace">
-          <WorkflowOnboarding
-            userId={session.user.id}
-            replayToken={tourReplay}
-            generalReplayToken={generalTourReplay}
-            onSectionChange={setTab}
-            section={parentSection(tab)}
-            contextKey={tab}
-          />
-          {parentSection(tab) === 'management' && (
-            <div className="workspace-management-links">
+          <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+          <nav className="workspace-nav" aria-label="Разделы кабинета">
+            {navigation.map(({ id, label, icon: Icon }) => (
               <button
-                className="wf-text-button"
-                onClick={() => setTab(tab === 'settings' ? 'management' : 'settings')}
+                key={id}
+                onClick={() => {
+                  setTab(id);
+                  setOperationsOpen(false);
+                }}
+                data-tour={`nav-${id}`}
+                className={parentSection(tab) === id ? 'active' : ''}
+                aria-current={parentSection(tab) === id ? 'page' : undefined}
               >
-                {tab === 'settings' ? 'Правила и команда' : 'Реквизиты и почта'}
-                <ArrowUpRight size={14} />
+                <Icon size={17} />
+                <span>{label}</span>
+                {tab === id && <i />}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <WorkspaceAdvice
+              key={session.user.id}
+              userId={session.user.id}
+              onRules={() => setTab('management')}
+            />
+            <button
+              className="workflow-help"
+              onClick={() => setGeneralTourReplay((value) => value + 1)}
+            >
+              Обучение
+            </button>
+            <WorkspaceProfile
+              name={session.user.name}
+              company={settings?.company || session.user.company}
+              role={session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}
+              onSettings={() => setTab('settings')}
+              onLogout={() => void logout()}
+            />
+          </div>
+        </aside>
+        <div className="workspace-body">
+          <header className="workspace-header workspace-command-header">
+            <div>
+              <span>РАБОЧЕЕ ПРОСТРАНСТВО</span>
+              <ChevronRight size={12} />
+              <strong>{[...navigation, ...tools].find((n) => n.id === tab)?.label}</strong>
+            </div>
+            <button
+              className="mobile-operations-toggle button button-outline"
+              aria-expanded={operationsOpen}
+              onClick={() => setOperationsOpen(!operationsOpen)}
+            >
+              Операции · {[...tools, ...navigation].find((n) => n.id === tab)?.label}
+            </button>
+            <nav
+              className={`workspace-operations ${operationsOpen ? 'is-open' : ''}`}
+              aria-label="Операции с дебиторкой"
+            >
+              {tools
+                .filter((tool) => !['settings', 'agent'].includes(tool.id))
+                .map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    className={tab === id || (id === 'messages' && tab === 'agent') ? 'active' : ''}
+                    aria-current={tab === id ? 'page' : undefined}
+                    onClick={() => {
+                      setTab(id);
+                      setOperationsOpen(false);
+                    }}
+                  >
+                    <Icon size={15} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+            </nav>
+            <div className="workspace-header-actions">
+              <button
+                className="section-help"
+                aria-label="Как работать в разделе"
+                onClick={() => {
+                  setHelpSection('');
+                  setHelpOpen(true);
+                }}
+              >
+                Помощь по разделу
+              </button>
+              <span className="server-status">
+                <i />
+                {loadError ? 'Нет связи' : refreshing ? 'Обновляем…' : 'Данные обновлены'}
+              </span>
+              <button
+                className={`icon-button ${refreshing ? 'refreshing' : ''}`}
+                onClick={() => void refresh()}
+                aria-label="Обновить данные"
+                disabled={refreshing}
+              >
+                <RefreshCw size={15} />
               </button>
             </div>
-          )}
-          {tab !== parentSection(tab) && (
-            <button className="workspace-back" onClick={() => setTab(parentSection(tab))}>
-              <ArrowRight size={14} />
-              Вернуться в раздел «{navigation.find((item) => item.id === parentSection(tab))?.label}
-              »
-            </button>
-          )}
-          {loadError && (
-            <div className="page-error" role="alert">
-              <AlertCircle size={16} />
-              {loadError}
-              <button onClick={() => void refresh()}>Повторить</button>
-            </div>
-          )}
-          {tab === 'workflow' ? (
-            <WorkflowDesk
-              invoices={invoices}
-              totals={overview || undefined}
-              onOpenInvoice={setSelected}
-              onNavigate={(next) => setTab(next as Tab)}
-              onImport={() => setModal('import')}
-              onCreate={() => setModal('create')}
-              notify={notify}
-              refreshKey={refreshing ? 1 : 0}
+          </header>
+          <main id="workspace-main" className="workspace-main" data-tour="workspace">
+            <WorkflowOnboarding
+              userId={session.user.id}
+              replayToken={tourReplay}
+              generalReplayToken={generalTourReplay}
+              onSectionChange={setTab}
+              section={parentSection(tab)}
+              contextKey={tab}
             />
-          ) : tab === 'management' ? (
-            <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
-          ) : tab === 'yandex' ? (
-            <YandexDesk invoices={invoices} notify={notify} />
-          ) : tab === 'audit' ? (
-            <PortfolioDesk
-              invoices={invoices}
-              onChanged={() => void refresh()}
-              notify={notify}
-              onOpenInvoice={setSelected}
-              onNavigate={setTab}
-            />
-          ) : tab === 'connections' ? (
-            <div data-tour="connections-content">
-              <ConnectionsDesk
+            {parentSection(tab) === 'management' && (
+              <div className="workspace-management-links">
+                <button
+                  className="wf-text-button"
+                  onClick={() => setTab(tab === 'settings' ? 'management' : 'settings')}
+                >
+                  {tab === 'settings' ? 'Правила и команда' : 'Реквизиты и почта'}
+                  <ArrowUpRight size={14} />
+                </button>
+              </div>
+            )}
+            {tab !== parentSection(tab) && (
+              <button className="workspace-back" onClick={() => setTab(parentSection(tab))}>
+                <ArrowRight size={14} />
+                Вернуться в раздел «
+                {navigation.find((item) => item.id === parentSection(tab))?.label}»
+              </button>
+            )}
+            {tab !== 'workflow' &&
+              contextInvoice &&
+              invoices.some((i) => i.id === contextInvoice) && (
+                <div className="work-context-bar">
+                  <label>
+                    Работаем со счётом
+                    <select
+                      aria-label="Текущая задолженность"
+                      value={contextInvoice}
+                      onChange={(e) =>
+                        navigate({
+                          context: e.target.value,
+                          case: returnCase || contextCase || null,
+                        })
+                      }
+                    >
+                      {invoices
+                        .filter((i) => !contextIds.length || contextIds.includes(i.id))
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.company} · {i.number}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <button
+                    className="wf-text-button"
+                    onClick={() =>
+                      navigate({
+                        section: 'workflow',
+                        case: returnCase || contextCase || `invoice:${contextInvoice}`,
+                      })
+                    }
+                  >
+                    Вернуться к делу
+                  </button>
+                  <button
+                    className="wf-text-button"
+                    onClick={() => navigate({ context: null, case: null })}
+                  >
+                    Все задолженности
+                  </button>
+                </div>
+              )}
+            {loadError && (
+              <div className="page-error" role="alert">
+                <AlertCircle size={16} />
+                {loadError}
+                <button onClick={() => void refresh()}>Повторить</button>
+              </div>
+            )}
+            {tab === 'workflow' ? (
+              <WorkflowDesk
+                invoices={invoices}
+                totals={overview || undefined}
+                onOpenInvoice={setSelected}
+                onNavigate={(next) => setTab(next as Tab)}
+                onImport={() => setModal('import')}
+                onCreate={() => setModal('create')}
+                notify={notify}
+                refreshKey={refreshing ? 1 : 0}
+              />
+            ) : tab === 'management' ? (
+              <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
+            ) : tab === 'yandex' ? (
+              <DocumentsDesk invoices={invoices} notify={notify} onChanged={() => void refresh()} />
+            ) : tab === 'audit' ? (
+              <PortfolioDesk
                 invoices={invoices}
                 onChanged={() => void refresh()}
                 notify={notify}
-                onNavigate={(next) => setTab(next)}
+                onOpenInvoice={setSelected}
+                onNavigate={setTab}
               />
-            </div>
-          ) : tab === 'intelligence' ? (
-            <IntelligenceDesk
-              invoices={invoices}
-              onChanged={() => void refresh()}
-              notify={notify}
-            />
-          ) : tab === 'registry' ? (
-            <Registry
-              invoices={invoices}
-              onCreate={() => setModal('create')}
-              onImport={() => setModal('import')}
-              onOpen={setSelected}
-            />
-          ) : tab === 'finance' ? (
-            <FinanceDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
-          ) : tab === 'agent' ? (
-            <AgentDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
-          ) : tab === 'legal' ? (
-            <LegalDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
-          ) : tab === 'messages' ? (
-            <Correspondence
-              invoices={invoices}
-              onOpen={setSelected}
-              smtp={settings?.smtp_configured || false}
-              onReply={() => setTab('agent')}
-            />
-          ) : settings ? (
-            <SettingsPanel
-              settings={settings}
-              onSave={async (data) => {
-                await patch('/settings', data);
-                await refresh();
-                notify('Настройки сохранены');
-              }}
-            />
-          ) : (
-            <div className="loading">
-              <div className="spinner" />
-              Загружаем настройки…
-            </div>
-          )}
-          <footer className="workspace-footer">
-            <span>Mandato · Деньги возвращаются в дело.</span>
-            <span>
-              <ShieldCheck size={12} />
-              Действия сохраняются в истории
-            </span>
-          </footer>
-        </main>
-      </div>
-      {modal === 'create' && <CreateInvoice onClose={() => setModal(null)} onDone={done} />}{' '}
-      {modal === 'import' && <ImportInvoices onClose={() => setModal(null)} onDone={done} />}{' '}
-      {selected && (
-        <DebtDrawer
-          id={selected}
-          onClose={() => setSelected(null)}
-          onChange={() => void refresh()}
-          notify={notify}
-        />
-      )}{' '}
-      {toast && (
-        <div
-          className={`toast ${toast.error ? 'error-toast' : ''}`}
-          role={toast.error ? 'alert' : 'status'}
-        >
-          {toast.error ? <AlertCircle size={16} /> : <Check size={16} />}
-          <span>{toast.text}</span>
-          <button
-            className="toast-close"
-            aria-label="Закрыть уведомление"
-            onClick={() => setToast(null)}
-          >
-            <X size={14} />
-          </button>
+            ) : tab === 'connections' ? (
+              <div data-tour="connections-content">
+                <ConnectionsDesk
+                  invoices={invoices}
+                  onChanged={() => void refresh()}
+                  notify={notify}
+                  onNavigate={(next) => setTab(next)}
+                />
+              </div>
+            ) : tab === 'intelligence' ? (
+              <IntelligenceDesk
+                key={contextInvoice}
+                invoices={invoices}
+                onChanged={() => void refresh()}
+                notify={notify}
+              />
+            ) : tab === 'registry' ? (
+              <Registry
+                invoices={
+                  contextInvoice ? invoices.filter((i) => i.id === contextInvoice) : invoices
+                }
+                onCreate={() => setModal('create')}
+                onImport={() => setModal('import')}
+                onOpen={setSelected}
+              />
+            ) : tab === 'finance' ? (
+              <FinanceDesk
+                key={contextInvoice}
+                invoices={invoices}
+                onChanged={() => void refresh()}
+                notify={notify}
+              />
+            ) : tab === 'agent' ? (
+              <AgentDesk
+                key={contextInvoice}
+                invoices={invoices}
+                onChanged={() => void refresh()}
+                notify={notify}
+              />
+            ) : tab === 'legal' ? (
+              <LegalDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
+            ) : tab === 'messages' ? (
+              <Correspondence
+                invoices={
+                  contextInvoice ? invoices.filter((i) => i.id === contextInvoice) : invoices
+                }
+                onOpen={setSelected}
+                smtp={settings?.smtp_configured || false}
+                onReply={() => setTab('agent')}
+              />
+            ) : settings ? (
+              <SettingsPanel
+                settings={settings}
+                onSave={async (data) => {
+                  await patch('/settings', data);
+                  await refresh();
+                  notify('Настройки сохранены');
+                }}
+              />
+            ) : (
+              <div className="loading">
+                <div className="spinner" />
+                Загружаем настройки…
+              </div>
+            )}
+            <footer className="workspace-footer">
+              <span>Mandato · Деньги возвращаются в дело.</span>
+              <span>
+                <ShieldCheck size={12} />
+                Действия сохраняются в истории
+              </span>
+            </footer>
+          </main>
         </div>
-      )}
-    </div>
+        {helpOpen && (
+          <ContextHelp
+            section={helpSection || tab}
+            onOverview={() => {
+              setHelpOpen(false);
+              setTab(parentSection(tab));
+              setTourReplay((v) => v + 1);
+            }}
+            invoices={invoices}
+            notify={notify}
+            onClose={() => setHelpOpen(false)}
+          />
+        )}
+        {modal === 'create' && <CreateInvoice onClose={() => setModal(null)} onDone={done} />}{' '}
+        {modal === 'import' && <ImportInvoices onClose={() => setModal(null)} onDone={done} />}{' '}
+        {selected && (
+          <DebtDrawer
+            id={selected}
+            onClose={() => setSelected(null)}
+            onChange={() => void refresh()}
+            notify={notify}
+          />
+        )}{' '}
+        {toast && (
+          <div
+            className={`toast ${toast.error ? 'error-toast' : ''}`}
+            role={toast.error ? 'alert' : 'status'}
+          >
+            {toast.error ? <AlertCircle size={16} /> : <Check size={16} />}
+            <span>{toast.text}</span>
+            <button
+              className="toast-close"
+              aria-label="Закрыть уведомление"
+              onClick={() => setToast(null)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </WorkContext.Provider>
   );
 }
 function Registry({
@@ -680,6 +842,7 @@ function Correspondence({
         </div>
         <ShieldCheck size={20} />
       </div>
+      <CaseConversation invoices={invoices} onOpen={onOpen} />
       <section className="panel">
         <div className="panel-heading">
           <div>
@@ -732,6 +895,7 @@ function SettingsPanel({
   settings: Settings;
   onSave: (s: Partial<Settings>) => Promise<void>;
 }) {
+  const draft = useFormDraft('settings');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -745,6 +909,7 @@ function SettingsPanel({
         annual_rate: Number(f.annual_rate),
         cooldown_days: Number(f.cooldown_days),
       });
+      draft.clear();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -760,7 +925,13 @@ function SettingsPanel({
           <p>Реквизиты для писем и ограничения, которые учитывает Mandato.</p>
         </div>
       </div>
-      <form className="settings-form" onSubmit={save}>
+      <MailSetup />
+      <form ref={draft.ref} className="settings-form" onSubmit={save}>
+        {draft.status && (
+          <p className="draft-status" role="status">
+            {draft.status}
+          </p>
+        )}
         <section className="settings-panel">
           <div className="settings-intro">
             <h2>Компания и письма</h2>

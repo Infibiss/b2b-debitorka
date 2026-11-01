@@ -27,9 +27,9 @@
   color: white;
 }
 .portfolio-metrics span {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.08em;
-  opacity: 0.7;
+  opacity: 1;
 }
 .portfolio-metrics strong {
   font-size: clamp(22px, 2.5vw, 34px);
@@ -37,9 +37,9 @@
   font-weight: 550;
 }
 .portfolio-metrics small {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
-  opacity: 0.75;
+  opacity: 1;
 }
 .portfolio-empty {
   padding: 70px 24px;
@@ -187,7 +187,7 @@
 }
 .portfolio-row small {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   margin-top: 7px;
   color: #798173;
   line-height: 1.5;
@@ -239,7 +239,7 @@
   background: #fff9f4;
 }
 .portfolio-finding > span {
-  font-size: 10px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: #7d6c50;
@@ -264,7 +264,7 @@
   overflow-wrap: anywhere;
 }
 .portfolio-evidence > * {
-  font-size: 10px;
+  font-size: 13px;
   color: #6c7664;
   background: #f0f3eb;
   padding: 6px 9px;
@@ -326,7 +326,7 @@
   gap: 15px;
   align-items: center;
   color: #7d8579;
-  font-size: 11px;
+  font-size: 13px;
   margin: 22px 0;
 }
 .portfolio-footer label {
@@ -347,7 +347,7 @@
   box-sizing: border-box;
 }
 .portfolio-detail .field small {
-  font-size: 11px;
+  font-size: 13px;
   color: #7d8579;
 }
 @media (max-width: 1100px) {

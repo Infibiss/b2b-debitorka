@@ -47,6 +47,27 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
       - name: Audit runtime Python dependencies
         run: python -m pip_audit -r requirements.txt --progress-spinner off
+      - name: Use PostgreSQL service client tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Keep dump/restore clients on the same version as the test server.
+          client_dir="$RUNNER_TEMP/postgres-client"
+          mkdir -p "$client_dir"
+          for tool in pg_dump pg_restore; do
+            cat > "$client_dir/$tool" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker exec -i \
+            -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER -e PGPASSWORD \
+            -e PGSSLMODE -e PGSSLROOTCERT -e PGCONNECT_TIMEOUT -e PGOPTIONS \
+            '${{ job.services.postgres.id }}' "$(basename "$0")" "$@"
+          SH
+            chmod 700 "$client_dir/$tool"
+          done
+          echo "$client_dir" >> "$GITHUB_PATH"
+          "$client_dir/pg_dump" --version
+          "$client_dir/pg_restore" --version
       - name: Test API and operations
         env:
           TEST_POSTGRES_URL: postgresql://agentpay_test:agentpay-test-only@127.0.0.1:5432/agentpay_test

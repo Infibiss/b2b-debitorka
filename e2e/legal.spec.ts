@@ -38,6 +38,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   await expect(
     page.getByRole('heading', { name: 'Юридически значимые факты', exact: true })
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Все поля', exact: true }).click();
   for (const [label, value] of Object.entries({
     'Наименование кредитора': 'ООО Поставщик',
     'ИНН кредитора': '7801234567',
@@ -59,6 +60,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
     'Основание подсудности': 'Место нахождения ответчика, статья 35 АПК РФ',
     'Договор сопровождения': 'Договор № А-1',
     'Дата начала сопровождения': '2026-08-01',
+    'Отдельное соглашение с адвокатом': 'Прямое соглашение с адвокатом № 1',
   }))
     await page.getByLabel(label, { exact: true }).fill(value);
   const business = page.getByLabel('Долг возник в предпринимательской деятельности', {
@@ -150,9 +152,27 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   await page.getByRole('tab', { name: 'Гонорар', exact: true }).click();
   await expect(page.locator('.legal-fee')).toContainText('Подтверждённые поступления');
   await expect(page.locator('.legal-fee')).toContainText('0 ₽');
+  await expect(
+    page.locator('.legal-fee .ops-result-grid > div').filter({ hasText: 'Итого Mandato' })
+  ).toContainText(/7\s?000\s?₽/);
+  await expect(
+    page.locator('.legal-fee .ops-result-grid > div').filter({ hasText: 'Адвокату отдельно' })
+  ).toContainText('0 ₽');
+  await expect(
+    page.getByRole('table', { name: 'Стоимость поданных судебных пакетов' })
+  ).toContainText('Заявление о судебном приказе');
+  await expect(
+    page.getByRole('table', { name: 'Стоимость поданных судебных пакетов' })
+  ).toContainText(/7\s?000\s?₽/);
+  await page
+    .locator('.legal-fee')
+    .screenshot({ path: info.outputPath('application-fees.png'), animations: 'disabled' });
   await page.reload();
-  await navigate(page, 'Дела');
-  await page.getByRole('button', { name: new RegExp(invoice.number) }).click();
+  await expect(page.getByRole('tab', { name: 'Гонорар', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  );
+  await expect(page.locator('.ops-context')).toContainText(invoice.number);
   await page.getByRole('tab', { name: 'Документы', exact: true }).click();
   await expect(page.locator('.legal-document-list')).toContainText('Согласовано');
   await expect(page.getByRole('link', { name: 'Скачать DOCX', exact: true })).toBeVisible();

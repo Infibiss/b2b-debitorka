@@ -1,0 +1,18 @@
+from test_storage_pg import postgres_config, postgres_client
+from tests import test_ui_audit_contracts as contracts
+
+
+def test_postgres_recheck_requires_new_review(postgres_client):
+    contracts.test_recheck_preserves_terms_and_requires_new_review(postgres_client)
+
+
+def test_postgres_recheck_respects_current_bounds(postgres_client):
+    contracts.test_recheck_does_not_bypass_expiry_or_current_balance(postgres_client)
+
+
+def test_postgres_sources_and_timeline_isolation(postgres_client):
+    contracts.test_financial_sources_and_timeline_are_invoice_and_tenant_scoped(postgres_client)
+
+
+def test_postgres_partial_legal_intake(postgres_client):
+    contracts.test_incomplete_legal_facts_can_be_saved_but_cannot_generate(postgres_client)

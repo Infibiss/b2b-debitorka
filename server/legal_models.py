@@ -1,13 +1,13 @@
 """Input facts supplied by a client/operator and explicitly reviewed by a human."""
 import re
 from datetime import date
-from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import Field, StrictBool, StrictInt, field_validator, model_validator
 
 from .business_time import business_today
 from .models import Input, Money, valid_email
+from .legal_fees import TARIFF
 
 
 class LegalInput(Input):
@@ -110,15 +110,15 @@ class CaseFacts(LegalInput):
     pretrial_basis:str=Field(default="Часть 5 статьи 4 АПК РФ",max_length=5000)
     fee_agreement_reference:str=Field(default="",max_length=1000)
     fee_start_on:date|None=None
-    pretrial_fee_percent:Percent="6"
-    judicial_fee_percent:Percent="15"
+    fee_model_version:Literal["mandato-2026-10-26"]=TARIFF['version']
+    lawyer_agreement_reference:str=Field(default="",max_length=1000)
 
     @model_validator(mode="after")
     def explicit_terms(self):
         if self.pretrial_days!=30 and (len(self.pretrial_basis.strip())<10 or self.pretrial_basis.strip()=="Часть 5 статьи 4 АПК РФ"):
             raise ValueError("Иной срок претензии требует основания в законе/договоре")
-        if max(Decimal(self.pretrial_fee_percent),Decimal(self.judicial_fee_percent))>100:
-            raise ValueError("Ставка гонорара не больше 100 процентов")
+        if self.fee_start_on and self.fee_start_on>business_today():
+            raise ValueError("Дата начала сопровождения не может быть в будущем")
         return self
 
 

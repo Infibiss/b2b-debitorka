@@ -38,6 +38,7 @@ export type YandexDeskProps = {
   invoices: Invoice[];
   notify: (text: string, error?: boolean) => void;
   invoiceId?: string;
+  mode?: 'all' | 'ocr' | 'voice';
 };
 const labels: Record<string, string> = {
   unconfigured: 'Нужно подключение',
@@ -121,7 +122,7 @@ type Recording = {
   clock: ReturnType<typeof setInterval>;
 };
 
-export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
+export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: YandexDeskProps) {
   const [status, setStatus] = useState<Status | null>(null),
     [documents, setDocuments] = useState<DocumentResult[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState(invoiceId || ''),
@@ -388,9 +389,20 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
     setError('');
   }
   return (
-    <div className="yx-desk">
-      <DeskHeading eyebrow="РАБОТА СО СЧЁТОМ" title="Документы и разговор">
-        Загрузите скан для распознавания или проверьте, как Mandato ведёт разговор об оплате.
+    <div className={`yx-desk yx-mode-${mode}`}>
+      <DeskHeading
+        eyebrow="РАБОТА СО СЧЁТОМ"
+        title={
+          mode === 'ocr'
+            ? 'Распознавание документов'
+            : mode === 'voice'
+              ? 'Учебный разговор'
+              : 'Документы и разговор'
+        }
+      >
+        {mode === 'ocr'
+          ? 'Извлеките текст из скана и проверьте результат перед использованием.'
+          : 'Демонстрация разговора об оплате. Действия по долгу требуют отдельного подтверждения.'}
       </DeskHeading>
       <DeskError>{error}</DeskError>
       <label className="field yx-invoice">
@@ -409,187 +421,197 @@ export function YandexDesk({ invoices, notify, invoiceId }: YandexDeskProps) {
         </select>
       </label>
       <div className="yx-columns">
-        <section className="yx-card" aria-labelledby="yx-documents-title">
-          <div className="yx-title">
-            <FileCheck2 size={22} />
-            <h2 id="yx-documents-title">Документы</h2>
-          </div>
-          <Connection status={status?.ocr} />
-          <p>
-            Загрузите договор, акт или счёт. Поддерживаются PDF до пяти страниц, PNG и JPEG до 1 МБ.
-          </p>
-          <label
-            className={`button button-outline yx-upload ${!status?.ocr.configured || busy ? 'yx-disabled' : ''}`}
-          >
-            <Upload size={16} />
-            {busy === 'document' ? 'Распознаём…' : 'Выбрать документ'}
-            <input
-              aria-label="Загрузить документ для распознавания"
-              type="file"
-              accept="application/pdf,image/png,image/jpeg"
-              disabled={!status?.ocr.configured || !!busy || recording}
-              onChange={(event) => {
-                void upload(event.target.files?.[0]);
-                event.target.value = '';
-              }}
-            />
-          </label>
-          <details className="yx-note">
-            <summary>Лимит распознавания</summary>
+        {mode !== 'voice' && (
+          <section className="yx-card" aria-labelledby="yx-documents-title">
+            <div className="yx-title">
+              <FileCheck2 size={22} />
+              <h2 id="yx-documents-title">Документы</h2>
+            </div>
+            <Connection status={status?.ocr} />
             <p>
-              10 страниц в день на сотрудника и 20 на компанию. Неудачные запросы тоже учитываются.
+              Загрузите договор, акт или счёт. Поддерживаются PDF до пяти страниц, PNG и JPEG до 1
+              МБ.
             </p>
-          </details>
-          <ul className="yx-documents">
-            {documents
-              .filter((item) => !selectedInvoice || item.invoice_id === selectedInvoice)
-              .map((item) => (
-                <li key={item.id}>
-                  <button className="yx-document-link" onClick={() => review(item)}>
-                    {item.filename}
-                    <small>
-                      {item.acceptance ? 'Проверен человеком' : labels[item.status] || item.status}{' '}
-                      · {item.page_count} стр.
-                    </small>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </section>
-        <section className="yx-card" aria-labelledby="yx-voice-title">
-          <div className="yx-title">
-            <Volume2 size={22} />
-            <h2 id="yx-voice-title">Разговор по счёту</h2>
-          </div>
-          <Connection status={status?.voice} />
-          <p>
-            Ответьте от лица контрагента: Mandato уточнит причину задержки и предложит обсудить срок
-            оплаты. Можно говорить или писать.
-          </p>
-          <p className="yx-note">
-            Разговор проходит в браузере, без звонка контрагенту. Запись до 20 секунд обрабатывается
-            Яндексом. Итоги сохраняются в стенограмме; долг и условия оплаты не меняются.
-          </p>
-          {!selectedInvoice && (
-            <p className="yx-callout">Выберите счёт выше, чтобы начать диалог.</p>
-          )}
-          <label className="yx-identity">
-            <input
-              type="checkbox"
-              checked={identityConfirmed}
-              disabled={!selectedInvoice || !!busy || recording}
-              onChange={(event) => setIdentityConfirmed(event.target.checked)}
-            />
-            Разрешаю использовать сведения выбранного счёта в учебном разговоре от лица контрагента.
-          </label>
-          <div className="yx-actions">
-            <button
-              type="button"
-              className="button button-outline"
-              disabled={!selectedInvoice || !status?.voice.configured || !!busy || recording}
-              onClick={() => void sendTurn({ opening: true }, selectedInvoice)}
+            <label
+              className={`button button-outline yx-upload ${!status?.ocr.configured || busy ? 'yx-disabled' : ''}`}
             >
-              Начать разговор
-            </button>
-            <button
-              type="button"
-              className={`button ${recording ? 'button-dark yx-recording' : 'button-outline'}`}
-              disabled={!selectedInvoice || !status?.voice.configured || (!!busy && !recording)}
-              onClick={() => (recording ? stopRef.current() : void start())}
-            >
-              {recording ? (
-                <>
-                  <Square size={16} />
-                  Остановить и отправить · {seconds} с
-                </>
-              ) : (
-                <>
-                  <Mic size={16} />
-                  {busy === 'microphone' ? 'Включаем микрофон…' : 'Начать запись'}
-                </>
-              )}
-            </button>
-            {recording && (
+              <Upload size={16} />
+              {busy === 'document' ? 'Распознаём…' : 'Выбрать документ'}
+              <input
+                aria-label="Загрузить документ для распознавания"
+                type="file"
+                accept="application/pdf,image/png,image/jpeg"
+                disabled={!status?.ocr.configured || !!busy || recording}
+                onChange={(event) => {
+                  void upload(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+            </label>
+            <details className="yx-note">
+              <summary>Лимит распознавания</summary>
+              <p>
+                10 страниц в день на сотрудника и 20 на компанию. Неудачные запросы тоже
+                учитываются.
+              </p>
+            </details>
+            <ul className="yx-documents">
+              {documents
+                .filter((item) => !selectedInvoice || item.invoice_id === selectedInvoice)
+                .map((item) => (
+                  <li key={item.id}>
+                    <button className="yx-document-link" onClick={() => review(item)}>
+                      {item.filename}
+                      <small>
+                        {item.acceptance
+                          ? 'Проверен человеком'
+                          : labels[item.status] || item.status}{' '}
+                        · {item.page_count} стр.
+                      </small>
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        )}
+        {mode !== 'ocr' && (
+          <section className="yx-card" aria-labelledby="yx-voice-title">
+            <div className="yx-title">
+              <Volume2 size={22} />
+              <h2 id="yx-voice-title">Разговор по счёту</h2>
+            </div>
+            <Connection status={status?.voice} />
+            <p>
+              Ответьте от лица контрагента: Mandato уточнит причину задержки и предложит обсудить
+              срок оплаты. Можно говорить или писать.
+            </p>
+            <p className="yx-note">
+              Разговор проходит в браузере, без звонка контрагенту. Запись до 20 секунд
+              обрабатывается Яндексом. Итоги сохраняются в стенограмме; долг и условия оплаты не
+              меняются.
+            </p>
+            {!selectedInvoice && (
+              <p className="yx-callout">Выберите счёт выше, чтобы начать диалог.</p>
+            )}
+            <label className="yx-identity">
+              <input
+                type="checkbox"
+                checked={identityConfirmed}
+                disabled={!selectedInvoice || !!busy || recording}
+                onChange={(event) => setIdentityConfirmed(event.target.checked)}
+              />
+              Разрешаю использовать сведения выбранного счёта в учебном разговоре от лица
+              контрагента.
+            </label>
+            <div className="yx-actions">
               <button
                 type="button"
                 className="button button-outline"
-                onClick={() => {
-                  cleanup();
-                  setRecording(false);
-                }}
+                disabled={!selectedInvoice || !status?.voice.configured || !!busy || recording}
+                onClick={() => void sendTurn({ opening: true }, selectedInvoice)}
               >
-                Отменить запись
+                Начать разговор
               </button>
-            )}
-          </div>
-          <span role="status" aria-live="polite" className="yx-live">
-            {recording
-              ? 'Микрофон включён. Запись автоматически остановится через 20 секунд.'
-              : busy === 'voice'
-                ? 'Mandato обрабатывает реплику…'
-                : ''}
-          </span>
-          <form
-            className="yx-text-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (typed.trim()) void sendTurn({ text: typed.trim() }, selectedInvoice);
-            }}
-          >
-            <label className="field">
-              Или введите реплику
-              <textarea
-                maxLength={1000}
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                placeholder="Например: оплатим счёт в пятницу"
-                disabled={!!busy || recording}
-              />
-            </label>
-            <button
-              className="button button-outline"
-              disabled={
-                !typed.trim() ||
-                !selectedInvoice ||
-                !status?.voice.configured ||
-                !!busy ||
-                recording
-              }
-            >
-              Ответить Mandato
-            </button>
-          </form>
-          <p className="yx-note">До 10 реплик в день на сотрудника и 20 на компанию.</p>
-          <ol className="yx-transcript" aria-label="История диалога">
-            {turns.map((turn, index) => (
-              <li key={turn.id}>
-                {!turn.opening && (
+              <button
+                type="button"
+                className={`button ${recording ? 'button-dark yx-recording' : 'button-outline'}`}
+                disabled={!selectedInvoice || !status?.voice.configured || (!!busy && !recording)}
+                onClick={() => (recording ? stopRef.current() : void start())}
+              >
+                {recording ? (
                   <>
-                    <span className="yx-turn-label">Вы · {index + 1}</span>
-                    <p>{turn.transcript || 'Речь не распознана'}</p>
+                    <Square size={16} />
+                    Остановить и отправить · {seconds} с
+                  </>
+                ) : (
+                  <>
+                    <Mic size={16} />
+                    {busy === 'microphone' ? 'Включаем микрофон…' : 'Начать запись'}
                   </>
                 )}
-                <span className="yx-turn-label">Mandato</span>
-                <p>{turn.reply || message(turn.error_code)}</p>
-                <TurnAudio turn={turn} autoplay={turn.id === spokenId} />
-                {turn.handoff_required && (
-                  <p className="yx-callout">
-                    Нужен разбор сотрудником. Запрос сохранён в стенограмме; действия в деле требуют
-                    отдельного рассмотрения.
-                  </p>
-                )}
-                {turn.status !== 'completed' && turn.reply && (
-                  <p role="status" className="yx-warning">
-                    Озвучивание не завершено: {message(turn.error_code)}
-                  </p>
-                )}
-                {turn.intent_source === 'rules_fallback' && (
-                  <small>Модель недоступна. Ответ составлен по правилам разговора.</small>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
+              </button>
+              {recording && (
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={() => {
+                    cleanup();
+                    setRecording(false);
+                  }}
+                >
+                  Отменить запись
+                </button>
+              )}
+            </div>
+            <span role="status" aria-live="polite" className="yx-live">
+              {recording
+                ? 'Микрофон включён. Запись автоматически остановится через 20 секунд.'
+                : busy === 'voice'
+                  ? 'Mandato обрабатывает реплику…'
+                  : ''}
+            </span>
+            <form
+              className="yx-text-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (typed.trim()) void sendTurn({ text: typed.trim() }, selectedInvoice);
+              }}
+            >
+              <label className="field">
+                Или введите реплику
+                <textarea
+                  maxLength={1000}
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  placeholder="Например: оплатим счёт в пятницу"
+                  disabled={!!busy || recording}
+                />
+              </label>
+              <button
+                className="button button-outline"
+                disabled={
+                  !typed.trim() ||
+                  !selectedInvoice ||
+                  !status?.voice.configured ||
+                  !!busy ||
+                  recording
+                }
+              >
+                Ответить Mandato
+              </button>
+            </form>
+            <p className="yx-note">До 10 реплик в день на сотрудника и 20 на компанию.</p>
+            <ol className="yx-transcript" aria-label="История диалога">
+              {turns.map((turn, index) => (
+                <li key={turn.id}>
+                  {!turn.opening && (
+                    <>
+                      <span className="yx-turn-label">Вы · {index + 1}</span>
+                      <p>{turn.transcript || 'Речь не распознана'}</p>
+                    </>
+                  )}
+                  <span className="yx-turn-label">Mandato</span>
+                  <p>{turn.reply || message(turn.error_code)}</p>
+                  <TurnAudio turn={turn} autoplay={turn.id === spokenId} />
+                  {turn.handoff_required && (
+                    <p className="yx-callout">
+                      Нужен разбор сотрудником. Запрос сохранён в стенограмме; действия в деле
+                      требуют отдельного рассмотрения.
+                    </p>
+                  )}
+                  {turn.status !== 'completed' && turn.reply && (
+                    <p role="status" className="yx-warning">
+                      Озвучивание не завершено: {message(turn.error_code)}
+                    </p>
+                  )}
+                  {turn.intent_source === 'rules_fallback' && (
+                    <small>Модель недоступна. Ответ составлен по правилам разговора.</small>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
       {document && (
         <section className="yx-card yx-review" aria-labelledby="yx-review-title">

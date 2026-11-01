@@ -7,6 +7,11 @@ from pathlib import Path
 import secrets
 import sys
 
+ROOT=Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0,str(ROOT))
+from scripts.private_files import create_private, is_private
+
 
 def prepare(public_ip,output):
     ip=ipaddress.ip_address(public_ip)
@@ -16,7 +21,7 @@ def prepare(public_ip,output):
     url='https://'+str(ip)
     if output.exists():
         values=dict(line.split('=',1) for line in output.read_text().splitlines() if line and not line.startswith('#') and '=' in line)
-        if output.stat().st_mode&0o077:raise ValueError('Existing config must have private permissions: chmod 600')
+        if not is_private(output):raise ValueError('Existing config must have private owner-only permissions')
         if values.get('APP_URL')!=url:raise ValueError('Existing APP_URL differs. Review IP, TLS certificate and session origin before changing it')
         if values.get('APP_ENV')!='production' or values.get('SECURE_COOKIES')!='true' or len(values.get('APP_DB_PASSWORD',''))<40:raise ValueError('Existing production config is incomplete; review it without rotating the live database password')
         return output
@@ -44,8 +49,8 @@ LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_BASE_URL=
 '''
-    descriptor=os.open(output,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-    with os.fdopen(descriptor,'w') as handle:
+    descriptor=create_private(output)
+    with os.fdopen(descriptor,'w',encoding='utf-8',newline='\n') as handle:
         handle.write(content);handle.flush();os.fsync(handle.fileno())
     return output
 

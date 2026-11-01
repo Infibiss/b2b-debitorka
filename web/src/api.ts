@@ -60,6 +60,9 @@ export type Overview = {
   total_outstanding: number;
   overdue_amount: number;
   collected_amount: number;
+  bank_confirmed_amount: number;
+  historical_paid_amount: number;
+  manual_paid_amount: number;
   promised_amount: number;
   invoice_count: number;
   overdue_count: number;

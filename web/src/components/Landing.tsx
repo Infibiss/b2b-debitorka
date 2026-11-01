@@ -21,6 +21,7 @@ import {
 import { Brand } from './Brand';
 import { Dialog } from './Dialog';
 import { money } from '../api';
+import { tariff } from '../pricing';
 import './landing.css';
 const steps = [
   {
@@ -68,6 +69,10 @@ const faqs = [
   [
     'Можно начать с небольшой части реестра?',
     'Да. Начните с нескольких договоров, проверьте результат аудита и согласуйте правила напоминаний с руководителем. Затем добавьте остальные счета.',
+  ],
+  [
+    'Как оплачивается взыскание?',
+    `Mandato получает ${tariff.pretrial_percent}% от денег, поступивших после претензии и до подачи в суд. За подготовленный и поданный пакет: судебный приказ — ${money(tariff.court_order_amount)}, иск — ${money(tariff.statement_of_claim_amount)}, независимо от результата взыскания. Адвокату отдельно — ${tariff.lawyer_percent}% от поступлений после подачи по прямому соглашению с вами. Госпошлину оплачиваете вы. Аудит и мониторинг в пилоте бесплатны.`,
   ],
 ];
 export function Landing() {
@@ -149,7 +154,7 @@ export function Landing() {
                   Mandato проверяет задолженность, напоминает клиентам и следит за обещанными
                   сроками. Ваша команда разбирает споры и согласует условия оплаты.
                 </p>
-                <a href="/app" className="button button-lime">
+                <a href="/app?intent=import" className="button button-lime">
                   Загрузить реестр <ArrowUpRight size={20} />
                 </a>
                 <button className="hero-watch" onClick={scrollWorkflow}>
@@ -224,7 +229,7 @@ export function Landing() {
                 Счета, документы, переписка и поступления собраны по контрагенту и договору. Не
                 нужно искать историю в почте и переносить сроки из одной таблицы в другую.
               </p>
-              <a href="/app" className="text-link">
+              <a href="/app?intent=import" className="text-link">
                 Загрузить реестр <ArrowUpRight size={18} />
               </a>
             </div>
@@ -533,24 +538,24 @@ export function Landing() {
             </div>
           </div>
         </section>
-        <section className="pricing section-pad reveal" id="pricing">
+        <section className="pricing section-pad reveal" id="pricing" aria-label="Стоимость Mandato">
           <div className="pricing-head">
             <h2>Стоимость Mandato</h2>
-            <p>Для бухгалтерии, юриста и руководителя — в одном кабинете.</p>
+            <p>Досудебная работа и судебные пакеты — с раздельными условиями оплаты.</p>
           </div>
           <div className="pricing-grid">
             <article className="price-card">
-              <div className="price-label">ДЛЯ ВАШЕЙ КОМАНДЫ</div>
+              <div className="price-label">ДОСУДЕБНАЯ РАБОТА</div>
               <h3>
-                14 900 ₽ <span>/ месяц</span>
+                {tariff.pretrial_percent}% <span>от поступивших денег</span>
               </h3>
-              <p>От загрузки счетов до контроля поступлений.</p>
+              <p>После направления претензии и до подачи заявления в суд.</p>
               <ul>
                 {[
-                  'Дела по контрагентам и договорам',
-                  'Автоматические напоминания по вашим правилам',
-                  'Контроль обещаний, оплат и спорных вопросов',
-                  'Импорт, экспорт и история действий',
+                  'Сверка задолженности и подготовка претензии',
+                  'Напоминания и переговоры в рамках мандата',
+                  'Оплата с фактических поступлений на ваш счёт',
+                  'Аудит и мониторинг в пилоте бесплатно',
                 ].map((t) => (
                   <li key={t}>
                     <Check size={17} />
@@ -563,15 +568,15 @@ export function Landing() {
               </a>
             </article>
             <article className="price-card price-service">
-              <div className="price-label">ПОМОЩЬ С ЗАПУСКОМ</div>
-              <h3>Настроим вместе</h3>
-              <p>Поможем подготовить данные и запустить работу команды.</p>
+              <div className="price-label">СУДЕБНЫЕ ДОКУМЕНТЫ</div>
+              <h3>Фикс за пакет</h3>
+              <p>За подготовленный и поданный пакет, независимо от исхода дела.</p>
               <ul>
                 {[
-                  'Разбор структуры задолженности',
-                  'Настройка напоминаний и согласований',
-                  'Подготовка реестра для команды',
-                  'Стоимость по объёму и задачам',
+                  `Судебный приказ — ${money(tariff.court_order_amount)}`,
+                  `Исковое заявление — ${money(tariff.statement_of_claim_amount)}`,
+                  'Заявление в банк по исполнительному листу бесплатно',
+                  'Подпись и подача — после согласования с вами',
                 ].map((t) => (
                   <li key={t}>
                     <Check size={17} />
@@ -580,12 +585,22 @@ export function Landing() {
                 ))}
               </ul>
               <a href="/app?intent=service" className="button button-outline">
-                Обсудить задачу <ArrowUpRight size={19} />
+                Обсудить сопровождение <ArrowUpRight size={19} />
               </a>
             </article>
           </div>
+          <aside className="pricing-lawyer" aria-label="Вознаграждение адвоката">
+            <h3>Адвокату отдельно — {tariff.lawyer_percent}%</h3>
+            <p>
+              От поступлений после подачи в суд, по прямому соглашению с клиентом. Эта сумма не
+              входит в вознаграждение Mandato. Госпошлину оплачивает клиент; её возмещение с
+              должника не гарантируется.
+            </p>
+          </aside>
           <p className="pricing-note">
-            Начните с кабинета. Условия подключения и сопровождения согласуем до оплаты.
+            В пилоте аудит и мониторинг бесплатны. После пилота мониторинг —{' '}
+            {money(tariff.monitoring_monthly_min)}–{money(tariff.monitoring_monthly_max)} в месяц,
+            по договору. Условия согласуем до начала работы. Деньги должника поступают напрямую вам.
           </p>
         </section>
         <section className="faq section-pad reveal" aria-label="Вопросы и ответы">
@@ -610,7 +625,7 @@ export function Landing() {
         </section>
         <section className="final-cta" aria-label="Начните со своего реестра">
           <h2>Начните со своего реестра</h2>
-          <a href="/app" className="button button-lime">
+          <a href="/app?intent=import" className="button button-lime">
             Загрузить реестр <MoveUpRight size={20} />
           </a>
           <div className="cta-decoration" aria-hidden="true">

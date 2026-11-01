@@ -1,10 +1,11 @@
+import { useRouteField } from '../navigation';
+import { MailSetup } from './MailSetup';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   ArrowDownToLine,
   Check,
   Copy,
   Database,
-  Mail,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -128,11 +129,10 @@ export function ConnectionsDesk({
   invoices,
   notify,
   onChanged,
-  onNavigate,
 }: DeskProps & {
   onNavigate?: (target: 'settings') => void;
 }) {
-  const [activeSource, setActiveSource] = useState<SourceChoice>('one_c');
+  const [activeSource, setActiveSource] = useRouteField<SourceChoice>('source', 'one_c');
   const [itOpen, setItOpen] = useState(false);
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
@@ -739,30 +739,7 @@ export function ConnectionsDesk({
             </div>
           </section>
         )}
-        {activeSource === 'email' && (
-          <section className="ms-card connections-mail">
-            <h2>
-              <Mail size={20} /> Почта
-            </h2>
-            <span className="ms-status">{sourceStatus('email')}</span>
-            <p>
-              {mailConfigured === true
-                ? 'Отправка настроена. Письма и их статусы доступны в работе со счётом.'
-                : mailConfigured === false
-                  ? 'Подключите отправку писем в настройках.'
-                  : 'Не удалось получить состояние отправки. Обновите статусы.'}
-            </p>
-            {onNavigate && (
-              <button
-                type="button"
-                className="button button-outline"
-                onClick={() => onNavigate('settings')}
-              >
-                Настроить почту
-              </button>
-            )}
-          </section>
-        )}
+        {activeSource === 'email' && <MailSetup />}
         {itSource !== 'email' && (
           <details
             key={activeSource}

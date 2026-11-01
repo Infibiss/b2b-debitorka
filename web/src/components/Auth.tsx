@@ -1,3 +1,5 @@
+import { AccountRecovery, SupportContact } from './AccountHelp';
+import { navigate } from '../navigation';
 import { useState, type FormEvent } from 'react';
 import { ArrowUpRight, ArrowLeft, ShieldCheck, Check } from 'lucide-react';
 import { Brand } from './Brand';
@@ -5,6 +7,10 @@ import { post, type Session } from '../api';
 import { useInvitationToken } from './useInvitationToken';
 export function Auth({ onSession }: { onSession: (session: Session) => void }) {
   const invitation = useInvitationToken();
+  const [resetToken, setResetToken] = useState(
+    () => new URLSearchParams(location.hash.slice(1)).get('reset') || ''
+  );
+  const [recovering, setRecovering] = useState(false);
   const [mode, setMode] = useState(
       new URLSearchParams(location.search).get('mode') === 'login' ? 'login' : 'register'
     ),
@@ -17,13 +23,25 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
     setError('');
     try {
       onSession(await post<Session>(`/auth/${mode}`, data));
-      history.replaceState({}, '', '/app');
+      navigate({ mode: null }, true);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+  if (recovering || resetToken)
+    return (
+      <AccountRecovery
+        token={resetToken || undefined}
+        onBack={() => {
+          setResetToken('');
+          setRecovering(false);
+          setMode('login');
+          history.replaceState({}, '', '/app?mode=login');
+        }}
+      />
+    );
   if (invitation) return <InvitationRegistration token={invitation} onSession={onSession} />;
   return (
     <div className="auth-page">
@@ -156,6 +174,12 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               {busy ? <span className="button-loading" /> : <ArrowUpRight size={19} />}
             </button>
           </form>
+          {mode === 'login' && (
+            <button className="button button-ghost" onClick={() => setRecovering(true)}>
+              Забыли пароль?
+            </button>
+          )}
+          <SupportContact />
           <div className="auth-trust">
             <ShieldCheck size={17} />
             <span>

@@ -45,7 +45,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
     return () => {
       document.body.style.overflow = old;
       document.removeEventListener('keydown', key);
-      previous?.focus();
+      previous?.focus({ preventScroll: true });
     };
   }, [ref]);
 }

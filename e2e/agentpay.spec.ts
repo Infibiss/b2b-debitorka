@@ -153,8 +153,8 @@ test('invoice, approved draft, promise, payments and login persist without a fak
   await assertNoHorizontalOverflow(page);
 
   await page.reload();
-  await openRegistry(page);
-  await page.getByText(number, { exact: true }).first().click();
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText(number);
   await page.getByRole('button', { name: 'Внести оплату', exact: true }).click();
   await page.getByLabel('Сумма оплаты', { exact: true }).fill('1000');
   await page.getByLabel('Дата поступления', { exact: true }).fill(today);
@@ -238,8 +238,8 @@ test('correcting a contact invalidates the old recipient and persists a fresh dr
   await page.getByRole('button', { name: 'Подготовить письмо', exact: true }).click();
   await expect(drawer.locator('.editor-to')).toContainText('corrected@example.ru');
   await page.reload();
-  await openRegistry(page);
-  await page.getByText(number, { exact: true }).first().click();
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText(number);
   await expect(drawer.locator('.drawer-company')).toContainText('corrected@example.ru');
   await expect(drawer.locator('.invoice-notes')).toContainText(note);
   await page.getByRole('button', { name: 'Поставить на паузу', exact: true }).click();
@@ -329,7 +329,7 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
     page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Обещано к оплате' })
   ).toContainText(/250/);
   await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Поступило' })
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Подтверждено по банку' })
   ).toContainText(/300/);
   await navigate(page, 'Финансы');
   await assertNoHorizontalOverflow(page);
@@ -364,7 +364,7 @@ test('agent inbox fails safely without a provider and never fabricates payment',
     page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Осталось к оплате' })
   ).toContainText(/1\s?000/);
   await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Поступило' })
+    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Подтверждено по банку' })
   ).toContainText('0');
   await navigate(page, 'Агент');
   await assertNoHorizontalOverflow(page);

@@ -110,7 +110,7 @@ class GuardMiddleware:
             original_receive = receive
         if path.startswith("/api/"):
             ip = (scope.get("client") or ("unknown",))[0]
-            group = "auth" if path in ("/api/auth/login", "/api/auth/register", "/api/workflow/invitations/accept") else "api"
+            group = "auth" if path in ("/api/auth/login", "/api/auth/register", "/api/auth/recovery", "/api/auth/reset-password", "/api/workflow/invitations/accept") else "api"
             limit = 15 if group == "auth" else 300
             key, clock = (ip, group), time.monotonic()
             with self.lock:
@@ -337,7 +337,7 @@ def create_app():
     def overview(user=Depends(get_user)):
         with database(config) as connection:
             items = [invoice_view(row) for row in connection.execute("SELECT * FROM invoices WHERE tenant_id=?", (user["tenant_id"],))]
-            payments = list(connection.execute("SELECT amount-reversed_amount AS amount,paid_on FROM payments WHERE tenant_id=?", (user["tenant_id"],)))
+            payments = list(connection.execute("SELECT amount-reversed_amount AS amount,paid_on,bank_payment_id FROM payments WHERE tenant_id=?", (user["tenant_id"],)))
         labels = ["В срок", "1–7 дней", "8–30 дней", "31–60 дней", "61–90 дней", "90+ дней"]
         amounts = [0] * len(labels)
         for item in items:
@@ -352,6 +352,9 @@ def create_app():
             "total_outstanding": sum(item["balance"] for item in items),
             "overdue_amount": sum(item["balance"] for item in items if item["days_overdue"]),
             "collected_amount": sum(payment["amount"] for payment in payments),
+            "bank_confirmed_amount": sum(p["amount"] for p in payments if p["bank_payment_id"]),
+            "manual_paid_amount": sum(p["amount"] for p in payments if not p["bank_payment_id"]),
+            "historical_paid_amount": sum(i["opening_paid_amount"] for i in items),
             "promised_amount": sum(item["promised_amount"] for item in items if item["status"] == "promised"),
             "invoice_count": len(items), "overdue_count": sum(1 for item in items if item["days_overdue"]),
             "aging": [{"label": label, "amount": amount} for label, amount in zip(labels, amounts)],
@@ -611,7 +614,7 @@ def create_app():
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:

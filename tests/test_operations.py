@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from server.database import Config, initialize
+from scripts.private_files import is_private
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +50,7 @@ def test_backup_includes_committed_wal_in_a_single_private_file(live_database, t
     make_backup(database, snapshot)
     assert total(snapshot) == 12345
     assert not Path(str(snapshot) + "-wal").exists()
-    assert snapshot.stat().st_mode & 0o777 == 0o600
+    assert is_private(snapshot)
 
 
 def test_backup_refuses_overwrite_and_does_not_create_missing_source(live_database, tmp_path):

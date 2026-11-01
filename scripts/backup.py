@@ -8,6 +8,11 @@ from pathlib import Path
 import sqlite3
 import sys
 
+try:
+    from .private_files import create_private
+except ImportError:
+    from private_files import create_private
+
 
 def backup_database(database: Path, output: Path) -> None:
     """Never create a missing source or overwrite an existing destination."""
@@ -19,7 +24,7 @@ def backup_database(database: Path, output: Path) -> None:
         raise ValueError("Source and destination must be different files")
     output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     # Exclusive reservation prevents accidentally replacing a previous backup.
-    descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    descriptor = create_private(output)
     os.close(descriptor)
     try:
         with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=15)) as source:
@@ -28,7 +33,8 @@ def backup_database(database: Path, output: Path) -> None:
                 target.execute("PRAGMA journal_mode=DELETE")
                 if target.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
                     raise ValueError("Backup failed SQLite integrity_check")
-        with output.open("rb") as saved:
+        # FlushFileBuffers (Windows fsync) requires write access to the handle.
+        with output.open("r+b") as saved:
             os.fsync(saved.fileno())
     except BaseException:
         output.unlink(missing_ok=True)

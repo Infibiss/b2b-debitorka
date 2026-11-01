@@ -31,7 +31,7 @@ def test_live_gold_does_not_treat_injected_bad_candidates_as_bad_input(tmp_path)
     case = {"id": "bad-candidate-good-input", "text": text, "received_at": "2026-10-24T12:00:00+00:00",
         "expected_ready": False, "live_expected_ready": True, "expected_intent": "promise", "candidate": {**valid, "amount_kopeks": 999}}
     path = tmp_path / "fixture.json"
-    path.write_text(json.dumps({"version": "test", "cases": [case]}))
+    path.write_text(json.dumps({"version": "test", "cases": [case]},ensure_ascii=False),encoding='utf-8')
     assert evaluate(fixtures=path)["decision_accuracy"] == 1
     live = evaluate(mode="yandex", fixtures=path, extractor=lambda *a: {"payload": valid, "error": None})
     assert live["false_ready"] == 0 and live["decision_accuracy"] == 1 and live["passed"]

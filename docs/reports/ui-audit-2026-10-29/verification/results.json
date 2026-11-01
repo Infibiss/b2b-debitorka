@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-29",
+  "issue_count": 14,
+  "backend": {
+    "passed": 548,
+    "skipped": 1,
+    "postgres_related": 29,
+    "remaining_test_schemas": 0,
+    "cluster_stopped": true
+  },
+  "browser": {
+    "passed": 106,
+    "failed": 0,
+    "projects": [
+      "desktop",
+      "mobile"
+    ],
+    "final_visual_checks": 4
+  },
+  "typescript": "passed",
+  "build": "passed",
+  "diff_check": "passed",
+  "external_delivery_tested": false,
+  "support": "placeholder",
+  "report": "../index.html"
+}

@@ -1,3 +1,5 @@
+import { useStateDraft } from './useFormDraft';
+import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   Check,
@@ -109,8 +111,8 @@ const reasons: Record<string, string> = {
   unverified_proposal: 'Условия не подтверждены сотрудником.',
   ambiguous_terms: 'Условия неоднозначны: требуется уточнение.',
   financial_snapshot_changed:
-    'Изменились остаток, документы или полномочия. Создайте новое предложение.',
-  policy_changed: 'Правила изменились. Создайте предложение по текущей версии.',
+    'Изменились остаток, документы или полномочия. Выполните повторную проверку.',
+  policy_changed: 'Правила изменились. Выполните повторную проверку.',
   counterparty_hold: 'Контрагент поставлен на паузу.',
   contact_not_authorized: 'Нет разрешения на контакт.',
   mandate_expired: 'Срок разрешения истёк.',
@@ -143,6 +145,7 @@ const eventNames: Record<string, string> = {
   reviewed: 'Решение сотрудника записано',
   executed: 'Действие исполнено в кабинете',
   handoff: 'Повторная проверка: передано сотруднику',
+  rechecked: 'Условия повторно проверены по актуальным полномочиям',
 };
 const futureDate = (days: number) => {
   const value = new Date(`${today()}T12:00:00Z`);
@@ -151,22 +154,77 @@ const futureDate = (days: number) => {
 };
 
 export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
+  const { invoiceId: contextInvoice } = useWorkContext();
+  const [proposalRoute] = useRouteField<string>('proposal', '');
+  const [sourceAgent] = useRouteField<string>('sourceAgent', '');
+  const [sourceMessage, setSourceMessage] = useState('');
+  useEffect(() => {
+    let alive = true;
+    setSourceMessage('');
+    if (sourceAgent)
+      void api<{ invoice_id: string; source_text: string }>(
+        `/agent/proposals/${encodeURIComponent(sourceAgent)}`
+      )
+        .then((p) => {
+          if (alive && p.invoice_id === contextInvoice) setSourceMessage(p.source_text);
+        })
+        .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [sourceAgent, contextInvoice]);
   const [forecast, setForecast] = useState<Forecast | null>(null),
     [policy, setPolicy] = useState<Policy | null>(null),
     [proposals, setProposals] = useState<Proposal[]>([]);
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [policyBusy, setPolicyBusy] = useState(false);
-  const [kind, setKind] = useState<Kind>('promise'),
-    [invoiceId, setInvoiceId] = useState(''),
-    [amount, setAmount] = useState(''),
-    [dueOn, setDueOn] = useState(futureDate(7)),
-    [expiresOn, setExpiresOn] = useState(futureDate(3));
-  const [installments, setInstallments] = useState([
-    { id: crypto.randomUUID(), date: futureDate(7), amount: '' },
-  ]);
-  const [confirmed, setConfirmed] = useState(false),
-    [ambiguous, setAmbiguous] = useState(false);
+  const [invoiceId, setInvoiceId] = useRouteField<string>('context', contextInvoice);
+  const draft = useStateDraft(`negotiation:${invoiceId || 'new'}`, () => ({
+    kind: 'promise' as Kind,
+    amount: '',
+    dueOn: futureDate(7),
+    expiresOn: futureDate(3),
+    installments: [{ id: crypto.randomUUID(), date: futureDate(7), amount: '' }],
+    confirmed: false,
+    ambiguous: false,
+    evidence: '',
+    discount: '',
+  }));
+  const { kind, amount, dueOn, expiresOn, installments, confirmed, ambiguous } = draft.value;
+  const setKind = (kind: Kind) => draft.update({ kind, confirmed: false });
+  const setAmount = (amount: string) => draft.update({ amount });
+  const setDueOn = (dueOn: string) => draft.update({ dueOn });
+  const setExpiresOn = (expiresOn: string) => draft.update({ expiresOn });
+  const setInstallments = (installments: typeof draft.value.installments) =>
+    draft.update({ installments });
+  const setConfirmed = (confirmed: boolean) => draft.update({ confirmed });
+  const setAmbiguous = (ambiguous: boolean) => draft.update({ ambiguous });
+  const [preflight, setPreflight] = useState<{
+    reasons: string[];
+    counterparty_id: string;
+    max_promise_days: number;
+    max_installments: number;
+  } | null>(null);
+  const [preflightError, setPreflightError] = useState('');
+  useEffect(() => {
+    let alive = true;
+    setPreflight(null);
+    setPreflightError('');
+    if (invoiceId)
+      void api<typeof preflight>(
+        `/negotiation/preflight?invoice_id=${encodeURIComponent(invoiceId)}&kind=${kind}`
+      )
+        .then((result) => {
+          if (alive) setPreflight(result);
+        })
+        .catch((e) => {
+          if (alive) setPreflightError((e as Error).message);
+        });
+    return () => {
+      alive = false;
+    };
+  }, [invoiceId, kind, policy]);
   const reload = useCallback(async () => {
     const [forecast, policy, proposals] = await Promise.all([
       api<Forecast>('/forecast'),
@@ -260,8 +318,7 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
       await reload();
       proposalRequest.current = null;
       form.reset();
-      setAmount('');
-      setConfirmed(false);
+      draft.clear();
       notify('Предложение зарегистрировано. Проверьте результат проверки.');
     } catch (e) {
       setError((e as Error).message);
@@ -278,6 +335,10 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
     setForecast(forecast);
     onChanged();
   }
+  useEffect(() => {
+    if (proposalRoute && proposals.length)
+      document.getElementById(`proposal-${proposalRoute}`)?.scrollIntoView({ block: 'center' });
+  }, [proposalRoute, proposals]);
   const selectedInvoice = invoices.find((i) => i.id === invoiceId);
   return (
     <div className="mandato-services">
@@ -508,14 +569,79 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
             </div>
           ) : (
             <form className="ms-form" onSubmit={propose}>
+              {sourceMessage && (
+                <aside className="ops-context">
+                  <strong>Исходный ответ покупателя</strong>
+                  <blockquote>{sourceMessage}</blockquote>
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    onClick={() => {
+                      if (
+                        !draft.value.evidence ||
+                        window.confirm('Заменить основание в черновике исходным ответом?')
+                      )
+                        draft.update({ evidence: sourceMessage.slice(0, 5000), confirmed: false });
+                    }}
+                  >
+                    Использовать текст ответа как основание
+                  </button>
+                  {sourceMessage.length > 5000 && (
+                    <p>В основание поместятся первые 5000 символов; сверьте полный текст выше.</p>
+                  )}
+                </aside>
+              )}
+              {draft.status && (
+                <p className="draft-status" role="status">
+                  {draft.status}
+                </p>
+              )}
               <InvoiceSelect
                 invoices={invoices}
                 value={invoiceId}
                 onChange={(id) => {
                   setInvoiceId(id);
-                  setConfirmed(false);
                 }}
               />
+              {invoiceId && (
+                <aside className="ops-context" aria-label="Проверка полномочий">
+                  <strong>Полномочия до заполнения условий</strong>
+                  {!preflight ? (
+                    <p>{preflightError || 'Проверяем разрешения…'}</p>
+                  ) : (
+                    <>
+                      <p>
+                        {preflight.reasons.length
+                          ? 'Есть ограничения. Их нужно устранить перед исполнением.'
+                          : 'Предварительные ограничения не найдены. Сумму и сроки проверим при регистрации.'}
+                      </p>
+                      <ul>
+                        {preflight.reasons.map((code) => (
+                          <li key={code}>{reasons[code] || code}</li>
+                        ))}
+                      </ul>
+                      <p>
+                        Предел срока: {preflight.max_promise_days} дн. Платежей:{' '}
+                        {preflight.max_installments}.
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-outline"
+                        onClick={() =>
+                          navigate({
+                            section: 'finance',
+                            financeTab: 'parties',
+                            party: preflight.counterparty_id,
+                            returnTo: 'intelligence',
+                          })
+                        }
+                      >
+                        Разрешения этого контрагента
+                      </button>
+                    </>
+                  )}
+                </aside>
+              )}
               {selectedInvoice && (
                 <p className="ms-note">
                   Текущий остаток: {money(selectedInvoice.balance)}. Новое обещание заменит прежний
@@ -528,7 +654,6 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                   value={kind}
                   onChange={(e) => {
                     setKind(e.target.value as Kind);
-                    setConfirmed(false);
                   }}
                 >
                   {(Object.keys(kinds) as Kind[]).map((kind) => (
@@ -638,6 +763,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                     <input
                       type="number"
                       name="discount_percent"
+                      value={draft.value.discount}
+                      onChange={(e) => draft.update({ discount: e.target.value })}
                       required
                       min="0.01"
                       max={100}
@@ -666,6 +793,8 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
                 Обращение и основание условий
                 <textarea
                   name="evidence"
+                  value={draft.value.evidence}
+                  onChange={(e) => draft.update({ evidence: e.target.value })}
                   required
                   maxLength={5000}
                   placeholder="Что сообщил покупатель, когда и на основании какой переписки"
@@ -709,15 +838,17 @@ export function IntelligenceDesk({ invoices, notify, onChanged }: DeskProps) {
           </div>
         ) : (
           <div className="ms-proposals">
-            {proposals.map((proposal) => (
-              <ProposalCard
-                key={proposal.id}
-                proposal={proposal}
-                invoice={invoices.find((i) => i.id === proposal.invoice_id)}
-                onChanged={proposalChanged}
-                notify={notify}
-              />
-            ))}
+            {proposals
+              .filter((p) => !invoiceId || p.invoice_id === invoiceId)
+              .map((proposal) => (
+                <ProposalCard
+                  key={proposal.id}
+                  proposal={proposal}
+                  invoice={invoices.find((i) => i.id === proposal.invoice_id)}
+                  onChanged={proposalChanged}
+                  notify={notify}
+                />
+              ))}
           </div>
         )}
       </section>
@@ -739,21 +870,25 @@ function ProposalCard({
   const [busy, setBusy] = useState(false),
     [reason, setReason] = useState(''),
     [error, setError] = useState('');
-  async function action(kind: 'approve' | 'reject' | 'execute') {
+  async function action(kind: 'approve' | 'reject' | 'execute' | 'recheck') {
     setBusy(true);
     setError('');
     try {
       await post(
-        `/negotiation/proposals/${proposal.id}/${kind === 'execute' ? 'execute' : 'review'}`,
-        kind === 'execute' ? {} : { decision: kind, reason: reason.trim() }
+        `/negotiation/proposals/${proposal.id}/${kind === 'execute' ? 'execute' : kind === 'recheck' ? 'recheck' : 'review'}`,
+        kind === 'execute'
+          ? {}
+          : { decision: kind === 'recheck' ? 'approve' : kind, reason: reason.trim() }
       );
       await onChanged();
       notify(
-        kind === 'execute'
-          ? 'Действие исполнено в кабинете. Исходящая отправка не выполнялась.'
-          : kind === 'approve'
-            ? 'Предложение принято. Для исполнения используйте отдельную кнопку.'
-            : 'Предложение отклонено.'
+        kind === 'recheck'
+          ? 'Предложение проверено заново. Проверьте ограничения и согласуйте результат.'
+          : kind === 'execute'
+            ? 'Действие исполнено в кабинете. Исходящая отправка не выполнялась.'
+            : kind === 'approve'
+              ? 'Предложение принято. Для исполнения используйте отдельную кнопку.'
+              : 'Предложение отклонено.'
       );
     } catch (e) {
       setError((e as Error).message);
@@ -764,7 +899,7 @@ function ProposalCard({
   }
   const canReview = ['review_required', 'accepted'].includes(proposal.status);
   return (
-    <article className="ms-proposal">
+    <article className="ms-proposal" id={`proposal-${proposal.id}`}>
       <div className="ms-card-heading">
         <div>
           <h3>{kinds[proposal.kind]}</h3>
@@ -828,7 +963,7 @@ function ProposalCard({
       )}
       {proposal.status === 'handoff' && (
         <p className="ms-note">
-          Уточните указанные условия или разрешения и создайте новое предложение.
+          Уточните разрешения и повторно проверьте это предложение. Условия и история сохранятся.
         </p>
       )}
       {proposal.outcome && (
@@ -850,6 +985,36 @@ function ProposalCard({
         </div>
       )}
       <DeskError>{error}</DeskError>
+      {['handoff', 'review_required', 'accepted'].includes(proposal.status) && (
+        <div className="ms-form">
+          <label className="field">
+            Основание повторной проверки
+            <textarea
+              maxLength={3000}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Какие разрешения или данные уточнены; условия покупателя остаются в силе"
+            />
+          </label>
+          <button
+            className="button button-outline"
+            disabled={busy || !reason.trim()}
+            onClick={() => void action('recheck')}
+          >
+            Повторно проверить предложение
+          </button>
+        </div>
+      )}
+      {proposal.kind === 'payment_claim' && (
+        <button
+          className="button button-outline"
+          onClick={() =>
+            navigate({ section: 'finance', financeTab: 'ledger', context: proposal.invoice_id })
+          }
+        >
+          Сверить оплату этого счёта
+        </button>
+      )}
       {canReview && (
         <div className="ms-form">
           <label className="field">

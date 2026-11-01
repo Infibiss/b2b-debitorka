@@ -1,0 +1,21 @@
+
+Running 4 tests using 1 worker
+
+(node:39016) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39016) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [desktop] › e2e\audit-followup.spec.ts:207:1 › compact queue keeps filters in URL and financial source labels are explicit (4.0s)
+  ok 2 [desktop] › e2e\workspace-navigation.spec.ts:83:1 › landing and workspace remain usable at narrow and intermediate widths (3.7s)
+(node:40552) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40552) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 3 [mobile] › e2e\audit-followup.spec.ts:207:1 › compact queue keeps filters in URL and financial source labels are explicit (2.9s)
+  ok 4 [mobile] › e2e\workspace-navigation.spec.ts:83:1 › landing and workspace remain usable at narrow and intermediate widths (220ms)
+
+  4 passed (21.6s)
+
+To open last HTML report run:
+
+  npx playwright show-report e2e\report

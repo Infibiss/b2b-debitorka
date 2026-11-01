@@ -450,6 +450,45 @@ def create_router(ctx):
                 c.execute("UPDATE workflow_mailbox_receipts SET status='reviewed' WHERE id=?", (receipt_id,))
             return dict(id=receipt_id, status='reviewed')
 
+    @router.get('/invoices/{invoice_id}/timeline')
+    def timeline(invoice_id: str, offset: int = 0, user=Depends(ctx.get_user)):
+        if offset < 0: ctx.problem(422, 'Неверная позиция истории')
+        tenant = user['tenant_id']
+        entries = []
+        def add(key, at, title, body='', section='messages', reference='', amount=None):
+            entries.append(dict(id=key, created_at=at, title=title, body=body, section=section, reference=reference, amount=amount))
+        with database(ctx.config) as c:
+            snapshot = f.financial_snapshot(c, tenant, invoice_id)
+            for row in c.execute('SELECT * FROM messages WHERE tenant_id=? AND invoice_id=?', (tenant, invoice_id)):
+                status = dict(draft='Черновик', approved='Согласовано', sent='Отправлено', failed='Ошибка отправки').get(row['status'], row['status'])
+                add('message:'+row['id'], row['created_at'], 'Исходящее · '+status, row['subject']+'\n'+row['body'])
+            for row in c.execute('SELECT * FROM workflow_inbound WHERE tenant_id=? AND invoice_id=?', (tenant, invoice_id)):
+                add('inbound:'+row['id'], row['created_at'], 'Входящее письмо', row['source_text'], 'agent')
+            for row in c.execute('SELECT * FROM agent_proposals WHERE tenant_id=? AND invoice_id=?', (tenant, invoice_id)):
+                facts = json.loads(row['extraction_json'] or '{}')
+                add('agent:'+row['id'], row['received_at'], 'Входящий ответ · разбор', row['source_text'], 'agent', row['id'])
+                if facts:
+                    title = dict(promise='Обещание оплаты', dispute='Возражение', payment_claim='Заявление об оплате').get(facts.get('intent'), 'Нужна ручная проверка')
+                    add('facts:'+row['id'], row['created_at'], 'Извлечённые факты · '+title, 'Дата оплаты: '+str(facts.get('due_date') or 'не определена'), 'agent', row['id'], facts.get('amount_kopeks'))
+                if row['reviewed_at']:
+                    add('review:'+row['id'], row['reviewed_at'], 'Решение по ответу · '+('Подтверждено' if row['decision']=='approve' else 'Отклонено'), row['review_reason'] or '', 'agent', row['id'])
+                if row['outcome_json']:
+                    outcome = json.loads(row['outcome_json'])
+                    add('outcome:'+row['id'], row['reviewed_at'] or row['created_at'], 'Результат обработки ответа', outcome.get('message') or 'Откройте решение для проверки результата.', 'agent', row['id'])
+            from .negotiation import public_proposal
+            for row in c.execute('SELECT * FROM negotiation_proposals WHERE tenant_id=? AND invoice_id=?', (tenant, invoice_id)):
+                proposal = public_proposal(c, row)
+                names = dict(proposed='Условия зарегистрированы', reviewed='Решение по условиям', executed='Действие исполнено в кабинете', handoff='Нужна проверка условий', rechecked='Условия проверены повторно')
+                for event in proposal['events']:
+                    add('terms:'+event['id'], event['created_at'], names.get(event['type'], 'Изменение условий'), proposal['terms']['evidence'], 'intelligence', row['id'], proposal['terms'].get('amount'))
+            for event in snapshot['financial_events']:
+                label = dict(opening='Оплачено на начало учёта (дата платежа неизвестна)', payment='Банковская оплата' if event.get('confirmed') else 'Оплата, внесённая вручную', reversal='Отмена или возврат оплаты', adjustment='Корректировка обязательства').get(event['type'], 'Финансовая операция')
+                add('finance:'+event['id'], event.get('created_at') or event.get('effective_on'), label, event.get('reference') or event.get('reason') or '', 'finance', amount=event['amount'])
+            for row in c.execute('SELECT * FROM events WHERE tenant_id=? AND invoice_id=?', (tenant, invoice_id)):
+                add('event:'+row['id'], row['created_at'], row['title'], row['detail'] or '', 'workflow')
+        entries.sort(key=lambda e: (e['created_at'] or '', e['id']), reverse=True)
+        return dict(items=entries[offset:offset+100], total=len(entries), next_offset=offset+100 if offset+100<len(entries) else None)
+
     @router.get('/cases')
     def list_cases(user=Depends(ctx.get_user)):
         with database(ctx.config) as c:

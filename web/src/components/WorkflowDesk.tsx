@@ -1,3 +1,4 @@
+import { navigate, useRouteField } from '../navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   ArrowRight,
@@ -185,6 +186,9 @@ export function WorkflowDesk({
     overdue_amount: number;
     promised_amount: number;
     collected_amount: number;
+    bank_confirmed_amount: number;
+    historical_paid_amount: number;
+    manual_paid_amount: number;
   };
   onOpenInvoice: (id: string) => void;
   onNavigate: Navigate;
@@ -196,10 +200,11 @@ export function WorkflowDesk({
   const [data, setData] = useState<CaseList | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
-  const [queue, setQueue] = useState<Queue | ''>('');
-  const [view, setView] = useState<'board' | 'table'>('board');
-  const [selected, setSelected] = useState<string | null>(null);
+  const [query] = useRouteField<string>('workSearch', '');
+  const setQuery = (value: string) => navigate({ workSearch: value }, true);
+  const [queue, setQueue] = useRouteField<Queue | ''>('workQueue', '');
+  const [view, setView] = useRouteField<'board' | 'table'>('workView', 'table');
+  const [selected, setSelected] = useRouteField<string | null>('case', null);
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -214,13 +219,19 @@ export function WorkflowDesk({
   useEffect(() => {
     void reload();
   }, [reload, invoices, refreshKey]);
-  const items = (data?.items || []).filter(
-    (item) =>
-      (!queue || item.queue === queue) &&
-      `${item.company} ${item.inn} ${item.contract_number || ''}`
-        .toLocaleLowerCase('ru')
-        .includes(query.toLocaleLowerCase('ru'))
-  );
+  const items = (data?.items || [])
+    .filter(
+      (item) =>
+        (!queue || item.queue === queue) &&
+        `${item.company} ${item.inn} ${item.contract_number || ''}`
+          .toLocaleLowerCase('ru')
+          .includes(query.toLocaleLowerCase('ru'))
+    )
+    .sort(
+      (a, b) =>
+        queues.findIndex((q) => q.id === a.queue) - queues.findIndex((q) => q.id === b.queue) ||
+        b.overdue_amount - a.overdue_amount
+    );
   return (
     <div className="wf-desk" data-tour="workflow-board">
       <div className="wf-heading">
@@ -230,66 +241,88 @@ export function WorkflowDesk({
           <p>Mandato ведёт дела. Вы подключаетесь там, где нужно решение.</p>
         </div>
         <div className="wf-actions">
-          <button className="button button-white" data-tour="work-import" onClick={onImport}>
+          <button
+            className={`button ${data?.items.length ? 'button-white' : 'button-dark'}`}
+            data-tour="work-import"
+            onClick={onImport}
+          >
             <Upload size={15} />
             Импортировать
           </button>
-          <button className="button button-dark" onClick={onCreate}>
+          <button
+            className={`button ${data?.items.length ? 'button-dark' : 'button-white'}`}
+            onClick={onCreate}
+          >
             <Plus size={15} />
             Добавить счёт
           </button>
         </div>
       </div>
-      <section className="wf-portfolio-sums" aria-label="Суммы по портфелю">
-        {[
-          ['Осталось к оплате', totals?.total_outstanding],
-          ['Просрочено', totals?.overdue_amount],
-          ['Обещано к оплате', totals?.promised_amount],
-          ['Поступило', totals?.collected_amount],
-        ].map(([label, value]) => (
-          <div key={String(label)}>
-            <span>{label}</span>
-            <strong
-              title={money(typeof value === 'number' ? value : 0)}
-              aria-label={money(typeof value === 'number' ? value : 0)}
-            >
-              {money(typeof value === 'number' ? value : 0, true)}
-            </strong>
+      {Boolean(data?.items.length) && (
+        <details className="wf-summary">
+          <summary>Сводка портфеля и источники оплат</summary>
+          <section className="wf-portfolio-sums" aria-label="Суммы по портфелю">
+            {[
+              ['Осталось к оплате', totals?.total_outstanding],
+              ['Просрочено', totals?.overdue_amount],
+              ['Обещано к оплате', totals?.promised_amount],
+              ['Подтверждено по банку', totals?.bank_confirmed_amount],
+            ].map(([label, value]) => (
+              <div key={String(label)}>
+                <span>{label}</span>
+                <strong
+                  title={money(typeof value === 'number' ? value : 0)}
+                  aria-label={money(typeof value === 'number' ? value : 0)}
+                >
+                  {money(typeof value === 'number' ? value : 0, true)}
+                </strong>
+              </div>
+            ))}
+          </section>
+          <p className="wf-source-note">
+            За всё время учёта: распределённые на счета банковские оплаты за вычетом отмен и
+            возвратов. Оплачено на начало учёта: {money(totals?.historical_paid_amount || 0)}.
+            Внесено вручную после начала учёта: {money(totals?.manual_paid_amount || 0)}. Эти суммы
+            не означают результат взыскания Mandato.
+          </p>
+        </details>
+      )}
+      {Boolean(data?.items.length) && (
+        <>
+          <div className="wf-metrics" data-tour="workflow-queues">
+            {queues.map(({ id, name, detail, icon: Icon }) => (
+              <button
+                key={id}
+                className={`wf-metric wf-${id} ${queue === id ? 'is-selected' : ''}`}
+                aria-pressed={queue === id}
+                onClick={() => setQueue(queue === id ? '' : id)}
+              >
+                <span className="wf-metric-top">
+                  <Icon size={19} />
+                  {name}
+                  <ArrowRight size={15} />
+                </span>
+                <strong>{data?.summary[id] ?? '—'}</strong>
+                <small>{detail}</small>
+              </button>
+            ))}
           </div>
-        ))}
-      </section>
-      <div className="wf-metrics" data-tour="workflow-queues">
-        {queues.map(({ id, name, detail, icon: Icon }) => (
-          <button
-            key={id}
-            className={`wf-metric wf-${id} ${queue === id ? 'is-selected' : ''}`}
-            aria-pressed={queue === id}
-            onClick={() => setQueue(queue === id ? '' : id)}
-          >
-            <span className="wf-metric-top">
-              <Icon size={19} />
-              {name}
-              <ArrowRight size={15} />
+          <div className="wf-route" aria-label="Этапы работы">
+            <span>Проверка</span>
+            <ArrowRight size={12} />
+            <span>Документы</span>
+            <ArrowRight size={12} />
+            <span>Контакт</span>
+            <ArrowRight size={12} />
+            <span>Договорённость</span>
+            <ArrowRight size={12} />
+            <span>
+              <CircleCheck size={12} />
+              Оплата
             </span>
-            <strong>{data?.summary[id] ?? '—'}</strong>
-            <small>{detail}</small>
-          </button>
-        ))}
-      </div>
-      <div className="wf-route" aria-label="Этапы работы">
-        <span>Проверка</span>
-        <ArrowRight size={12} />
-        <span>Документы</span>
-        <ArrowRight size={12} />
-        <span>Контакт</span>
-        <ArrowRight size={12} />
-        <span>Договорённость</span>
-        <ArrowRight size={12} />
-        <span>
-          <CircleCheck size={12} />
-          Оплата
-        </span>
-      </div>
+          </div>
+        </>
+      )}
       <section className="wf-work">
         <div className="wf-toolbar">
           <div className="wf-search">
@@ -330,6 +363,12 @@ export function WorkflowDesk({
             <RefreshCw size={16} className={loading ? 'wf-spinning' : ''} />
           </button>
         </div>
+        {queue === 'results' && (
+          <p className="wf-source-note">
+            Здесь все обязательства с нулевым остатком, включая закрытые до начала работы. Это не
+            оценка взыскания сервисом.
+          </p>
+        )}
         {queue && (
           <div className="wf-filter">
             {queues.find((item) => item.id === queue)?.name}
@@ -367,6 +406,11 @@ export function WorkflowDesk({
                 <ArrowRight size={14} />
               </button>
             </div>
+            <ol className="wf-start-steps">
+              <li>Загрузите реестр и проверьте счета.</li>
+              <li>Откройте аудит и добавьте недостающие документы.</li>
+              <li>Согласуйте правила и подключите почту.</li>
+            </ol>
             <span className="wf-empty-note">
               <ShieldCheck size={14} />
               Автоматические напоминания включаются в управлении
@@ -427,19 +471,18 @@ export function WorkflowDesk({
               <span role="columnheader">Следующее действие</span>
             </div>
             {items.map((item) => (
-              <button
-                className="wf-table-row"
-                data-tour="workflow-case"
-                role="row"
-                key={item.id}
-                aria-label={`Открыть дело ${item.company}`}
-                onClick={() => setSelected(item.id)}
-              >
+              <div className="wf-table-row" data-tour="workflow-case" role="row" key={item.id}>
                 <span role="cell">
-                  <strong>{item.company}</strong>
-                  <small>
-                    {contractText(item)} · Счетов: {item.invoice_count}
-                  </small>
+                  <button
+                    className="wf-table-open"
+                    aria-label={`Открыть дело ${item.company}`}
+                    onClick={() => setSelected(item.id)}
+                  >
+                    <strong>{item.company}</strong>
+                    <small>
+                      {contractText(item)} · Счетов: {item.invoice_count}
+                    </small>
+                  </button>
                 </span>
                 <span role="cell">
                   <b>{money(item.balance)}</b>
@@ -454,7 +497,7 @@ export function WorkflowDesk({
                   {item.next_action}
                   <ArrowRight size={15} />
                 </span>
-              </button>
+              </div>
             ))}
           </div>
         )}
@@ -477,10 +520,7 @@ export function WorkflowDesk({
         <CaseDialog
           id={selected}
           onClose={() => setSelected(null)}
-          onNavigate={(tab) => {
-            setSelected(null);
-            onNavigate(tab);
-          }}
+          onNavigate={onNavigate}
           onOpenInvoice={(id) => {
             setSelected(null);
             onOpenInvoice(id);
@@ -552,7 +592,6 @@ function CaseDialog({
   id,
   onClose,
   onOpenInvoice,
-  onNavigate,
   notify,
   onChanged,
   allInvoices,
@@ -565,14 +604,28 @@ function CaseDialog({
   onChanged: () => Promise<void>;
   allInvoices: Invoice[];
 }) {
+  const onNavigate = (target: string) => {
+    if (!item) return;
+    const previous = new URLSearchParams(location.search).get('context');
+    const invoiceId =
+      previous && item.invoice_ids.includes(previous) ? previous : item.invoice_ids[0];
+    navigate({
+      section: target,
+      ...(target === 'audit' ? { auditInvoice: invoiceId } : {}),
+      ...(target === 'finance' ? { financeTab: 'ledger' } : {}),
+      case: currentId,
+      context: invoiceId,
+      invoice: null,
+    });
+  };
   const [item, setItem] = useState<CaseDetail | null>(null);
   const [role, setRole] = useState('accountant');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<'invoices' | 'history' | 'documents' | 'messages' | 'finance'>(
-    'invoices'
-  );
+  const [tab, setTab] = useRouteField<
+    'invoices' | 'history' | 'documents' | 'messages' | 'finance'
+  >('caseTab', 'invoices');
   const [assigning, setAssigning] = useState(false);
   const [currentId, setCurrentId] = useState(id);
   const reload = useCallback(async () => {
@@ -635,6 +688,7 @@ function CaseDialog({
       });
       setAssigning(false);
       setCurrentId(result.case_id);
+      navigate({ case: result.case_id }, true);
       if (result.case_id === currentId) await reload();
       await onChanged();
       notify('Договор указан. Проверьте объединённое дело перед запуском.');
@@ -976,8 +1030,8 @@ function CaseDialog({
                     {!item.documents?.length && (
                       <p className="wf-muted">По делу пока нет зарегистрированных документов.</p>
                     )}
-                    <button className="button button-white" onClick={() => onNavigate('audit')}>
-                      Проверить и добавить документы
+                    <button className="button button-white" onClick={() => onNavigate('yandex')}>
+                      Добавить договор или документ
                       <ArrowRight size={14} />
                     </button>
                   </>
