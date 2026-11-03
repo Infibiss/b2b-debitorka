@@ -13,7 +13,7 @@ async function account(page: Page, suffix: string) {
   await page.goto('/app');
   return r.json();
 }
-test('landing has controlled headline, clear copy and aligned rule note', async ({
+test('landing has controlled headline, concise copy and spaced footer contacts', async ({
   page,
 }, info) => {
   await page.goto('/');
@@ -27,13 +27,14 @@ test('landing has controlled headline, clear copy and aligned rule note', async 
   await expect(page.getByText('ВАШИ КЛИЕНТЫ · ВАШИ ПРАВИЛА', { exact: true })).toHaveCount(0);
   await expect(page.locator('.section-kicker')).toHaveCount(0);
   const note = page.getByText('Правила утверждаете вы. История сохраняется.', { exact: true });
-  await expect(note).toBeVisible();
-  const n = await note.boundingBox();
-  const icon = await page.locator('.hero-workspace-footer svg').boundingBox();
-  expect(n).not.toBeNull();
-  expect(icon).not.toBeNull();
-  expect(Math.abs(n!.y - icon!.y)).toBeLessThan(16);
-  expect(n!.x - icon!.x).toBeLessThan(32);
+  await expect(note).toHaveCount(0);
+  await expect(page.getByText('Для бизнеса. По-человечески.', { exact: true })).toHaveCount(0);
+  const footer = page.locator('.site-footer');
+  const brand = await footer.getByRole('link', { name: 'Mandato — на главную' }).boundingBox();
+  const email = await footer.getByRole('link', { name: 'info@mandato.ru', exact: true }).boundingBox();
+  expect(brand).not.toBeNull();
+  expect(email).not.toBeNull();
+  expect(email!.y - (brand!.y + brand!.height)).toBeGreaterThanOrEqual(12);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   ).toBeLessThanOrEqual(2);
@@ -223,4 +224,31 @@ test('an invitation opens when its link changes within an existing login page', 
   await expect(
     page.getByRole('heading', { name: 'Присоединиться к команде', exact: true })
   ).toBeVisible();
+});
+
+test('a delayed initial audit read cannot erase a newly collected report', async ({ page }, info) => {
+  await account(page, `audit-race-${info.project.name}`);
+  let release!: () => void;
+  let captured!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const ready = new Promise<void>((resolve) => { captured = resolve; });
+  await page.route('**/api/portfolio', async (route) => {
+    const response = await route.fetch();
+    captured();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole('button', { name: 'Аудит', exact: true }).click();
+    await ready;
+    await page.getByRole('button', { name: 'Собрать аудит', exact: true }).click();
+    await expect(page.getByLabel('Важность замечаний', { exact: true })).toBeVisible();
+    const initialRead = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/portfolio');
+    release();
+    await initialRead;
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page.getByLabel('Важность замечаний', { exact: true })).toBeVisible();
+  } finally {
+    release();
+  }
 });

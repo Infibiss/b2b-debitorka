@@ -13,6 +13,6 @@ Architecture: retain four workspace sections and tenant-isolated financial ledge
 - [x] Visually inspect all major screens in browser using an isolated synthetic account; fix confirmed problems and capture evidence.
 - [x] Run server/financial regression checks, TypeScript, production build and browser tests; review changes.
 - [ ] Publish the reviewed revision and verify GitHub CI.
-- [ ] Deploy manually once pinned SSH access is available; do not expand network access. Current blocker: SSH banner timeout.
+- [ ] Deploy manually once pinned SSH access is available; do not expand network access. Operator VPN /32 was refreshed; pinned SSH is restored. Deployment follows green CI.
 
 Acceptance: no duplicate workspace title/footer shortcuts; section help remains available; no raw browser file controls; disconnected mail is a warning; legal case totals cannot count an invoice twice or cross tenants; old legal documents remain accessible and stale versions require review; no live external sends or paid calls during testing.

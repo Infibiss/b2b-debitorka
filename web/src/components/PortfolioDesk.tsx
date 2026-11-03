@@ -1,7 +1,7 @@
 import { useFormDraft } from './useFormDraft';
 import { FileInput } from './FileInput';
 import { navigate, useRouteField } from '../navigation';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowRight,
   ClipboardCheck,
@@ -125,20 +125,23 @@ export function PortfolioDesk({
     [intake, setIntake] = useState<'registry' | 'accounting' | null>(null),
     [historical, setHistorical] = useState(false);
   const evidenceDraft = useFormDraft(selected ? `audit-document:${selected}` : '', report?.id);
+  const reportRequest = useRef(0);
   const reload = useCallback(async () => {
+    const request = ++reportRequest.current;
     try {
       const [latest, saved] = await Promise.all([
         api<Audit & { latest: string | null }>('/portfolio'),
         api<{ items: History[] }>('/portfolio/runs'),
       ]);
+      if (request !== reportRequest.current) return;
       setReport(latest.latest ? latest : null);
       setHistory(saved.items);
       setHistorical(false);
       setError('');
     } catch (e) {
-      setError((e as Error).message);
+      if (request === reportRequest.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (request === reportRequest.current) setLoading(false);
     }
   }, []);
   useEffect(() => {
@@ -170,28 +173,37 @@ export function PortfolioDesk({
       return;
     setBusy(true);
     setError('');
+    // An older background read must not replace an explicitly collected report.
+    reportRequest.current += 1;
     try {
       const result = await post<Audit>('/portfolio/runs');
+      const request = ++reportRequest.current;
       setReport(result);
       setHistorical(false);
-      setHistory((await api<{ items: History[] }>('/portfolio/runs')).items);
+      const saved = await api<{ items: History[] }>('/portfolio/runs');
+      if (request === reportRequest.current) setHistory(saved.items);
       notify('Аудит обновлён');
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      setLoading(false);
       setBusy(false);
     }
   }
   async function openHistory(id: string) {
     if (!id) return;
+    const request = ++reportRequest.current;
     setBusy(true);
     try {
-      setReport(await api<Audit>(`/portfolio/runs/${id}`));
+      const saved = await api<Audit>(`/portfolio/runs/${id}`);
+      if (request !== reportRequest.current) return;
+      setReport(saved);
       setHistorical(true);
       setSelected(null);
     } catch (e) {
-      setError((e as Error).message);
+      if (request === reportRequest.current) setError((e as Error).message);
     } finally {
+      setLoading(false);
       setBusy(false);
     }
   }
