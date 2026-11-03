@@ -540,9 +540,37 @@ export function Landing() {
         <section className="pricing section-pad reveal" id="pricing" aria-label="Стоимость Mandato">
           <div className="pricing-head">
             <h2>Стоимость Mandato</h2>
-            <p>Досудебная работа и судебные пакеты — с раздельными условиями оплаты.</p>
+            <p>Подписка за весь портфель. Взыскание — по результату и этапам работы.</p>
+          </div>
+          <div className="pricing-pilot">
+            <strong>В пилоте — без подписки</strong>
+            <span>Аудит и мониторинг в пилоте бесплатно. Оплата взыскания — по условиям ниже.</span>
           </div>
           <div className="pricing-grid">
+            <article className="price-card price-subscription">
+              <div className="price-label">ПОДПИСКА</div>
+              <h3>
+                {money(tariff.subscription_monthly_amount)}
+                <span>в месяц</span>
+              </h3>
+              <p>После пилота — за весь портфель долгов.</p>
+              <ul>
+                {[
+                  'Реестр долгов и аудит портфеля',
+                  'Сверка оплат и контроль сроков',
+                  'Агенты и работа по вашим правилам',
+                  'Юридические дела и документы',
+                ].map((text) => (
+                  <li key={text}>
+                    <Check size={17} />
+                    {text}
+                  </li>
+                ))}
+              </ul>
+              <a href="/app" className="button button-dark">
+                Начать работу <ArrowUpRight size={19} />
+              </a>
+            </article>
             <article className="price-card">
               <div className="price-label">ДОСУДЕБНАЯ РАБОТА</div>
               <h3>
@@ -597,9 +625,8 @@ export function Landing() {
             </p>
           </aside>
           <p className="pricing-note">
-            В пилоте аудит и мониторинг бесплатны. После пилота мониторинг —{' '}
-            {money(tariff.monitoring_monthly_min)}–{money(tariff.monitoring_monthly_max)} в месяц,
-            по договору. Условия согласуем до начала работы. Деньги должника поступают напрямую вам.
+            Лимиты дел и голосовых минут согласуем в договоре. Деньги должника поступают напрямую
+            вам.
           </p>
         </section>
         <section className="faq section-pad reveal" aria-label="Вопросы и ответы">

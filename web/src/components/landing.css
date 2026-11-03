@@ -2244,3 +2244,80 @@
     font-size: 12px;
   }
 }
+
+.landing .pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.landing .price-card {
+  background: #fff;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+}
+.landing .price-card h3 {
+  font-size: clamp(28px, 2.5vw, 40px);
+  line-height: 1.2;
+}
+.landing .price-card h3 > span {
+  display: block;
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.landing .price-card > p,
+.landing .price-card li {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.landing .price-card ul {
+  flex: 1;
+}
+.landing .price-card .button {
+  margin-top: 24px;
+}
+.landing .price-subscription {
+  border: 1px solid #244732;
+}
+.pricing-pilot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  background: #fff;
+  border: 1px solid #dce3d5;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.pricing-pilot strong {
+  font-size: 16px;
+}
+.landing .pricing-note {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #59675e;
+}
+@media (max-width: 1050px) {
+  .landing .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.landing .pricing-head > p {
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 420px;
+  color: #59675e;
+}
+.landing .price-label {
+  font-size: 12px;
+}
+.landing .pricing-lawyer h3 {
+  font-size: 20px;
+}
+.landing .pricing-lawyer p {
+  font-size: 14px;
+  line-height: 1.7;
+}

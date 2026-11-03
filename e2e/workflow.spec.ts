@@ -163,3 +163,24 @@ test('a confirmed contract shows its fixed number and cannot silently remove lin
   await expect(dialog.getByLabel('Номер договора', { exact: true })).toHaveCount(0);
   expect(extraAssignments).toBe(0);
 });
+
+test('management is readable, panels stack, and the compact header never overlaps', async ({page}, info) => {
+  await account(page, `style-${info.project.name}`);
+  await page.setViewportSize({width:1280,height:900});
+  await page.getByRole('button',{name:'Управление',exact:true}).click();
+  const panels=page.locator('.wf-management-grid > .wf-panel');
+  await expect(panels).toHaveCount(2);
+  const boxes=await panels.evaluateAll((els)=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,bottom:r.bottom}}));
+  expect(boxes[1].y).toBeGreaterThan(boxes[0].bottom);
+  expect(boxes[1].width).toBeCloseTo(boxes[0].width,0);
+  const label=page.getByText('Выключены. Сначала проверьте канал и расписание.',{exact:true});
+  expect(await label.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14);
+  const help=await page.getByRole('button',{name:'Как работать в разделе',exact:true}).boundingBox();
+  const ops=await page.getByRole('navigation',{name:'Операции с дебиторкой'}).boundingBox();
+  const sync=await page.getByRole('button',{name:'Обновить данные',exact:true}).boundingBox();
+  expect(help!.x+help!.width).toBeLessThanOrEqual(ops!.x);
+  expect(ops!.x+ops!.width).toBeLessThanOrEqual(sync!.x);
+  await page.getByRole('button',{name:'Прогноз и условия',exact:true}).click();
+  await expect(page.locator('.ms-card').first()).toBeVisible();
+  for(const color of await page.locator('.ms-card').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor))) expect(color).toBe('rgb(255, 255, 255)');
+});

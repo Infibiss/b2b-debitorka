@@ -1166,7 +1166,7 @@ export function WorkflowManagement({
   }
   const manager = team?.role === 'manager';
   return (
-    <div className="wf-desk" data-tour="workflow-policy">
+    <div className="wf-desk wf-management" data-tour="workflow-policy">
       <div className="wf-heading">
         <div>
           <h1>Правила и команда</h1>

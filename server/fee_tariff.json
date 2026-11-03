@@ -1,10 +1,9 @@
 {
-  "version": "mandato-2026-10-26",
+  "version": "mandato-2026-11-03",
   "unit": "kopeks",
   "pretrial_percent": 6,
   "court_order_amount": 700000,
   "statement_of_claim_amount": 1200000,
   "lawyer_percent": 12,
-  "monitoring_monthly_min": 500000,
-  "monitoring_monthly_max": 1500000
+  "subscription_monthly_amount": 990000
 }

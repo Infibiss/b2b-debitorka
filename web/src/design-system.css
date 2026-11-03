@@ -179,3 +179,176 @@ input[type='file']::file-selector-button {
     min-width: 0;
   }
 }
+
+/* Workspace typography: body 16, supporting text/controls 14, captions 12. */
+:root {
+  --type-body: 16px;
+  --type-control: 14px;
+  --type-caption: 12px;
+  --type-panel-title: 20px;
+}
+.workspace .wf-management-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace .wf-management {
+  font-size: var(--type-body);
+}
+.workspace
+  .wf-management
+  :is(
+    p,
+    label,
+    small,
+    legend,
+    .wf-role,
+    .wf-member,
+    .wf-muted,
+    .wf-text-button,
+    .wf-pending,
+    .wf-invite-link
+  ) {
+  font-size: var(--type-control);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+.workspace .wf-management :is(.wf-panel-title h2, .wf-mailbox-panel h2) {
+  font-size: var(--type-panel-title);
+}
+.workspace .wf-management :is(.wf-switch strong, .wf-channel strong, .wf-member strong) {
+  font-size: var(--type-body);
+}
+.workspace .wf-management :is(input, select, textarea, button, .wf-weekdays span) {
+  font-size: var(--type-control);
+}
+.workspace .wf-management .wf-panel {
+  background: var(--surface);
+  padding: 28px;
+}
+.workspace .mandato-services :is(.ms-card, .ms-forecast-grid article, .ms-proposal) {
+  background: var(--surface);
+  border: 1px solid #dce3d5;
+}
+.workspace .mandato-services .ms-neutral {
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+.workspace .mandato-services .ms-status {
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+.workspace .mandato-services :is(.ms-status-completed, .ms-status-executed) {
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+.workspace
+  .mandato-services
+  :is(.ms-status-unavailable, .ms-status-handoff, .ms-status-stale, .ms-status-expired) {
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}
+.workspace .mandato-services .ms-success {
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+.workspace .wf-management .wf-channel {
+  background: var(--warning-bg);
+  border-color: var(--warning-line);
+}
+.workspace .wf-management .wf-channel :is(strong, p) {
+  color: var(--warning-ink);
+}
+.workspace .wf-management .wf-channel-ok {
+  background: var(--success-bg);
+  border-color: var(--success-line);
+}
+.workspace .wf-management .wf-channel-ok :is(strong, p) {
+  color: var(--success-ink);
+}
+.workspace-command-header .workspace-section-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #dce3d5;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: var(--type-control);
+  white-space: nowrap;
+  margin: 0;
+}
+.workspace-section-help::before {
+  content: '?';
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 12px;
+}
+@media (min-width: 1150px) {
+  .workspace .workspace-command-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 72px;
+    gap: 12px;
+    padding: 12px 24px;
+  }
+  .workspace-command-header .workspace-operations {
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+  .workspace-command-header .workspace-operations button {
+    padding: 9px 8px;
+    font-size: 12px;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .workspace-command-header .workspace-header-actions {
+    grid-column: 3;
+    grid-row: 1;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .workspace-command-header .server-status {
+    font-size: 12px;
+  }
+}
+@media (max-width: 1149px) and (min-width: 701px) {
+  .workspace .workspace-command-header {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 12px 20px;
+  }
+  .workspace-command-header .workspace-operations {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+  }
+  .workspace-command-header .workspace-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+@media (max-width: 700px) {
+  .workspace .wf-management .wf-panel {
+    padding: 20px;
+  }
+}
+@media (min-width: 1150px) and (max-width: 1399px) {
+  .workspace-command-header .workspace-section-help {
+    font-size: 0;
+    width: 40px;
+    height: 40px;
+    padding: 10px;
+    gap: 0;
+  }
+  .workspace-command-header .server-status {
+    display: none;
+  }
+}
+.workspace .mandato-services :is(.ms-partner-token, .ms-registry-coverage) {
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border-color: #dce3d5;
+}

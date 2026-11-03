@@ -7,6 +7,9 @@ test('pricing separates pretrial recovery, filed packages and the lawyer agreeme
   await page.goto('/');
   const pricing = page.getByRole('region', { name: 'Стоимость Mandato', exact: true });
   await pricing.scrollIntoViewIfNeeded();
+  await expect(pricing).toContainText(/9\s?900\s?₽/);
+  await expect(pricing).toContainText('После пилота — за весь портфель долгов.');
+  await expect(pricing).not.toContainText('15 000');
   await expect(pricing).toContainText('6%');
   await expect(pricing).toContainText('После направления претензии и до подачи заявления в суд');
   await expect(pricing).toContainText(/Судебный приказ — 7\s?000\s?₽/);
