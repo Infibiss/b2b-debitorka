@@ -12,7 +12,7 @@ Architecture: retain four workspace sections and tenant-isolated financial ledge
 - [x] Establish documented design tokens and consistent select arrows, file controls, spacing, warning/success states across desktop/mobile.
 - [x] Visually inspect all major screens in browser using an isolated synthetic account; fix confirmed problems and capture evidence.
 - [x] Run server/financial regression checks, TypeScript, production build and browser tests; review changes.
-- [ ] Publish the reviewed revision and verify GitHub CI.
-- [ ] Deploy manually once pinned SSH access is available; do not expand network access. Operator VPN /32 was refreshed; pinned SSH is restored. Deployment follows green CI.
+- [x] Publish the reviewed revision and verify GitHub CI: 49dc96f, 580 server tests / 112 browser scenarios, green container build.
+- [x] Deploy the green 49dc96f release manually to mandato.ru through pinned SSH and the current operator VPN /32. Verify HTTPS, healthy containers, active backup/TLS timers, unchanged configuration and all eight financial/document table fingerprints.
 
 Acceptance: no duplicate workspace title/footer shortcuts; section help remains available; no raw browser file controls; disconnected mail is a warning; legal case totals cannot count an invoice twice or cross tenants; old legal documents remain accessible and stale versions require review; no live external sends or paid calls during testing.
