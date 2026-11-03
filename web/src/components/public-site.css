@@ -1098,6 +1098,10 @@ html {
   }
 }
 
+.public-site .pub-page-hero h1 {
+  font-size: clamp(38px, 5vw, 64px);
+  text-wrap: balance;
+}
 .public-site .pub-pricing-hero {
   padding: 48px 32px 40px;
 }
