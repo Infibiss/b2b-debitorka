@@ -13,6 +13,19 @@ type Entry = {
   amount: number | null;
 };
 type Page = { items: Entry[]; total: number; next_offset: number | null };
+function entryBody(item: Entry) {
+  if (item.title === 'Открыто юридическое дело') return '';
+  if (item.title !== 'Подготовлен юридический документ') return item.body;
+  const titles: Record<string, string> = {
+    pretrial_claim: 'Претензия',
+    court_order: 'Заявление о выдаче приказа',
+    statement_of_claim: 'Исковое заявление',
+  };
+  return item.body.replace(
+    /^(pretrial_claim|court_order|statement_of_claim)(?=,)/,
+    (kind) => titles[kind] || kind
+  );
+}
 export function CaseConversation({
   invoices,
   onOpen,
@@ -97,10 +110,6 @@ export function CaseConversation({
         <p>Загружаем историю…</p>
       ) : (
         <>
-          <p>
-            Записей: {data.total}. Начальные оплаты показаны отдельно и не приписываются взысканию
-            сервисом.
-          </p>
           <ol className="conversation-timeline">
             {data.items.map((item) => (
               <li key={item.id}>
@@ -109,7 +118,7 @@ export function CaseConversation({
                 </time>
                 <h3>{item.title}</h3>
                 {item.amount != null && <strong>{money(item.amount)}</strong>}
-                <p>{item.body}</p>
+                {entryBody(item) && <p>{entryBody(item)}</p>}
                 <button
                   className="wf-text-button"
                   onClick={() =>

@@ -65,6 +65,17 @@ class CalculationRequest(Calculation):
     invoice_id:str=Field(min_length=1,max_length=100)
 
 
+class CaseCalculation(Calculation):
+    invoice_opening_reductions:dict[str,list[OpeningReduction]]=Field(default_factory=dict,max_length=100)
+
+    @field_validator('invoice_opening_reductions')
+    @classmethod
+    def bounded_reductions(cls,value):
+        if sum(len(rows) for rows in value.values())>1000:
+            raise ValueError('Доступно до 1000 подтверждённых начальных оплат')
+        return value
+
+
 class Party(LegalInput):
     kind:Literal["organization","sole_proprietor"]="organization"
     name:str=Field(default="",max_length=300)
@@ -112,6 +123,9 @@ class CaseFacts(LegalInput):
     fee_start_on:date|None=None
     fee_model_version:Literal["mandato-2026-10-26"]=TARIFF['version']
     lawyer_agreement_reference:str=Field(default="",max_length=1000)
+    responsible_lawyer:str=Field(default="",max_length=300)
+    lawyer_authority:str=Field(default="",max_length=2000)
+    review_due_on:date|None=None
 
     @model_validator(mode="after")
     def explicit_terms(self):
@@ -124,6 +138,7 @@ class CaseFacts(LegalInput):
 
 class CaseCreate(LegalInput):
     invoice_id:str=Field(min_length=1,max_length=100)
+    invoice_ids:list[str]=Field(default_factory=list,max_length=100)
     facts:CaseFacts=Field(default_factory=CaseFacts)
 
 
@@ -132,11 +147,13 @@ class CaseUpdate(LegalInput):
 
 
 class Evidence(LegalInput):
-    kind:Literal["contract","performance","reconciliation","claim_dispatch","claim_delivery","duty_payment","application_copy_sent","filing_receipt","court_act","writ","bank_submission","fssp_submission","other"]
+    kind:Literal["contract","performance","reconciliation","claim_dispatch","claim_delivery","duty_payment","application_copy_sent","filing_receipt","court_act","order_cancellation","writ","bank_submission","fssp_submission","other"]
     title:str=Field(min_length=1,max_length=300)
     reference:str=Field(min_length=1,max_length=3000)
     occurred_on:date
     sha256:str=Field(default="",pattern=r"^(?:[a-fA-F0-9]{64})?$")
+    invoice_ids:list[str]=Field(default_factory=list,max_length=100)
+    covers_all_invoices:StrictBool=False
 
     @field_validator("occurred_on")
     @classmethod
@@ -147,7 +164,7 @@ class Evidence(LegalInput):
 
 class DocumentCreate(LegalInput):
     kind:Literal["pretrial_claim","court_order","statement_of_claim"]
-    calculation:Calculation
+    calculation:CaseCalculation
 
 
 class Review(LegalInput):
@@ -165,7 +182,7 @@ class Review(LegalInput):
 
 
 class Milestone(LegalInput):
-    stage:Literal["claim_sent","claim_delivered","filed","order_issued","judgment","writ_received","bank_submitted","fssp_submitted","stopped","closed"]
+    stage:Literal["claim_sent","claim_delivered","filed","order_issued","order_cancelled","judgment","writ_received","bank_submitted","fssp_submitted","stopped","closed"]
     occurred_on:date
     reference:str=Field(min_length=1,max_length=2000)
     notes:str=Field(min_length=3,max_length=5000)

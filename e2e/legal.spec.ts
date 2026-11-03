@@ -36,7 +36,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   await opening.getByRole('combobox', { name: 'Счёт', exact: true }).selectOption(invoice.id);
   await opening.getByRole('button', { name: 'Открыть дело', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: 'Юридически значимые факты', exact: true })
+    page.getByRole('heading', { name: 'Данные дела', exact: true })
   ).toBeVisible();
   await page.getByRole('button', { name: 'Все поля', exact: true }).click();
   for (const [label, value] of Object.entries({

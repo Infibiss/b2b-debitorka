@@ -39,6 +39,33 @@ test('document and voice tools explain missing access without fabricating result
   expect((await (await page.request.get('/api/invoices')).json()).items[0].balance).toBe(125050);
 });
 
+test('document upload keeps the selected file visible and recognition has one page title', async ({
+  page,
+}, info) => {
+  const inv = await setup(page, `archive-${info.project.name}`);
+  await page.goto('/app');
+  await navigate(page, 'Документы');
+  await page.getByRole('combobox', { name: 'Счёт', exact: true }).selectOption(inv.id);
+  await page.getByLabel('Номер, название или ссылка на архив', { exact: true }).fill('Договор №42');
+  await page
+    .getByLabel('Файл документа', { exact: true })
+    .setInputFiles('e2e/fixtures/ocr-contract.png');
+  await expect(page.getByRole('status').filter({ hasText: 'ocr-contract.png' })).toBeVisible();
+  await page.getByRole('button', { name: 'Добавить документ', exact: true }).click();
+  await expect(page.locator('.documents-archive')).toContainText('Договор №42');
+  await expect(
+    page.locator('.documents-archive').getByRole('link', { name: 'Скачать файл' })
+  ).toBeVisible();
+  await expect(page.locator('.documents-filename')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Распознавание', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.locator('.yx-connection-missing')).toBeVisible();
+  await expect(page.getByLabel('Загрузить документ для распознавания')).toBeDisabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2)).toBe(
+    false
+  );
+});
+
 test('provider-contract UI renders OCR acceptance and a voice exchange without touching money', async ({
   page,
 }, info) => {
@@ -105,7 +132,7 @@ test('provider-contract UI renders OCR acceptance and a voice exchange without t
   });
   await page.goto('/app');
   await navigate(page, 'Документы и голос');
-  await page.getByLabel('Счёт для документов и диалога').selectOption(inv.id);
+  await page.getByLabel('Счёт для документа', { exact: true }).selectOption(inv.id);
   await page
     .getByLabel('Загрузить документ для распознавания')
     .setInputFiles('e2e/fixtures/ocr-contract.png');

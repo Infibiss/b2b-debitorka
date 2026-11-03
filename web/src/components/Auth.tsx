@@ -1,8 +1,9 @@
 import { AccountRecovery, SupportContact } from './AccountHelp';
 import { navigate } from '../navigation';
 import { useState, type FormEvent } from 'react';
-import { ArrowUpRight, ArrowLeft, ShieldCheck, Check } from 'lucide-react';
+import { ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { Brand } from './Brand';
+import { AuthAside } from './AuthAside';
 import { post, type Session } from '../api';
 import { useInvitationToken } from './useInvitationToken';
 export function Auth({ onSession }: { onSession: (session: Session) => void }) {
@@ -45,33 +46,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
   if (invitation) return <InvitationRegistration token={invitation} onSession={onSession} />;
   return (
     <div className="auth-page">
-      <div className="auth-aside">
-        <Brand light />
-        <div>
-          <span className="eyebrow">
-            <i className="status-dot" /> ДЕНЬГИ ВОЗВРАЩАЮТСЯ В ДЕЛО
-          </span>
-          <h1>
-            Ваша работа
-            <br />
-            заслуживает
-            <br />
-            <span>
-              своевременной
-              <br />
-              оплаты.
-            </span>
-          </h1>
-          <p>
-            Понятный процесс работы с дебиторкой.
-            <br />
-            От первого письма до поступления денег.
-          </p>
-        </div>
-        <span className="auth-aside-bottom">
-          ВАШИ КЛИЕНТЫ. ВАШИ ПРАВИЛА. <ArrowUpRight size={19} />
-        </span>
-      </div>
+      <AuthAside />
       <main className="auth-main">
         <a className="auth-back" href="/">
           <ArrowLeft size={15} />
@@ -98,10 +73,10 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               Войти
             </button>
           </div>
-          <h2>{mode === 'login' ? 'С возвращением.' : 'Начнём с порядка.'}</h2>
+          <h2>{mode === 'login' ? 'Войти в Mandato' : 'Создать аккаунт'}</h2>
           <p>
             {mode === 'login'
-              ? 'Ваши счета и договорённости — на месте.'
+              ? 'Введите рабочую почту и пароль.'
               : 'Создайте рабочее пространство вашей компании.'}
           </p>
           <form onSubmit={submit} className="auth-form">
@@ -175,24 +150,11 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
             </button>
           </form>
           {mode === 'login' && (
-            <button className="button button-ghost" onClick={() => setRecovering(true)}>
+            <button className="auth-recovery-link" onClick={() => setRecovering(true)}>
               Забыли пароль?
             </button>
           )}
           <SupportContact />
-          <div className="auth-trust">
-            <ShieldCheck size={17} />
-            <span>
-              Письма отправляются только с вашего согласия.
-              <br />
-              Деньги поступают напрямую вашей компании.
-            </span>
-          </div>
-          {mode === 'register' && (
-            <p className="auth-no-charge">
-              <Check size={13} /> Подключение без списаний с карты
-            </p>
-          )}
         </div>
         <span className="auth-copyright">© {new Date().getFullYear()} Mandato</span>
       </main>

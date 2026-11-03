@@ -4,6 +4,7 @@ import { Plus, Upload, ShieldCheck, ArrowUpRight, Wallet, RotateCcw } from 'luci
 import { api, post, patch, money, dateText, today, type Invoice } from '../api';
 import { Dialog } from './Dialog';
 import { AccountingDesk } from './AccountingDesk';
+import { FileInput } from './FileInput';
 import {
   DeskHeading,
   DeskError,
@@ -271,7 +272,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
               </div>
             </>
           ) : (
-            <EmptyCard title="Поступления под контролем">
+            <EmptyCard title="Поступлений пока нет">
               Добавьте подтверждённую операцию из банковской выписки и распределите её по счетам.
             </EmptyCard>
           )}
@@ -844,8 +845,7 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
       <fieldset disabled={busy} className="ops-input-group">
         <label className="field">
           Выгрузка CSV
-          <input
-            type="file"
+          <FileInput
             accept=".csv,.txt"
             onChange={async (e) => {
               const file = e.target.files?.[0];

@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, post } from '../api';
+import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { AuthAside } from './AuthAside';
+import './auth-settings.css';
 
 export function SupportContact() {
   const [email, setEmail] = useState('');
@@ -9,20 +12,15 @@ export function SupportContact() {
       .catch(() => {});
   }, []);
   return (
-    <details className="support-contact">
-      <summary>Нужна помощь со входом или подключением?</summary>
+    <div className="support-contact">
       {email ? (
-        <p>
-          Напишите в поддержку: <a href={`mailto:${email}`}>{email}</a>. Укажите компанию и email
-          аккаунта.
-        </p>
+        <a href={`mailto:${email}`}>
+          Написать в поддержку <ArrowUpRight size={14} />
+        </a>
       ) : (
-        <p>
-          Контакт поддержки пока не настроен. Обратитесь к администратору вашей организации, который
-          предоставил доступ к Mandato. Пароль и ссылки восстановления передавать не нужно.
-        </p>
+        <p>Для помощи со входом обратитесь к администратору вашей компании.</p>
       )}
-    </details>
+    </div>
   );
 }
 export function AccountRecovery({ token, onBack }: { token?: string; onBack: () => void }) {
@@ -53,12 +51,26 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
     }
   }
   return (
-    <main className="auth-page invite-page">
-      <div className="auth-main">
-        <div className="auth-box">
-          <h1>{token ? 'Новый пароль' : 'Восстановить доступ'}</h1>
+    <div className="auth-page recovery-page">
+      <AuthAside />
+      <main className="auth-main">
+        <button className="auth-back" onClick={onBack}>
+          <ArrowLeft size={15} />
+          Вернуться ко входу
+        </button>
+        <div className="auth-box recovery-box">
+          <h2>{token ? 'Новый пароль' : 'Восстановить доступ'}</h2>
+          {!message && (
+            <p>
+              {token
+                ? 'Придумайте пароль не короче 12 символов.'
+                : 'Пришлём ссылку на почту вашего аккаунта.'}
+            </p>
+          )}
           {message ? (
-            <p role="status">{message}</p>
+            <p className="recovery-result" role="status">
+              {message}
+            </p>
           ) : (
             <form className="auth-form" onSubmit={submit}>
               {token ? (
@@ -102,12 +114,16 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
               </button>
             </form>
           )}
-          <button className="button button-ghost" onClick={onBack}>
-            Вернуться ко входу
-          </button>
+          {message && (
+            <button className="button button-dark recovery-signin" onClick={onBack}>
+              Вернуться ко входу
+              <ArrowUpRight size={17} />
+            </button>
+          )}
           <SupportContact />
         </div>
-      </div>
-    </main>
+        <span className="auth-copyright">© {new Date().getFullYear()} Mandato</span>
+      </main>
+    </div>
   );
 }

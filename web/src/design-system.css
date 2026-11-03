@@ -1,0 +1,181 @@
+/* Shared semantic tokens and controls. See docs/design-system.md. */
+:root {
+  --surface: #ffffff;
+  --surface-subtle: #f7f8f4;
+  --text-secondary: #59675e;
+  --success-bg: #edf5e9;
+  --success-ink: #315b39;
+  --success-line: #cbdcc3;
+  --warning-bg: #fff7e5;
+  --warning-ink: #79551b;
+  --warning-line: #e8d29c;
+  --danger-bg: #fff0ed;
+  --danger-ink: #9c3f32;
+  --danger-line: #e6c0b8;
+  --warning-border: var(--warning-line);
+  --warning-text: var(--warning-ink);
+  --success-border: var(--success-line);
+  --success-text: var(--success-ink);
+  --danger-border: var(--danger-line);
+  --danger-text: var(--danger-ink);
+  --radius-control: 8px;
+  --radius-panel: 12px;
+}
+
+/* A single inset arrow leaves room for the selected label at every width. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%2359675e' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 42px;
+  border-radius: var(--radius-control);
+  min-height: 42px;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+.workspace select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%2359675e' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 42px;
+}
+input[type='file'] {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+input[type='file']::file-selector-button {
+  border: 1px solid #b6c4b7;
+  border-radius: 6px;
+  background: #f0f4ed;
+  color: var(--green);
+  padding: 9px 14px;
+  margin-right: 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.workspace .ms-warning,
+.workspace .mail-connection.is-warning {
+  color: var(--warning-ink);
+  background: var(--warning-bg);
+  border-color: var(--warning-line);
+}
+.workspace .ms-error,
+.workspace .ms-errors,
+.workspace .form-error {
+  color: var(--danger-ink);
+  background: var(--danger-bg);
+  border-color: var(--danger-line);
+}
+.workspace .ms-status-unconfigured,
+.workspace .ms-status-not_checked,
+.workspace .ms-status-stale,
+.workspace .ms-status-expired {
+  color: var(--warning-ink);
+  background: var(--warning-bg);
+}
+.workspace .ms-status-unavailable,
+.workspace .ms-status-failed {
+  color: var(--danger-ink);
+  background: var(--danger-bg);
+}
+.workspace .portfolio-dot.review {
+  background: #ad7c2c;
+}
+.legal-case-next {
+  padding: 18px 20px;
+  margin: 16px 0;
+  border: 1px solid var(--warning-line);
+  border-radius: var(--radius-panel);
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.legal-case-next p {
+  flex: 1 1 220px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.workspace .ops-badge {
+  background: #eef0eb;
+  color: var(--text-secondary);
+}
+.workspace .legal-status-approved,
+.workspace .legal-stage-closed {
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+.workspace .legal-status-draft,
+.workspace .legal-status-stale,
+.workspace .legal-stage-order_cancelled {
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}
+.workspace .legal-status-changes_requested {
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+.workspace .pill.green {
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+.workspace .pill.orange {
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}
+.workspace .pill.red {
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+.workspace .operations-actions,
+.workspace .ms-actions {
+  gap: 12px;
+}
+.workspace summary {
+  list-style: none;
+  cursor: pointer;
+}
+.workspace summary::-webkit-details-marker {
+  display: none;
+}
+.workspace details > summary:not(:has(svg)) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.workspace details > summary:not(:has(svg))::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  flex: 0 0 7px;
+  margin: -4px 4px 0 auto;
+}
+.workspace details[open] > summary:not(:has(svg))::after {
+  transform: rotate(225deg);
+  margin-top: 4px;
+}
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .field {
+    min-width: 0;
+  }
+}

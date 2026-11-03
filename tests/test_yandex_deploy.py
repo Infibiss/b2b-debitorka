@@ -29,8 +29,10 @@ def bash(*arguments):
     return [executable,*[str(value).replace('\\','/') if isinstance(value,Path) else value for value in arguments]]
 
 
-def prepare(path,ip='203.0.113.10'):
-    return subprocess.run([sys.executable,str(ROOT/'infra/yandex/prepare_env.py'),'--public-ip',ip,'--output',str(path)],capture_output=True,text=True)
+def prepare(path,ip='203.0.113.10',public_url=None):
+    args=[sys.executable,str(ROOT/'infra/yandex/prepare_env.py'),'--public-ip',ip,'--output',str(path)]
+    if public_url is not None:args+=['--public-url',public_url]
+    return subprocess.run(args,capture_output=True,text=True)
 
 
 def test_production_env_is_private_stable_and_has_no_default_password(tmp_path):
@@ -96,7 +98,93 @@ def test_shell_recipe_is_parseable_and_never_uses_unverified_ssh():
     assert 'filter=\'data\'' in text
     assert 'bash -s --' not in text
     assert 'cat > "$remote_script"' in text
-    assert '"$checksum" "$host" < /dev/null' in text
+    assert '"$checksum" "$host" "$public_url" < /dev/null' in text
+
+
+@pytest.mark.parametrize('url',[
+    'http://mandato.ru','https://mandato.ru/','https://mandato.ru/path',
+    'https://mandato.ru?token=secret','https://mandato.ru#fragment',
+    'https://user@mandato.ru','https://mandato.ru:443','https://MANDATO.ru',
+    'https://other domain.ru','https://-bad.ru','https://203.0.113.11',
+    'https://mandato.ru;touch /tmp/no','https://mandato.ru\n',
+])
+def test_custom_public_origin_rejects_unsafe_or_ambiguous_urls(tmp_path,url):
+    path=tmp_path/'production.env'
+    result=prepare(path,public_url=url)
+    assert result.returncode!=0 and not path.exists()
+    assert url not in result.stdout+result.stderr
+
+
+def test_custom_domain_requires_existing_matching_config_and_never_rewrites(tmp_path):
+    path=tmp_path/'production.env'
+    assert prepare(path,public_url='https://mandato.ru').returncode!=0
+    assert not path.exists()
+    assert prepare(path).returncode==0
+    original=path.read_text()
+    assert prepare(path,public_url='https://mandato.ru').returncode!=0
+    assert path.read_text()==original
+    configured=original.replace('APP_URL=https://203.0.113.10','APP_URL=https://mandato.ru')
+    path.write_text(configured)
+    assert prepare(path,public_url='https://mandato.ru').returncode==0
+    assert path.read_text()==configured
+    assert prepare(path).returncode!=0 and path.read_text()==configured
+    assert prepare(path,ip='203.0.113.11',public_url='https://mandato.ru').returncode!=0
+    assert path.read_text()==configured
+
+
+def test_origin_validation_does_not_provision_domain_config(tmp_path):
+    path=tmp_path/'not-created/production.env'
+    result=subprocess.run([sys.executable,str(ROOT/'infra/yandex/prepare_env.py'),
+        '--public-ip','203.0.113.10','--public-url','https://mandato.ru',
+        '--output',str(path),'--validate-only'],capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
+    assert not path.parent.exists()
+
+
+def test_optional_cd_public_origin_is_passed_as_one_argument_without_enabling_deploy():
+    spec=yaml.safe_load((ROOT/'.github/workflows/deploy-yandex.yml').read_text())
+    job=spec['jobs']['deploy']
+    assert "vars.YANDEX_VM_DEPLOY_ENABLED == 'true'" in job['if']
+    step=job['steps'][-1]
+    assert step['env']['DEPLOY_PUBLIC_URL']=='${{ vars.YANDEX_VM_PUBLIC_URL }}'
+    assert 'target_args+=(--public-url "$DEPLOY_PUBLIC_URL")' in step['run']
+    assert '"${target_args[@]}"' in step['run']
+    result=subprocess.run(bash('-n'),input=step['run'].encode(),capture_output=True)
+    assert result.returncode==0,result.stderr
+
+
+def test_domain_preflight_refuses_missing_nginx_without_mutating_files(tmp_path):
+    script=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
+    start=script.index('custom_domain=false')
+    end=script.index('compose=(',start)
+    path=tmp_path/'nginx-site.conf'
+    env={**os.environ,'config':path.as_posix(),'public_ip':'203.0.113.10','public_url':'https://mandato.ru'}
+    result=subprocess.run(bash('-c','set -euo pipefail\n'+script[start:end]),env=env,capture_output=True,text=True)
+    assert result.returncode!=0 and 'configuration is missing' in result.stderr
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('custom_domain,certificate,expected',[
+    ('true',True,'existing domain configuration'),
+    ('false',True,'HTTPS 203.0.113.10'),
+    ('false',False,'bootstrap configuration'),
+])
+def test_nginx_domain_branch_preserves_existing_config_while_ip_path_stays_compatible(tmp_path,custom_domain,certificate,expected):
+    script=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
+    start=script.index('certificate_present=false')
+    end=script.index('"${compose[@]}" up -d --wait',start)
+    config=tmp_path/'nginx-site.conf';config.write_text('existing domain configuration')
+    templates=tmp_path/'infra/yandex';templates.mkdir(parents=True)
+    (templates/'nginx-https.conf.template').write_text('HTTPS PUBLIC_IP')
+    (templates/'nginx-bootstrap.conf').write_text('bootstrap configuration')
+    env={**os.environ,'custom_domain':custom_domain,'config':config.as_posix(),'public_ip':'203.0.113.10'}
+    snippet='set -euo pipefail\ncompose=('+('true' if certificate else 'false')+')\n'+script[start:end]
+    result=subprocess.run(bash('-c',snippet),cwd=tmp_path,env=env,capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
+    assert config.read_text()==expected
+    # Missing domain config must fail before build/stop, and health must target the origin.
+    assert script.index('Custom-domain nginx configuration is missing')<script.index('"${compose[@]}" build app')
+    assert '"$public_url/api/health"' in script
 
 
 def test_cloud_init_renderer_rejects_private_key_and_preserves_existing_output(tmp_path):

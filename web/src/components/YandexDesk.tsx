@@ -39,6 +39,7 @@ export type YandexDeskProps = {
   notify: (text: string, error?: boolean) => void;
   invoiceId?: string;
   mode?: 'all' | 'ocr' | 'voice';
+  embedded?: boolean;
 };
 const labels: Record<string, string> = {
   unconfigured: 'Нужно подключение',
@@ -122,7 +123,13 @@ type Recording = {
   clock: ReturnType<typeof setInterval>;
 };
 
-export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: YandexDeskProps) {
+export function YandexDesk({
+  invoices,
+  notify,
+  invoiceId,
+  mode = 'all',
+  embedded = false,
+}: YandexDeskProps) {
   const [status, setStatus] = useState<Status | null>(null),
     [documents, setDocuments] = useState<DocumentResult[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState(invoiceId || ''),
@@ -230,7 +237,7 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
       else
         setError(
           result.status === 'processing'
-            ? 'Запрос уже выполняется или его исход уточняется. Сохранённый запрос повторно не отправляется.'
+            ? 'Распознавание выполняется. Откройте документ позже.'
             : message(result.error_code)
         );
     } catch (e) {
@@ -390,24 +397,27 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
   }
   return (
     <div className={`yx-desk yx-mode-${mode}`}>
-      <DeskHeading
-        eyebrow="РАБОТА СО СЧЁТОМ"
-        title={
-          mode === 'ocr'
-            ? 'Распознавание документов'
-            : mode === 'voice'
-              ? 'Учебный разговор'
-              : 'Документы и разговор'
-        }
-      >
-        {mode === 'ocr'
-          ? 'Извлеките текст из скана и проверьте результат перед использованием.'
-          : 'Демонстрация разговора об оплате. Действия по долгу требуют отдельного подтверждения.'}
-      </DeskHeading>
+      {!embedded && (
+        <DeskHeading
+          eyebrow=""
+          title={
+            mode === 'ocr'
+              ? 'Распознавание документов'
+              : mode === 'voice'
+                ? 'Учебный разговор'
+                : 'Документы и разговор'
+          }
+        >
+          {mode === 'ocr'
+            ? 'Извлеките текст из скана и проверьте результат перед использованием.'
+            : 'Попробуйте разговор об оплате в браузере.'}
+        </DeskHeading>
+      )}
       <DeskError>{error}</DeskError>
       <label className="field yx-invoice">
-        Счёт для документов и диалога
+        {mode === 'ocr' ? 'Счёт для документа' : 'Счёт для документов и диалога'}
         <select
+          aria-label={mode === 'ocr' ? 'Счёт для документа' : 'Счёт для документов и диалога'}
           value={selectedInvoice}
           onChange={(e) => changeInvoice(e.target.value)}
           disabled={!!busy || recording}
@@ -425,7 +435,7 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
           <section className="yx-card" aria-labelledby="yx-documents-title">
             <div className="yx-title">
               <FileCheck2 size={22} />
-              <h2 id="yx-documents-title">Документы</h2>
+              <h2 id="yx-documents-title">Загрузить скан</h2>
             </div>
             <Connection status={status?.ocr} />
             <p>
@@ -486,9 +496,8 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
               срок оплаты. Можно говорить или писать.
             </p>
             <p className="yx-note">
-              Разговор проходит в браузере, без звонка контрагенту. Запись до 20 секунд
-              обрабатывается Яндексом. Итоги сохраняются в стенограмме; долг и условия оплаты не
-              меняются.
+              Это разговор в браузере, без звонка контрагенту. Запись до 20 секунд обрабатывается
+              Яндексом.
             </p>
             {!selectedInvoice && (
               <p className="yx-callout">Выберите счёт выше, чтобы начать диалог.</p>
@@ -594,10 +603,7 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
                   <p>{turn.reply || message(turn.error_code)}</p>
                   <TurnAudio turn={turn} autoplay={turn.id === spokenId} />
                   {turn.handoff_required && (
-                    <p className="yx-callout">
-                      Нужен разбор сотрудником. Запрос сохранён в стенограмме; действия в деле
-                      требуют отдельного рассмотрения.
-                    </p>
+                    <p className="yx-callout">Передайте вопрос ответственному сотруднику.</p>
                   )}
                   {turn.status !== 'completed' && turn.reply && (
                     <p role="status" className="yx-warning">
@@ -626,8 +632,7 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
             </a>
           </div>
           <p className="yx-note">
-            {document.page_count} стр. Сверьте текст и реквизиты с оригиналом. Сохранение документа
-            не меняет сумму долга.
+            {document.page_count} стр. Сверьте текст и реквизиты с оригиналом.
           </p>
           {document.status !== 'completed' && (
             <p className="yx-warning">
@@ -687,12 +692,15 @@ export function YandexDesk({ invoices, notify, invoiceId, mode = 'all' }: Yandex
 function Connection({ status }: { status?: ServiceStatus }) {
   if (!status)
     return (
-      <p className="yx-connection" role="status">
+      <p className="yx-connection yx-connection-neutral" role="status">
         Проверяем настройки подключения…
       </p>
     );
   return (
-    <div className={`yx-connection ${status.configured ? '' : 'yx-connection-missing'}`}>
+    <div
+      className={`yx-connection ${status.status === 'completed' ? 'yx-connection-success' : status.status === 'unavailable' ? 'yx-connection-error' : ['unconfigured', 'permission_required', 'not_checked'].includes(status.status) ? 'yx-connection-missing' : 'yx-connection-neutral'}`}
+      role="status"
+    >
       <strong>{labels[status.status] || status.status}</strong>
       <span>
         {status.status === 'unconfigured'

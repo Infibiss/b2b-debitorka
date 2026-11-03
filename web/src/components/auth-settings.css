@@ -1,0 +1,239 @@
+.auth-page .auth-recovery-link,
+.auth-page .auth-back {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary, #193f32);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+.auth-page .auth-recovery-link {
+  display: inline-flex;
+  margin-top: 20px;
+  padding: 5px 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.auth-page .auth-back {
+  padding: 4px 0;
+}
+.auth-page .auth-box {
+  max-width: 420px;
+}
+.auth-page .auth-box h2 {
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.2;
+}
+.auth-page .auth-box > p {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.auth-page .auth-form {
+  margin-top: 28px;
+  gap: 20px;
+}
+.auth-page .auth-form .field {
+  font-size: 14px;
+}
+.auth-page .auth-form .field input {
+  min-height: 48px;
+  font-size: 15px;
+}
+.auth-page .auth-form .button {
+  min-height: 48px;
+  font-size: 15px;
+}
+.auth-page .auth-aside > div {
+  margin-block: auto;
+  padding-block: 60px;
+}
+.auth-page .auth-aside p {
+  max-width: 38ch;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.auth-page .auth-aside h1 {
+  font-size: clamp(38px, 4vw, 64px);
+}
+.auth-page.recovery-page .recovery-box {
+  padding-block: 40px;
+}
+.auth-page .recovery-result {
+  padding: 18px;
+  background: #edf4ee;
+  border: 1px solid #cbdcce;
+  border-radius: 12px;
+  color: #214d35;
+}
+.auth-page .recovery-signin {
+  width: 100%;
+  margin-top: 24px;
+}
+.support-contact > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #365846;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.support-contact > p {
+  color: #647166;
+  font-size: 13px;
+}
+.workspace .settings-form {
+  width: 100%;
+  max-width: none;
+}
+.workspace .settings-panel {
+  width: 100%;
+  padding: 28px;
+  background: #fff;
+  border-color: #dde2d8;
+  border-radius: 14px;
+  margin-bottom: 24px;
+}
+.workspace .settings-panel .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 24px;
+}
+.workspace .settings-intro h2 {
+  font-size: 20px;
+  color: #253e31;
+}
+.workspace .settings-intro p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #657267;
+}
+.workspace .settings-panel .field {
+  font-size: 14px;
+  color: #384c3f;
+}
+.workspace .settings-panel .field input,
+.workspace .settings-panel .field textarea {
+  font-size: 15px;
+  color: #233a2b;
+  padding: 12px 14px;
+  min-width: 0;
+  border-color: #d5dcd1;
+  background: #fff;
+}
+.workspace .settings-panel .form-note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #657267;
+}
+.workspace .settings-save {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 24px 0 32px;
+}
+.workspace .settings-save > span {
+  font-size: 13px;
+  color: #657267;
+}
+.workspace .mail-setup {
+  padding: 28px;
+  border: 1px solid #dde2d8;
+  background: #fff;
+  border-radius: 14px;
+}
+.mail-setup .mail-setup-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.mail-setup .mail-setup-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.mail-setup .mail-setup-badge {
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+.mail-setup .is-warning,
+.workspace .mail-connection.is-warning {
+  background: #fff6df;
+  color: #73531e;
+  border-color: #ead7a6;
+}
+.workspace .mail-connection.is-warning strong,
+.workspace .mail-connection.is-warning p {
+  color: #73531e;
+}
+.mail-setup .is-success {
+  background: #edf4ee;
+  color: #285637;
+  border-color: #cbdcce;
+}
+.mail-setup .mail-setup-status {
+  padding: 16px 18px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.mail-setup .ops-form {
+  margin-top: 24px;
+  row-gap: 20px;
+}
+.mail-setup .mail-setup-request {
+  padding: 18px 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.mail-setup .mail-setup-request p {
+  margin-top: 6px;
+}
+.mail-setup .mail-status-refresh,
+.mail-setup .mail-return-link {
+  display: inline-flex;
+  margin-top: 18px;
+  padding: 6px 0;
+  background: transparent;
+  border: 0;
+  color: #365846;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.mail-setup .mail-return-link {
+  margin-right: 24px;
+}
+.mail-setup .support-contact {
+  margin-bottom: 0;
+}
+@media (max-width: 700px) {
+  .workspace .settings-panel,
+  .workspace .mail-setup {
+    padding: 20px;
+  }
+  .workspace .settings-panel .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .workspace .settings-save .button {
+    width: 100%;
+  }
+  .auth-page .auth-box {
+    max-width: 440px;
+  }
+  .auth-page .auth-box h2 {
+    font-size: 28px;
+  }
+  .auth-page .auth-back {
+    font-size: 13px;
+  }
+}

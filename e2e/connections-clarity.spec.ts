@@ -97,6 +97,27 @@ test('bank file import is contextual and public sandbox requires developer discl
     .getByRole('button', { name: 'Банк', exact: true })
     .click();
   await expect(page.getByLabel('Файл банковской выписки')).toBeVisible();
+  const picker = page.locator('.file-picker');
+  const upload = page.getByLabel('Файл банковской выписки');
+  await upload.evaluate((element) => {
+    const files = new DataTransfer();
+    files.items.add(
+      new File(['1CClientBankExchange\nКонецФайла\n'], 'выписка.txt', { type: 'text/plain' })
+    );
+    (element as HTMLInputElement).files = files.files;
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(picker).toContainText('выписка.txt');
+  await expect(picker).toContainText('Выбрать файл');
+  expect(
+    await upload.evaluate((element) => {
+      const input = element as HTMLInputElement;
+      return (new FormData(input.form!).get('statement') as File).name;
+    })
+  ).toBe('выписка.txt');
+  await upload.evaluate((element) => (element as HTMLInputElement).form!.reset());
+  await expect(picker).toContainText('Файл не выбран');
+  expect(await upload.inputValue()).toBe('');
   await expect(page.getByRole('button', { name: 'Проверить выписку', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Прочитать публичную песочницу' })).toHaveCount(0);
   await page.getByText('Для разработчика', { exact: true }).click();

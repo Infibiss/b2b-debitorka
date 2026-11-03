@@ -1,4 +1,5 @@
 import { useFormDraft } from './useFormDraft';
+import { FileInput } from './FileInput';
 import { navigate, useRouteField } from '../navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
@@ -291,7 +292,6 @@ export function PortfolioDesk({
     <section className="portfolio-desk" data-tour="audit-content">
       <div className="page-heading ops-heading">
         <div>
-          <span className="page-date">ПОРТФЕЛЬ ПОД КОНТРОЛЕМ</span>
           <h1>Аудит дебиторки.</h1>
           <p>Сверьте суммы, проверьте документы и выберите следующий шаг по каждому долгу.</p>
         </div>
@@ -378,10 +378,6 @@ export function PortfolioDesk({
               ? 'Аудит соберёт остатки, первичные документы и контрольные даты в один план.'
               : 'Загрузите счета и выгрузку из учёта. Система покажет расхождения и документы, которые нужно найти.'}
           </p>
-          <button className="button button-dark" onClick={() => void run()} disabled={busy}>
-            Проверить портфель
-            <ArrowRight size={16} />
-          </button>
         </div>
       ) : (
         <>
@@ -674,7 +670,7 @@ export function PortfolioDesk({
                       </label>
                       <label className="field">
                         Файл документа
-                        <input type="file" accept=".pdf,.png,.jpg,.jpeg" name="attachment" />
+                        <FileInput accept=".pdf,.png,.jpg,.jpeg" name="attachment" />
                         <small>PDF, PNG или JPEG до 1 МБ</small>
                       </label>
                       <button className="button button-dark" type="submit">

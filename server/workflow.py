@@ -205,8 +205,9 @@ def case_items(c, tenant):
         WHERE i.tenant_id=? ORDER BY i.due_on,i.id''', (tenant,)).fetchall()
     states, policy = _states(c, tenant), current_policy(c, tenant)
     legal_stages = {}
-    for row in c.execute('''SELECT l.invoice_id,m.stage FROM legal_milestones m
+    for row in c.execute('''SELECT COALESCE(ci.invoice_id,l.invoice_id) AS invoice_id,m.stage FROM legal_milestones m
         JOIN legal_cases l ON l.id=m.case_id AND l.tenant_id=m.tenant_id
+        LEFT JOIN legal_case_invoices ci ON ci.case_id=l.id AND ci.tenant_id=l.tenant_id
         WHERE m.tenant_id=? ORDER BY m.occurred_on,m.created_at,m.id''', (tenant,)):
         legal_stages[row['invoice_id']] = row['stage']
     today = datetime.now(business_timezone()).date()
@@ -225,7 +226,7 @@ def case_items(c, tenant):
         # Unresolved issues follow their invoice when contract grouping changes.
         ids = [inv['id'] for inv in invoices]
         urgent_deadlines = [row for row in deadlines if row['invoice_id'] in ids]
-        judicial_stages = [legal_stages[key] for key in ids if legal_stages.get(key) in ('filed', 'order_issued', 'judgment', 'writ_received', 'bank_submitted', 'fssp_submitted')]
+        judicial_stages = [legal_stages[key] for key in ids if legal_stages.get(key) in ('filed', 'order_issued', 'order_cancelled', 'judgment', 'writ_received', 'bank_submitted', 'fssp_submitted')]
         exceptions = [dict(row) for row in c.execute("SELECT * FROM workflow_exceptions WHERE tenant_id=? AND status='open'", (tenant,)) if row['invoice_id'] in ids]
         active = bool(state.get('active'))
         if balance == 0:
@@ -246,10 +247,12 @@ def case_items(c, tenant):
         else:
             delivered = c.execute("SELECT id FROM workflow_jobs WHERE tenant_id=? AND case_id=? AND status='sent' LIMIT 1", (tenant, key)).fetchone()
             stage, queue, action = ('waiting', 'in_progress', 'Ожидать ответ; следующее напоминание по расписанию') if delivered else ('contact', 'in_progress', 'Напоминание по утверждённым правилам')
+        if judicial_stages and balance>0:
+            stage='legal'
         if urgent_deadlines:
             queue, action = 'needs_decision', 'Юридическая проверка: контрольный срок ' + urgent_deadlines[0]['review_on']
         elif judicial_stages:
-            queue, action = 'needs_decision', 'Дело передано в юридическую работу: решение руководителя'
+            queue, action = 'needs_decision', ('Приказ отменён: подготовить иск' if 'order_cancelled' in judicial_stages else 'Открыть юридическое дело и проверить следующий шаг')
         elif balance == 0 and exceptions:
             queue, action = 'needs_decision', exceptions[0]['detail']
         elif mailbox_unavailable and balance > 0:
@@ -510,8 +513,9 @@ def create_router(ctx):
             item['messages'].sort(key=lambda row: row['created_at'], reverse=True)
             item['financial_events'] = [dict(row) for key in ids for row in f.financial_snapshot(c, tenant, key)['financial_events']]
             item['exceptions'] = [dict(row) | dict(title=row['detail'], required_role=exception_role(row['kind'])) for row in c.execute('SELECT * FROM workflow_exceptions WHERE tenant_id=? ORDER BY created_at DESC,id', (tenant,)) if row['invoice_id'] in ids]
+            legal_case_ids={row['case_id'] for row in c.execute('SELECT case_id,invoice_id FROM legal_case_invoices WHERE tenant_id=?',(tenant,)) if row['invoice_id'] in ids}
             item['documents'] = [dict(row) for row in c.execute('''SELECT d.id,d.case_id,d.kind,d.version,d.created_at,l.invoice_id
-                FROM legal_documents d JOIN legal_cases l ON l.id=d.case_id AND l.tenant_id=d.tenant_id WHERE d.tenant_id=? ORDER BY d.created_at DESC''', (tenant,)) if row['invoice_id'] in ids]
+                FROM legal_documents d JOIN legal_cases l ON l.id=d.case_id AND l.tenant_id=d.tenant_id WHERE d.tenant_id=? ORDER BY d.created_at DESC''', (tenant,)) if row['case_id'] in legal_case_ids]
             item['documents'] += [dict(row) | dict(source='portfolio_evidence') for row in c.execute('''SELECT id,invoice_id,kind,reference,occurred_on,filename,sha256,created_at
                 FROM portfolio_evidence WHERE tenant_id=? ORDER BY created_at DESC''', (tenant,)) if row['invoice_id'] in ids]
             for document in item['documents']:

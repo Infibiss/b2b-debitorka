@@ -80,6 +80,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.YANDEX_VM_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.YANDEX_VM_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.YANDEX_VM_KNOWN_HOSTS }}
+          DEPLOY_PUBLIC_URL: ${{ vars.YANDEX_VM_PUBLIC_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -89,5 +90,7 @@ jobs:
           trap 'rm -f "$key" "$hosts"' EXIT
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$hosts"
+          target_args=()
+          if [[ -n "${DEPLOY_PUBLIC_URL:-}" ]]; then target_args+=(--public-url "$DEPLOY_PUBLIC_URL"); fi
           bash scripts/deploy_yandex_vm.sh --host "$DEPLOY_HOST" --user "${DEPLOY_USER:-agentpay}" \
-            --revision "$RELEASE_SHA" --identity-file "$key" --known-hosts "$hosts"
+            --revision "$RELEASE_SHA" --identity-file "$key" --known-hosts "$hosts" "${target_args[@]}"

@@ -20,6 +20,13 @@ test('operations remain visible, profile contains company and settings, advice c
   });
   expect(result.status()).toBe(201);
   await page.goto('/app');
+  await expect(page.locator('.workspace-header')).not.toContainText('РАБОЧЕЕ ПРОСТРАНСТВО');
+  await expect(page.locator('.workspace-header > .workspace-section-help')).toBeVisible();
+  await expect(page.locator('.workspace-footer')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Проверить реестр', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Разобрать поступления', exact: true })
+  ).toHaveCount(0);
   const operations = page.getByRole('navigation', { name: 'Операции с дебиторкой' });
   await showOperations(page);
   await expect(operations).toBeVisible();
@@ -49,9 +56,13 @@ test('operations remain visible, profile contains company and settings, advice c
   await expect(profile).toContainText('Компания Север');
   await profile.click();
   await page.getByRole('menuitem', { name: 'Настройки', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Работа по вашим правилам.', exact: true })
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Настройки', exact: true })).toBeVisible();
+  const settingsWidth = await page.locator('.settings-form').boundingBox();
+  const panelWidth = await page.locator('.settings-panel').first().boundingBox();
+  expect(Math.abs(settingsWidth!.width - panelWidth!.width)).toBeLessThanOrEqual(2);
+  await expect(page.locator('.mail-setup-badge')).toHaveText('Не подключена');
+  await expect(page.locator('.mail-setup-badge')).toHaveClass(/is-warning/);
+  await expect(page.locator('.mail-setup details')).toHaveCount(0);
   await profile.click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
@@ -64,7 +75,7 @@ test('operations remain visible, profile contains company and settings, advice c
   await expect(page.getByRole('menuitem', { name: 'Настройки', exact: true })).toBeFocused();
   await page.keyboard.press('End');
   await expect(page.getByRole('menuitem', { name: 'Выйти', exact: true })).toBeFocused();
-  await page.getByRole('heading', { name: 'Работа по вашим правилам.', exact: true }).click();
+  await page.getByRole('heading', { name: 'Настройки', exact: true }).click();
   await expect(page.getByRole('menu')).toHaveCount(0);
   await profile.press('Space');
   await page.keyboard.press('Shift+Tab');
@@ -121,8 +132,6 @@ test('landing and workspace remain usable at narrow and intermediate widths', as
     expect(menu!.y).toBeGreaterThanOrEqual(0);
     expect(menu!.y + menu!.height).toBeLessThanOrEqual(901);
     await page.getByRole('menuitem', { name: 'Настройки', exact: true }).click();
-    await expect(
-      page.getByRole('heading', { name: 'Работа по вашим правилам.', exact: true })
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Настройки', exact: true })).toBeVisible();
   }
 });

@@ -19,6 +19,12 @@ __pycache__
 server/data
 var
 backups
+lawyers
+*.dump
+*.pem
+*.key
+id_rsa
+id_ed25519
 docs
 tests
 e2e

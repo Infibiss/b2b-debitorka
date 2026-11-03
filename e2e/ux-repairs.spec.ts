@@ -128,7 +128,7 @@ test('documents are added directly and mail setup request survives reload', asyn
   await page.screenshot({ path: info.outputPath('mail-setup.png'), fullPage: true });
 });
 
-test('login has recovery, unavailable mail is explained and support placeholder is visible', async ({
+test('login recovery uses the same layout and explains unavailable service without support dropdown', async ({
   page,
 }) => {
   await page.goto('/app?mode=login');
@@ -136,8 +136,11 @@ test('login has recovery, unavailable mail is explained and support placeholder 
   await page.getByLabel('Email аккаунта', { exact: true }).fill('someone@example.ru');
   await page.getByRole('button', { name: 'Получить ссылку', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Сервис восстановления пока не подключён');
-  await page.getByText('Нужна помощь со входом или подключением?', { exact: true }).click();
-  await expect(page.getByText(/Контакт поддержки пока не настроен/)).toBeVisible();
+  await expect(page.getByText(/Для помощи со входом обратитесь к администратору/)).toBeVisible();
+  await expect(page.locator('.support-contact summary')).toHaveCount(0);
+  await expect(page.locator('.recovery-page .auth-aside')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Вернуться ко входу', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Войти в Mandato', exact: true })).toBeVisible();
 });
 
 test('390px work queue starts in the first viewport and operations remain accessible', async ({

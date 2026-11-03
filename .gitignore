@@ -10,7 +10,17 @@ __pycache__/
 !.env.example
 var/
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 *.sqlite*
+/backups/
+*.dump
+*.pem
+*.key
+id_rsa
+id_ed25519
+/lawyers/
 playwright-report/
 test-results/
 .DS_Store

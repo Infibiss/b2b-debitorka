@@ -17,7 +17,7 @@ export function ArchiveEvidence({
 }: {
   invoiceId: string;
   caseId: string;
-  existing: { reference: string }[];
+  existing: { reference: string; invoice_ids?: string[] }[];
   onAdded: () => Promise<unknown>;
 }) {
   const [items, setItems] = useState<Source[]>([]),
@@ -37,7 +37,11 @@ export function ArchiveEvidence({
     };
   }, [invoiceId]);
   const available = items.filter(
-    (item) => !existing.some((proof) => proof.reference === item.reference)
+    (item) =>
+      !existing.some(
+        (proof) =>
+          proof.reference === item.reference && (proof.invoice_ids?.includes(invoiceId) ?? true)
+      )
   );
   return (
     <div className="ops-context">
@@ -63,6 +67,7 @@ export function ArchiveEvidence({
                     reference: item.reference,
                     occurred_on: item.occurred_on,
                     sha256: item.sha256,
+                    invoice_ids: [invoiceId],
                   });
                   await onAdded();
                 } catch (e) {
@@ -77,10 +82,7 @@ export function ArchiveEvidence({
           </div>
         ))
       ) : (
-        <p>
-          Новых документов в архиве по этому счёту нет. Добавьте договор в разделе «Документы» или
-          зарегистрируйте доказательство ниже.
-        </p>
+        <p>Нет документов для добавления. Загрузите их в разделе «Документы».</p>
       )}
     </div>
   );

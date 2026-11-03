@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FileInput } from './FileInput';
 import { ArrowRight, FileSpreadsheet } from 'lucide-react';
 import { api, post, money, dateText, today } from '../api';
 import { DeskError, EmptyCard, OperationForm, value } from './OperationsUI';
@@ -171,8 +172,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             </label>
             <label className="field full-width">
               Файл из учётной системы
-              <input
-                type="file"
+              <FileInput
                 accept=".csv,.txt,.xlsx"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];

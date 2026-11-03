@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, post, today, dateText } from '../api';
 import { navigate, useRouteField, useWorkContext } from '../navigation';
 import {
@@ -10,6 +10,8 @@ import {
   type DeskProps,
 } from './OperationsUI';
 import { YandexDesk } from './YandexDesk';
+import { FileText, Upload } from 'lucide-react';
+import './documents.css';
 
 type Document = {
   id: string;
@@ -35,6 +37,15 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
+  const [filename, setFilename] = useState('');
+  const attachment = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    setFilename('');
+    const form = attachment.current?.form;
+    const clearFilename = () => setFilename('');
+    form?.addEventListener('reset', clearFilename);
+    return () => form?.removeEventListener('reset', clearFilename);
+  }, [invoiceId, mode]);
   useEffect(() => {
     let alive = true;
     api<{ items: Document[] }>(
@@ -54,9 +65,14 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
     };
   }, [invoiceId, version]);
   return (
-    <>
-      <DeskHeading eyebrow="ДОКУМЕНТЫ КОМПАНИИ" title="Документы">
-        Договоры, первичка, доказательства и подготовленные юридические документы в одном архиве.
+    <div className="documents-desk">
+      <DeskHeading
+        eyebrow=""
+        title={mode === 'recognition' ? 'Распознавание документов' : 'Документы'}
+      >
+        {mode === 'recognition'
+          ? 'Загрузите скан и проверьте распознанный текст.'
+          : 'Добавляйте договоры и подтверждающие документы к счетам.'}
       </DeskHeading>
       <div className="ops-tabs">
         <button onClick={() => setMode('archive')} aria-pressed={mode === 'archive'}>
@@ -73,16 +89,13 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
           invoiceId={invoiceId || undefined}
           invoices={invoices}
           notify={notify}
+          embedded
         />
       ) : (
-        <>
+        <div className="documents-columns">
           <DeskError>{error}</DeskError>
-          <section className="ops-card">
+          <section className="ops-card documents-add">
             <h2>Добавить договор или документ</h2>
-            <p>
-              Выберите счёт, укажите реквизиты и при необходимости приложите файл. Документ появится
-              также в деле и аудите.
-            </p>
             <OperationForm
               resetOnSave
               key={invoiceId}
@@ -112,6 +125,7 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
                 });
               }}
               onDone={() => {
+                setFilename('');
                 setVersion((v) => v + 1);
                 onChanged();
                 notify('Документ добавлен в архив и дело');
@@ -142,19 +156,44 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
                 Номер, название или ссылка на архив
                 <input name="reference" required minLength={3} maxLength={1000} />
               </label>
-              <label className="field full-width">
-                Комментарий
-                <textarea name="note" maxLength={3000} />
-              </label>
-              <label className="field full-width">
-                Файл · PDF, PNG, JPEG до 1 МБ
-                <input type="file" name="attachment" accept=".pdf,.png,.jpg,.jpeg" />
-              </label>
+              <div className="documents-file full-width">
+                <label className="button button-outline documents-upload">
+                  <Upload size={16} aria-hidden="true" />
+                  Прикрепить файл
+                  <input
+                    ref={attachment}
+                    aria-label="Файл документа"
+                    type="file"
+                    name="attachment"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(event) => setFilename(event.target.files?.[0]?.name || '')}
+                  />
+                </label>
+                <span
+                  className={filename ? 'documents-filename' : 'documents-file-hint'}
+                  role="status"
+                >
+                  {filename || 'PDF, PNG или JPEG до 1 МБ'}
+                </span>
+              </div>
+              <details className="documents-comment full-width">
+                <summary>Добавить комментарий</summary>
+                <label className="field">
+                  Комментарий
+                  <textarea name="note" maxLength={3000} />
+                </label>
+              </details>
             </OperationForm>
           </section>
-          <section className="ops-card">
+          <section className="ops-card documents-archive">
             <h2>{invoiceId ? 'Документы выбранной задолженности' : 'Все документы'}</h2>
-            {!documents.length && <p>Документов пока нет. Добавьте первый договор выше.</p>}
+            {!documents.length && (
+              <div className="documents-empty">
+                <FileText size={28} aria-hidden="true" />
+                <strong>Документов пока нет</strong>
+                <p>Добавьте договор, акт или накладную через форму.</p>
+              </div>
+            )}
             {documents.map((doc) => (
               <article className="portfolio-document" key={`${doc.source}:${doc.id}`}>
                 <div>
@@ -164,8 +203,7 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
                     {invoices.find((i) => i.id === doc.invoice_id)?.number} ·{' '}
                     {dateText(doc.occurred_on)}
                   </p>
-                  <small>{doc.source}</small>
-                  <div>
+                  <div className="documents-row-actions">
                     {doc.download_url && <a href={doc.download_url}>Скачать файл</a>}{' '}
                     {doc.case_id && (
                       <button
@@ -188,8 +226,8 @@ export function DocumentsDesk({ invoices, onChanged, notify }: DeskProps) {
               </article>
             ))}
           </section>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }

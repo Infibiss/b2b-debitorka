@@ -72,7 +72,8 @@ def calculate_fees(facts, recovery, filings, claims, paid_amount):
     packages, seen = [], set()
     for row in sorted(filings, key=lambda item: (item['occurred_on'], item['created_at'], item['id'])):
         kind = row['kind']
-        # One order package and one claim package per invoice's legal case.
+        # One order package and one claim package per legal case, including
+        # an explicitly grouped contract's invoices.
         # Repeated receipts and revised DOCX versions are not new paid services.
         if kind not in ('court_order', 'statement_of_claim') or kind in seen:
             continue

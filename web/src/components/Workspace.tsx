@@ -15,7 +15,6 @@ import {
   Check,
   ShieldCheck,
   RefreshCw,
-  ChevronRight,
   X,
   Wallet,
   AlertCircle,
@@ -269,7 +268,6 @@ export function Workspace() {
           <div className="sidebar-brand">
             <Brand />
           </div>
-          <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
           <nav className="workspace-nav" aria-label="Разделы кабинета">
             {navigation.map(({ id, label, icon: Icon }) => (
               <button
@@ -311,11 +309,16 @@ export function Workspace() {
         </aside>
         <div className="workspace-body">
           <header className="workspace-header workspace-command-header">
-            <div>
-              <span>РАБОЧЕЕ ПРОСТРАНСТВО</span>
-              <ChevronRight size={12} />
-              <strong>{[...navigation, ...tools].find((n) => n.id === tab)?.label}</strong>
-            </div>
+            <button
+              className="section-help workspace-section-help"
+              aria-label="Как работать в разделе"
+              onClick={() => {
+                setHelpSection('');
+                setHelpOpen(true);
+              }}
+            >
+              Помощь по разделу
+            </button>
             <button
               className="mobile-operations-toggle button button-outline"
               aria-expanded={operationsOpen}
@@ -345,16 +348,6 @@ export function Workspace() {
                 ))}
             </nav>
             <div className="workspace-header-actions">
-              <button
-                className="section-help"
-                aria-label="Как работать в разделе"
-                onClick={() => {
-                  setHelpSection('');
-                  setHelpOpen(true);
-                }}
-              >
-                Помощь по разделу
-              </button>
               <span className="server-status">
                 <i />
                 {loadError ? 'Нет связи' : refreshing ? 'Обновляем…' : 'Данные обновлены'}
@@ -378,13 +371,10 @@ export function Workspace() {
               section={parentSection(tab)}
               contextKey={tab}
             />
-            {parentSection(tab) === 'management' && (
+            {tab === 'management' && (
               <div className="workspace-management-links">
-                <button
-                  className="wf-text-button"
-                  onClick={() => setTab(tab === 'settings' ? 'management' : 'settings')}
-                >
-                  {tab === 'settings' ? 'Правила и команда' : 'Реквизиты и почта'}
+                <button className="wf-text-button" onClick={() => setTab('settings')}>
+                  Реквизиты и почта
                   <ArrowUpRight size={14} />
                 </button>
               </div>
@@ -397,30 +387,33 @@ export function Workspace() {
               </button>
             )}
             {tab !== 'workflow' &&
+              tab !== 'legal' &&
               contextInvoice &&
               invoices.some((i) => i.id === contextInvoice) && (
                 <div className="work-context-bar">
-                  <label>
-                    Работаем со счётом
-                    <select
-                      aria-label="Текущая задолженность"
-                      value={contextInvoice}
-                      onChange={(e) =>
-                        navigate({
-                          context: e.target.value,
-                          case: returnCase || contextCase || null,
-                        })
-                      }
-                    >
-                      {invoices
-                        .filter((i) => !contextIds.length || contextIds.includes(i.id))
-                        .map((i) => (
-                          <option key={i.id} value={i.id}>
-                            {i.company} · {i.number}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  {tab !== 'messages' && (
+                    <label>
+                      Работаем со счётом
+                      <select
+                        aria-label="Текущая задолженность"
+                        value={contextInvoice}
+                        onChange={(e) =>
+                          navigate({
+                            context: e.target.value,
+                            case: returnCase || contextCase || null,
+                          })
+                        }
+                      >
+                        {invoices
+                          .filter((i) => !contextIds.length || contextIds.includes(i.id))
+                          .map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.company} · {i.number}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
                   <button
                     className="wf-text-button"
                     onClick={() =>
@@ -489,7 +482,7 @@ export function Workspace() {
             ) : tab === 'registry' ? (
               <Registry
                 invoices={
-                  contextInvoice ? invoices.filter((i) => i.id === contextInvoice) : invoices
+                  contextIds.length ? invoices.filter((i) => contextIds.includes(i.id)) : invoices
                 }
                 onCreate={() => setModal('create')}
                 onImport={() => setModal('import')}
@@ -535,13 +528,6 @@ export function Workspace() {
                 Загружаем настройки…
               </div>
             )}
-            <footer className="workspace-footer">
-              <span>Mandato · Деньги возвращаются в дело.</span>
-              <span>
-                <ShieldCheck size={12} />
-                Действия сохраняются в истории
-              </span>
-            </footer>
           </main>
         </div>
         {helpOpen && (
@@ -611,7 +597,6 @@ function Registry({
     <>
       <div className="page-heading">
         <div>
-          <span className="page-date">ДЕБИТОРСКАЯ ЗАДОЛЖЕННОСТЬ</span>
           <h1>Счета</h1>
           <p>Счета, остатки и сроки оплаты.</p>
         </div>
@@ -821,7 +806,6 @@ function Correspondence({
     <>
       <div className="page-heading">
         <div>
-          <span className="page-date">ДЕЛОВАЯ ПЕРЕПИСКА</span>
           <h1>Переписка с покупателями</h1>
           <p>Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.</p>
         </div>
@@ -830,7 +814,7 @@ function Correspondence({
           <ArrowRight size={15} />
         </button>
       </div>
-      <div className={`mail-connection ${smtp ? 'connected' : ''}`}>
+      <div className={`mail-connection ${smtp ? 'connected' : 'is-warning'}`}>
         <Mail size={21} />
         <div>
           <strong>{smtp ? 'Почта подключена' : 'Почта не подключена'}</strong>
@@ -840,7 +824,7 @@ function Correspondence({
               : 'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'}
           </p>
         </div>
-        <ShieldCheck size={20} />
+        {smtp ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
       </div>
       <CaseConversation invoices={invoices} onOpen={onOpen} />
       <section className="panel">
@@ -920,12 +904,10 @@ function SettingsPanel({
     <>
       <div className="page-heading">
         <div>
-          <span className="page-date">ВАША КОМПАНИЯ</span>
-          <h1>Работа по вашим правилам.</h1>
-          <p>Реквизиты для писем и ограничения, которые учитывает Mandato.</p>
+          <h1>Настройки</h1>
+          <p>Компания, отправитель писем и подключение почты.</p>
         </div>
       </div>
-      <MailSetup />
       <form ref={draft.ref} className="settings-form" onSubmit={save}>
         {draft.status && (
           <p className="draft-status" role="status">
@@ -1002,34 +984,6 @@ function SettingsPanel({
             </p>
           </div>
         </section>
-        <section className="settings-panel connection-settings">
-          <div>
-            <Mail size={20} />
-            <span>
-              <strong>Почта компании</strong>
-              <small>
-                {settings.smtp_configured
-                  ? 'Подключена. Отправка доступна.'
-                  : 'Не подключена. Подготовка и скачивание писем доступны.'}
-              </small>
-            </span>
-            <span className={`pill ${settings.smtp_configured ? 'green' : 'gray'}`}>
-              {settings.smtp_configured ? 'Подключена' : 'Не подключена'}
-            </span>
-          </div>
-          <div>
-            <ShieldCheck size={20} />
-            <span>
-              <strong>Подготовка текста</strong>
-              <small>
-                {settings.llm_configured
-                  ? 'ИИ помогает с формулировками. Суммы подставляются из счёта.'
-                  : 'Проверенные формулировки с реквизитами вашего счёта.'}
-              </small>
-            </span>
-            <span className="pill green">Доступна</span>
-          </div>
-        </section>
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -1046,6 +1000,7 @@ function SettingsPanel({
           </button>
         </div>
       </form>
+      <MailSetup />
     </>
   );
 }

@@ -29,25 +29,40 @@ export function MailSetup() {
   }, []);
   return (
     <section className="ops-card mail-setup">
-      <h2>Подключение почты</h2>
+      <div className="mail-setup-heading">
+        <h2>Подключение почты</h2>
+        {setup && (
+          <span
+            className={`mail-setup-badge ${setup.connected && setup.request?.verified_at ? 'is-success' : 'is-warning'}`}
+          >
+            {setup.connected
+              ? setup.request?.verified_at
+                ? 'Подключена'
+                : 'Нужна проверка'
+              : 'Не подключена'}
+          </span>
+        )}
+      </div>
       <DeskError>{error}</DeskError>
       {!setup ? (
         <p>Проверяем подключение…</p>
       ) : setup.connected ? (
-        <p role="status">
+        <p
+          className={`mail-setup-status ${setup.request?.verified_at ? 'is-success' : 'is-warning'}`}
+          role="status"
+        >
           {setup.request?.verified_at
-            ? 'Почта подключена, контрольная доставка подтверждена оператором.'
-            : 'SMTP настроен. Контрольная доставка ещё не подтверждена оператором.'}{' '}
-          Отправка доступна после согласования писем и правил работы.
+            ? 'Контрольное письмо доставлено. Можно включать отправку по вашим правилам.'
+            : 'Настройки сохранены. Администратору нужно проверить доставку письма.'}
         </p>
       ) : (
         <>
-          <p>
-            Почта не подключена. Руководитель оставляет заявку, администратор согласует доступ и
-            настраивает SMTP для вашей компании. Пароль от почты здесь не требуется.
+          <p className="mail-setup-status is-warning">
+            Письма пока можно готовить и скачивать. Чтобы отправлять их из Mandato, оставьте заявку
+            на подключение.
           </p>
           {setup.request && (
-            <div className="ops-context" role="status">
+            <div className="mail-setup-request" role="status">
               <strong>
                 Заявка № {setup.request.id.slice(0, 8)} ·{' '}
                 {(
@@ -59,18 +74,8 @@ export function MailSetup() {
                 )[setup.request.status] || setup.request.status}
               </strong>
               <p>Адрес: {setup.request.email}</p>
-              <p>
-                Ответственный:{' '}
-                {setup.request.owner || 'Администратор установки — сотрудник ещё не назначен'}.
-              </p>
-              <p>
-                Проверка доставки:{' '}
-                {setup.request.verified_at ? 'подтверждена оператором' : 'ожидается'}.
-              </p>
-              <p>
-                {setup.request.note ||
-                  'Заявка сохранена. Передайте номер администратору вашей установки Mandato для согласования подключения.'}
-              </p>
+              {setup.request.owner && <p>Ответственный: {setup.request.owner}</p>}
+              {setup.request.note && <p>{setup.request.note}</p>}
             </div>
           )}
           {setup.can_request ? (
@@ -95,26 +100,21 @@ export function MailSetup() {
           ) : (
             <p>Попросите руководителя оставить заявку в этом разделе.</p>
           )}
-          <button className="button button-outline" onClick={() => void load()}>
+          <button className="mail-status-refresh" onClick={() => void load()}>
             Проверить статус подключения
           </button>
         </>
       )}
-      {setup?.connected && setup.request && (
-        <p>
-          Ответственный: {setup.request.owner || 'администратор установки'}.{' '}
-          {setup.request.verification_reference ||
-            'Попросите администратора выполнить контрольную отправку и зарегистрировать результат.'}
-        </p>
+      {caseId && (
+        <button
+          className="mail-return-link"
+          onClick={() =>
+            navigate({ section: 'workflow', case: caseId, context: invoiceId || null })
+          }
+        >
+          Вернуться к делу
+        </button>
       )}
-      <button
-        className="button button-outline"
-        onClick={() =>
-          navigate({ section: 'workflow', case: caseId || null, context: invoiceId || null })
-        }
-      >
-        {caseId ? 'Вернуться к делу' : 'Открыть рабочие дела'}
-      </button>
       <SupportContact />
     </section>
   );

@@ -12,7 +12,6 @@ export type DeskProps = {
   notify: (text: string, error?: boolean) => void;
 };
 export function DeskHeading({
-  eyebrow,
   title,
   children,
   action,
@@ -25,7 +24,6 @@ export function DeskHeading({
   return (
     <div className="page-heading ops-heading">
       <div>
-        <span className="page-date">{eyebrow}</span>
         <h1>{title}</h1>
         <p>{children}</p>
       </div>

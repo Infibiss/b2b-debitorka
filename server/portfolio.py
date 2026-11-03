@@ -103,9 +103,9 @@ def inputs(connection, tenant):
     return dict(as_of=str(business_today()), sender=legal.document_sender_snapshot(connection,tenant),
         invoices=invoices, counterparties=rows('finance_counterparties'),
         evidence=evidence, deadlines=rows('portfolio_deadlines'), deadline_resolutions=rows('portfolio_deadline_resolutions', 'deadline_id'), reconciliations=rows('accounting_reconciliations'),
-        bank=rows('finance_bank_payments'), promises=rows('finance_promises'), cases=rows('legal_cases'),
+        bank=rows('finance_bank_payments'), promises=rows('finance_promises'), cases=rows('legal_cases'), case_invoices=rows('legal_case_invoices','invoice_id'),
         installments=[dict(r) for r in connection.execute('SELECT s.* FROM finance_installments s JOIN finance_promises p ON p.id=s.promise_id WHERE p.tenant_id=? ORDER BY s.id', (tenant,))],
-        legal_evidence=rows('legal_evidence'), documents=[dict(r) for r in connection.execute(
+        legal_evidence=rows('legal_evidence'), legal_evidence_invoices=rows('legal_evidence_invoices','invoice_id'), documents=[dict(r) for r in connection.execute(
             'SELECT id,case_id,kind,version,snapshot_hash,created_at FROM legal_documents WHERE tenant_id=? ORDER BY id', (tenant,))],
         registry=_registry(connection, tenant))
 
@@ -134,13 +134,17 @@ def build_report(connection, tenant, data):
     evidence = defaultdict(set)
     for row in data['evidence']: evidence[row['invoice_id']].add(row['kind'])
     cases = {r['id']: r for r in data['cases']}
-    case_by_invoice = {r['invoice_id']: r for r in data['cases']}
+    memberships=data.get('case_invoices') or [dict(invoice_id=r['invoice_id'],case_id=r['id']) for r in data['cases']]
+    case_by_invoice = {r['invoice_id']:r for r in data['cases']}
+    case_by_invoice.update({r['invoice_id']: cases[r['case_id']] for r in memberships if r['case_id'] in cases})
     for row in data['legal_evidence']:
-        if row['case_id'] in cases: evidence[cases[row['case_id']]['invoice_id']].add(row['kind'])
+        coverage=[r['invoice_id'] for r in data.get('legal_evidence_invoices',[]) if r['evidence_id']==row['id']]
+        if not coverage and row['case_id'] in cases:coverage=[cases[row['case_id']]['invoice_id']]
+        for invoice_id in coverage:evidence[invoice_id].add(row['kind'])
     # A contractual due basis is separately registered; a typed due date is not primary evidence.
-    for row in data['cases']:
+    for invoice_id,row in case_by_invoice.items():
         facts = json.loads(row['facts_json'])
-        if facts.get('due_basis') and 'contract' in evidence[row['invoice_id']]: evidence[row['invoice_id']].add('payment_terms')
+        if facts.get('due_basis') and 'contract' in evidence[invoice_id]: evidence[invoice_id].add('payment_terms')
     latest = {}
     for row in data['reconciliations']:
         old = latest.get(row['counterparty_id'])
@@ -268,6 +272,9 @@ def create_router(ctx):
                 fields += ',d.version' if table == 'legal_documents' else ',d.title,d.reference,d.occurred_on'
                 for row in c.execute(f'SELECT {fields} FROM {table} d JOIN legal_cases l ON l.id=d.case_id AND l.tenant_id=d.tenant_id WHERE d.tenant_id=?', (tenant,)):
                     item = dict(row) | {'source': source}
+                    parent=c.execute('SELECT * FROM legal_cases WHERE id=? AND tenant_id=?',(row['case_id'],tenant)).fetchone()
+                    if table=='legal_documents':item['invoice_ids']=legal.case_invoice_ids(c,parent)
+                    else:item['invoice_ids']=[r['invoice_id'] for r in c.execute('SELECT invoice_id FROM legal_evidence_invoices WHERE tenant_id=? AND evidence_id=?',(tenant,row['id']))] or [parent['invoice_id']]
                     if table == 'legal_documents':
                         names = {'pretrial_claim': 'Претензия', 'court_order': 'Судебный приказ', 'statement_of_claim': 'Иск'}
                         item.update(reference=f"{names.get(row['kind'], row['kind'])} · версия {row['version']}", occurred_on=row['created_at'][:10], download_url=f"/api/legal/documents/{row['id']}/download")
@@ -275,7 +282,7 @@ def create_router(ctx):
             for row in c.execute("SELECT id,invoice_id,payload_json,created_at FROM yandex_service_requests WHERE tenant_id=? AND kind='ocr'", (tenant,)):
                 payload = json.loads(row['payload_json'])
                 items.append(dict(row) | {'source': 'Распознавание', 'kind': 'other', 'reference': payload.get('filename', 'Распознанный документ'), 'occurred_on': row['created_at'][:10], 'download_url': f"/api/yandex/documents/{row['id']}/original"})
-            items = [item for item in items if not invoice_id or item['invoice_id'] == invoice_id]
+            items = [item for item in items if not invoice_id or invoice_id in item.get('invoice_ids',[item['invoice_id']])]
             for item in items:
                 item.pop('payload_json', None)
             return {'items': sorted(items, key=lambda item: (item['created_at'], item['id']), reverse=True)}

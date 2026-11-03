@@ -38,6 +38,12 @@ def validate_document_facts(kind,facts,evidence,calculation):
     kinds={row["kind"] for row in evidence}
     for field in ("contract","performance"):
         if field not in kinds:missing.append("доказательство: "+field)
+    invoices=facts.get('_invoices') or ([facts['_invoice']] if facts.get('_invoice') else [])
+    if len(invoices)>1:
+        for field in ('contract','performance'):
+            covered={key for row in evidence if row['kind']==field for key in row.get('invoice_ids',[])}
+            for invoice in invoices:
+                if invoice['id'] not in covered:missing.append(f"{field}: счёт {invoice['number']}")
     if kind!="pretrial_claim":
         for field in ("court_name","court_address","jurisdiction_basis"):
             if not facts.get(field):missing.append(field)
@@ -99,8 +105,7 @@ def build_docx(kind,facts,calculation,evidence,*,version,created_on):
     doc.add_paragraph(f"Между {creditor['name']} и {debtor['name']} заключён договор № {facts['contract_number']} от {day(facts['contract_date'])}.")
     doc.add_paragraph(facts["obligation_description"])
     doc.add_paragraph(facts["performance_description"])
-    if facts.get("_invoice"):
-        invoice=facts["_invoice"]
+    for invoice in facts.get('_invoices') or ([facts['_invoice']] if facts.get('_invoice') else []):
         doc.add_paragraph(f"Счёт № {invoice['number']} от {day(invoice['issued_on'])}; срок оплаты — {day(invoice['due_on'])}.")
     doc.add_paragraph("Срок исполнения денежного обязательства: "+facts["due_basis"])
     doc.add_paragraph(f"По состоянию на {day(calculation['through_on'])} непогашенный основной долг составляет {money(calculation['principal_amount'])} ₽. Расчёт учитывает отражённые в реестре погашения и корректировки.")
@@ -135,13 +140,21 @@ def build_docx(kind,facts,calculation,evidence,*,version,created_on):
     doc.add_paragraph("Подпись уполномоченного лица: _______________ / __________________________")
     doc.add_page_break()
     doc.add_heading("Расчёт денежного требования",level=1)
+    for part in calculation.get('invoice_calculations',[]):
+        inv=next(i for i in facts.get('_invoices',[]) if i['id']==part['invoice_id'])
+        doc.add_paragraph(f"Счёт № {inv['number']}: основной долг {money(part['principal_amount'])} ₽; проценты {money(part['interest_amount'])} ₽; неустойка {money(part['penalty_amount'])} ₽.")
     doc.add_paragraph(f"Первоначальный основной долг: {money(calculation['original_principal'])} ₽. Период начисления: {day(calculation['from_on'])} — {day(calculation['through_on'])}.")
-    table=doc.add_table(rows=1,cols=6);table.style="Table Grid"
+    grouped=len(facts.get('_invoices',[]))>1
+    table=doc.add_table(rows=1,cols=7 if grouped else 6);table.style="Table Grid"
     headings=("Период","Дни","Основной долг, ₽","Ставка / год","395, ₽","Неустойка, ₽")
+    if grouped:headings=('Счёт',)+headings
     for cell,text in zip(table.rows[0].cells,headings):cell.text=text
     repeat=OxmlElement("w:tblHeader");table.rows[0]._tr.get_or_add_trPr().append(repeat)
     for row in calculation["line_items"]:
         values=(day(row["from_on"])+"\n"+day(row["to_on"]),str(row["days"]),money(row["principal_amount"]),row["annual_percent"].replace(".",",")+"% / "+str(row["denominator"]),money(row["interest_amount"]),money(row["penalty_amount"]))
+        if grouped:
+            invoice=next(item for item in facts['_invoices'] if item['id']==row['invoice_id'])
+            values=(invoice['number'],)+values
         cells=table.add_row().cells
         for cell,text in zip(cells,values):cell.text=text
         if row["excluded"]:

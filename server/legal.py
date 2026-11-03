@@ -276,12 +276,38 @@ CREATE TABLE IF NOT EXISTS legal_rate_caches (
 CREATE INDEX IF NOT EXISTS legal_documents_case ON legal_documents(tenant_id,case_id,created_at);
 CREATE INDEX IF NOT EXISTS legal_milestones_case ON legal_milestones(tenant_id,case_id,occurred_on);
 CREATE UNIQUE INDEX IF NOT EXISTS legal_case_invoice ON legal_cases(tenant_id,invoice_id);
+CREATE TABLE IF NOT EXISTS legal_case_invoices (
+ tenant_id TEXT NOT NULL,case_id TEXT NOT NULL,invoice_id TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,invoice_id),
+ FOREIGN KEY(case_id,tenant_id) REFERENCES legal_cases(id,tenant_id),
+ FOREIGN KEY(invoice_id,tenant_id) REFERENCES invoices(id,tenant_id)
+);
+CREATE TABLE IF NOT EXISTS legal_evidence_invoices (
+ tenant_id TEXT NOT NULL,evidence_id TEXT NOT NULL,invoice_id TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,evidence_id,invoice_id),
+ FOREIGN KEY(evidence_id) REFERENCES legal_evidence(id),
+ FOREIGN KEY(invoice_id,tenant_id) REFERENCES invoices(id,tenant_id)
+);
 """
 
 
 def initialize_schema(connection):
     for statement in SCHEMA.split(";"):
         if statement.strip():connection.execute(statement)
+    connection.execute('''INSERT INTO legal_case_invoices(tenant_id,case_id,invoice_id)
+        SELECT tenant_id,id,invoice_id FROM legal_cases WHERE 1=1 ON CONFLICT(tenant_id,invoice_id) DO NOTHING''')
+    # Historical evidence belongs only to its original invoice; expanding a
+    # legal case never silently proves performance for other invoices.
+    connection.execute('''INSERT INTO legal_evidence_invoices(tenant_id,evidence_id,invoice_id)
+        SELECT e.tenant_id,e.id,l.invoice_id FROM legal_evidence e JOIN legal_cases l
+        ON l.id=e.case_id AND l.tenant_id=e.tenant_id
+        WHERE NOT EXISTS(SELECT 1 FROM legal_evidence_invoices x WHERE x.evidence_id=e.id AND x.tenant_id=e.tenant_id)
+        ON CONFLICT(tenant_id,evidence_id,invoice_id) DO NOTHING''')
+
+
+def case_invoice_ids(connection,row):
+    ids=[r['invoice_id'] for r in connection.execute('SELECT invoice_id FROM legal_case_invoices WHERE tenant_id=? AND case_id=? ORDER BY invoice_id',(row['tenant_id'],row['id']))]
+    return [row['invoice_id']]+[key for key in ids if key!=row['invoice_id']]
 
 
 def _json(value):return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"),default=str)
@@ -311,6 +337,9 @@ def document_snapshot(connection, row, kind):
     ledger = finance.financial_snapshot(connection,row['tenant_id'],row['invoice_id'])
     content = dict(ledger=ledger['snapshot_hash'], facts=json.loads(row['facts_json']), facts_revision=row['facts_revision'],
                    sender=document_sender_snapshot(connection,row['tenant_id']))
+    ids=case_invoice_ids(connection,row)
+    if len(ids)>1:
+        content['additional_invoices']=[finance.financial_snapshot(connection,row['tenant_id'],key)['snapshot_hash'] for key in ids[1:]]
     if kind == 'statement_of_claim':
         content['pretrial'] = pretrial_snapshot(connection,row)
     return hashlib.sha256(_json(content).encode()).hexdigest()
@@ -401,7 +430,11 @@ def create_router(ctx):
         return row
 
     def evidence_rows(connection,tenant,case_id):
-        return [dict(row) for row in connection.execute("SELECT * FROM legal_evidence WHERE tenant_id=? AND case_id=? ORDER BY created_at,id",(tenant,case_id))]
+        rows=[dict(row) for row in connection.execute("SELECT * FROM legal_evidence WHERE tenant_id=? AND case_id=? ORDER BY created_at,id",(tenant,case_id))]
+        anchor=case_row(connection,tenant,case_id)['invoice_id']
+        for row in rows:
+            row['invoice_ids']=[r['invoice_id'] for r in connection.execute('SELECT invoice_id FROM legal_evidence_invoices WHERE tenant_id=? AND evidence_id=? ORDER BY invoice_id',(tenant,row['id']))] or [anchor]
+        return rows
 
     def milestones(connection,tenant,case_id):
         result=[]
@@ -453,19 +486,48 @@ def create_router(ctx):
 
     def fee(connection,row):
         facts=json.loads(row["facts_json"])
-        recovery=finance.confirmed_recovery(connection,row["tenant_id"],row["invoice_id"])
-        inv=finance.financial_snapshot(connection,row["tenant_id"],row["invoice_id"])["invoice"]
+        ids=case_invoice_ids(connection,row)
+        recovery=[item for key in ids for item in finance.confirmed_recovery(connection,row["tenant_id"],key)]
+        paid=sum(finance.financial_snapshot(connection,row["tenant_id"],key)["invoice"]['paid_amount'] for key in ids)
         steps=milestones(connection,row['tenant_id'],row['id'])
         filing=[dict(item) for item in connection.execute('''SELECT m.*,d.kind FROM legal_milestones m
             JOIN legal_documents d ON d.id=m.document_id AND d.tenant_id=m.tenant_id AND d.case_id=m.case_id
             WHERE m.tenant_id=? AND m.case_id=? AND m.stage='filed' ''',(row['tenant_id'],row['id']))]
-        return calculate_fees(facts,recovery,filing,[item for item in steps if item['stage']=='claim_sent'],inv['paid_amount'])
+        return calculate_fees(facts,recovery,filing,[item for item in steps if item['stage']=='claim_sent'],paid)
+
+    def case_calculation(connection,row,data):
+        ids=case_invoice_ids(connection,row)
+        per_invoice=getattr(data,'invoice_opening_reductions',{})
+        if any(key not in ids for key in per_invoice):raise ValueError('Начальная оплата относится к счёту вне этого дела')
+        raw=data.model_dump(mode='json',exclude={'invoice_opening_reductions'})
+        if len(ids)==1:
+            if per_invoice:
+                if data.opening_reductions:raise ValueError('Укажите начальные оплаты одним способом')
+                raw['opening_reductions']=[r.model_dump(mode='json') for r in per_invoice.get(ids[0],[])]
+            return calculation(connection,row['tenant_id'],ids[0],models.Calculation(**raw))
+        if data.opening_reductions:
+            raise ValueError('Для общего требования укажите даты начальных оплат отдельно для каждого счёта')
+        if data.penalty_cap_amount is not None:
+            raise ValueError('Общий лимит неустойки по нескольким счетам требует отдельного расчёта юриста')
+        parts=[calculation(connection,row['tenant_id'],key,models.Calculation(**dict(raw,opening_reductions=[r.model_dump(mode='json') for r in per_invoice.get(key,[])]))) for key in ids]
+        result=dict(parts[0])
+        for key in ('original_principal','principal_amount','interest_amount','penalty_amount','total_claim_amount','rounding_difference_interest','rounding_or_cap_penalty'):
+            result[key]=sum(p[key] for p in parts)
+        result.update(from_on=min(p['from_on'] for p in parts),invoice_ids=ids,invoice_calculations=parts,
+                      line_items=[dict(line,invoice_id=key) for key,p in zip(ids,parts) for line in p['line_items']],
+                      fee_claim_amount=arbitration_fee(result['total_claim_amount']) if result['total_claim_amount'] else 0,
+                      fee_order_amount=arbitration_fee(result['total_claim_amount'],'court_order') if result['total_claim_amount'] else 0,
+                      order_eligible=bool(0<result['total_claim_amount']<=ORDER_LIMIT))
+        return result
 
     def case_view(connection,row,detail=False):
         steps=milestones(connection,row["tenant_id"],row["id"])
         item={**{key:row[key] for key in ("id","invoice_id","facts_revision","created_at","updated_at")},"facts":json.loads(row["facts_json"]),
               "stage":steps[-1]["stage"] if steps else "intake","invoice":finance.financial_snapshot(connection,row["tenant_id"],row["invoice_id"])["invoice"],
               "pretrial":pretrial(connection,row)}
+        invoices=[finance.financial_snapshot(connection,row['tenant_id'],key)['invoice'] for key in case_invoice_ids(connection,row)]
+        item.update(invoices=invoices,invoice_ids=[inv['id'] for inv in invoices],balance=sum(inv['balance'] for inv in invoices),invoice_count=len(invoices))
+        item['next_action']='Подготовить иск после отмены приказа' if item['stage']=='order_cancelled' else 'Проверить документы и выбрать следующий шаг'
         contract=connection.execute("SELECT k.number FROM workflow_invoice_contracts m JOIN workflow_contracts k ON k.id=m.contract_id AND k.tenant_id=m.tenant_id WHERE m.invoice_id=? AND m.tenant_id=?",(row['invoice_id'],row['tenant_id'])).fetchone()
         item['suggested_contract_number']=contract['number'] if contract else ''
         if detail:
@@ -500,6 +562,20 @@ def create_router(ctx):
             if data.facts.fee_agreement_reference or data.facts.fee_start_on or data.facts.lawyer_agreement_reference:
                 require_manager(connection,user)
             finance.financial_snapshot(connection,user["tenant_id"],data.invoice_id)
+            ids=list(dict.fromkeys([data.invoice_id]+data.invoice_ids))
+            for invoice_id in ids:
+                finance.financial_snapshot(connection,user['tenant_id'],invoice_id)
+            if len(ids)>1:
+                contract_ids=[]
+                for key in ids:
+                    finance.financial_snapshot(connection,user['tenant_id'],key)
+                    mapped=connection.execute('SELECT contract_id FROM workflow_invoice_contracts WHERE tenant_id=? AND invoice_id=?',(user['tenant_id'],key)).fetchone()
+                    if mapped is None:ctx.problem(422,'Сначала объедините выбранные счета в один договор во вкладке «Работа»')
+                    contract_ids.append(mapped['contract_id'])
+                if len(set(contract_ids))!=1:ctx.problem(422,'В одном юридическом деле могут быть только счета одного договора')
+            for key in ids:
+                if connection.execute('SELECT case_id FROM legal_case_invoices WHERE tenant_id=? AND invoice_id=?',(user['tenant_id'],key)).fetchone():
+                    ctx.problem(409,'По одному из выбранных счетов уже открыто юридическое дело')
             # Workflow contract is a factual prefill, never a legal confirmation.
             contract=connection.execute("SELECT k.number FROM workflow_invoice_contracts m JOIN workflow_contracts k ON k.id=m.contract_id AND k.tenant_id=m.tenant_id WHERE m.invoice_id=? AND m.tenant_id=?",(data.invoice_id,user["tenant_id"])).fetchone()
             if contract and not data.facts.contract_number:
@@ -507,12 +583,24 @@ def create_router(ctx):
             key=ctx.identifier();stamp=ctx.now()
             inserted=connection.execute("INSERT INTO legal_cases(id,tenant_id,invoice_id,facts_json,facts_revision,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,invoice_id) DO NOTHING",(key,user["tenant_id"],data.invoice_id,_json(data.facts.model_dump(mode="json")),1,user["id"],stamp,stamp))
             if inserted.rowcount!=1:ctx.problem(409,"По этому счёту уже открыто юридическое дело. Продолжите его, чтобы не дублировать требования и гонорар")
+            for invoice_id in ids:
+                member=connection.execute('INSERT INTO legal_case_invoices(tenant_id,case_id,invoice_id) VALUES(?,?,?) ON CONFLICT(tenant_id,invoice_id) DO NOTHING',(user['tenant_id'],key,invoice_id))
+                if member.rowcount!=1:ctx.problem(409,'Счёт уже включён в другое юридическое дело')
             ctx.event(connection,user["tenant_id"],data.invoice_id,"legal_case_created","Открыто юридическое дело",key)
             return case_view(connection,case_row(connection,user["tenant_id"],key),True)
 
     @router.get("/cases/{case_id}")
     def get_case(case_id:str,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as connection:return case_view(connection,case_row(connection,user["tenant_id"],case_id),True)
+
+    @router.post('/cases/{case_id}/calculation')
+    def calculate_case(case_id:str,data:models.CaseCalculation,user=Depends(ctx.get_user)):
+        if data.sanction in ('art395','both') and data.rate_override is None:
+            try:_ensure_rates(ctx,data.through_on)
+            except ValueError as error:ctx.problem(422,str(error))
+        with ctx.database(ctx.config) as connection:
+            try:return case_calculation(connection,case_row(connection,user['tenant_id'],case_id),data)
+            except ValueError as error:ctx.problem(422,str(error))
 
     @router.patch("/cases/{case_id}")
     def update_case(case_id:str,data:models.CaseUpdate,user=Depends(ctx.get_user)):
@@ -532,9 +620,17 @@ def create_router(ctx):
     def add_evidence(case_id:str,data:models.Evidence,user=Depends(ctx.get_user)):
         with ctx.database(ctx.config,write=True) as connection:
             parent=case_row(connection,user["tenant_id"],case_id);key=ctx.identifier();stamp=ctx.now()
+            members=case_invoice_ids(connection,parent)
+            coverage=list(dict.fromkeys(members if data.covers_all_invoices else data.invoice_ids))
+            if any(invoice_id not in members for invoice_id in coverage):ctx.problem(422,'Выберите счета этого юридического дела')
+            if not coverage:
+                if len(members)>1 and data.kind in ('contract','performance','reconciliation'):
+                    ctx.problem(422,'Отметьте счета, которые подтверждает доказательство')
+                coverage=[parent['invoice_id']]
             connection.execute("INSERT INTO legal_evidence(id,tenant_id,case_id,kind,title,reference,occurred_on,sha256,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(key,user["tenant_id"],case_id,data.kind,data.title,data.reference,str(data.occurred_on),data.sha256,user["id"],stamp))
+            for invoice_id in coverage:connection.execute('INSERT INTO legal_evidence_invoices(tenant_id,evidence_id,invoice_id) VALUES(?,?,?)',(user['tenant_id'],key,invoice_id))
             ctx.event(connection,user["tenant_id"],parent["invoice_id"],"legal_evidence_recorded","Добавлено доказательство",data.title)
-            return {"id":key,"case_id":case_id,**data.model_dump(mode="json"),"created_at":stamp}
+            return {"id":key,"case_id":case_id,**data.model_dump(mode="json"),"invoice_ids":coverage,"created_at":stamp}
 
     @router.post("/cases/{case_id}/documents",status_code=201)
     def generate(case_id:str,data:models.DocumentCreate,user=Depends(ctx.get_user)):
@@ -544,17 +640,23 @@ def create_router(ctx):
         with ctx.database(ctx.config,write=True) as connection:
             parent=case_row(connection,user["tenant_id"],case_id)
             try:
-                result=calculation(connection,user["tenant_id"],parent["invoice_id"],data.calculation)
-                current_balance=finance.financial_snapshot(connection,user["tenant_id"],parent["invoice_id"])["invoice"]["balance"]
+                result=case_calculation(connection,parent,data.calculation)
+                invoices=[finance.financial_snapshot(connection,user['tenant_id'],key)['invoice'] for key in case_invoice_ids(connection,parent)]
+                current_balance=sum(inv['balance'] for inv in invoices)
+                if result.get('invoice_calculations') and any(part['principal_amount']!=inv['balance'] for part,inv in zip(result['invoice_calculations'],invoices)):
+                    raise ValueError('После даты расчёта изменился долг по одному из счетов. Выберите актуальную дату расчёта')
                 if result["principal_amount"]!=current_balance:
                     raise ValueError("После даты расчёта изменился основной долг. Выберите актуальную дату, чтобы не предъявить уже погашенную сумму")
                 facts=json.loads(parent["facts_json"]);facts["_pretrial"]=pretrial(connection,parent)
                 invoice_identity=finance.financial_snapshot(connection,user["tenant_id"],parent["invoice_id"])["invoice"]
                 facts["_invoice"]=invoice_identity
+                facts['_invoices']=invoices
                 if invoice_identity.get("inn") and facts["debtor"]["inn"]!=invoice_identity["inn"]:
                     raise ValueError("ИНН должника в юридических фактах не совпадает со счётом. Сначала исправьте и сверьте источник")
-                if data.kind=="court_order" and invoice_identity["status"]=="disputed":
+                if data.kind=="court_order" and any(inv['status']=='disputed' for inv in invoices):
                     raise ValueError("В реестре зафиксирован спор. Приказное производство для такого требования недоступно; требуется разбор юриста")
+                if data.kind=='court_order' and any(step['stage']=='order_cancelled' for step in milestones(connection,user['tenant_id'],case_id)):
+                    raise ValueError('Приказ отменён. Подготовьте исковое заявление после проверки юристом')
                 proof=evidence_rows(connection,user["tenant_id"],case_id)
                 version=connection.execute("SELECT COALESCE(MAX(version),0)+1 AS next_version FROM legal_documents WHERE tenant_id=? AND case_id=?",(user["tenant_id"],case_id)).fetchone()["next_version"]
                 content=build_docx(data.kind,facts,result,proof,version=version,created_on=str(business_today()))
@@ -616,13 +718,32 @@ def create_router(ctx):
                     if timer["applicable"] and (not timer["ready_on"] or str(data.occurred_on)<timer["ready_on"]):ctx.problem(409,"Досудебный срок ещё не истёк")
             elif data.stage in ("order_issued","judgment"):
                 if "court_act" not in kinds or not any(item["stage"]=="filed" and item["occurred_on"]<=str(data.occurred_on) for item in existing):ctx.problem(422,"Нужны ранее зафиксированная подача и судебный акт")
+                expected='court_order' if data.stage=='order_issued' else 'statement_of_claim'
+                filings=connection.execute('''SELECT m.occurred_on FROM legal_milestones m JOIN legal_documents d
+                    ON d.id=m.document_id AND d.tenant_id=m.tenant_id AND d.case_id=m.case_id
+                    WHERE m.tenant_id=? AND m.case_id=? AND m.stage='filed' AND d.kind=? AND m.occurred_on<=?''',
+                    (user['tenant_id'],case_id,expected,str(data.occurred_on))).fetchall()
+                if not filings:ctx.problem(422,'Сначала подтвердите подачу соответствующего заявления в суд')
+                cancelled_on=max((item['occurred_on'] for item in existing if item['stage']=='order_cancelled'),default=None)
+                if data.stage=='judgment' and cancelled_on and not any(row['occurred_on']>=cancelled_on for row in filings):
+                    ctx.problem(422,'После отмены приказа нужно подтвердить подачу иска')
+            elif data.stage=='order_cancelled':
+                if 'order_cancellation' not in kinds or not any(item['stage']=='order_issued' and item['occurred_on']<=str(data.occurred_on) for item in existing):
+                    ctx.problem(422,'Нужны полученный судебный приказ и определение о его отмене')
             elif data.stage=="writ_received":
                 if "writ" not in kinds or not any(item["stage"] in ("judgment","order_issued") and item["occurred_on"]<=str(data.occurred_on) for item in existing):ctx.problem(422,"Нужны судебный акт и исполнительный документ")
             elif data.stage in ("bank_submitted","fssp_submitted"):
                 required="bank_submission" if data.stage=="bank_submitted" else "fssp_submission"
                 if required not in kinds or not any(item["stage"] in ("writ_received","order_issued") and item["occurred_on"]<=str(data.occurred_on) for item in existing):ctx.problem(422,"Нужны исполнительный документ и доказательство ручной передачи")
             elif data.stage=="closed":
-                if finance.financial_snapshot(connection,user["tenant_id"],parent["invoice_id"])["invoice"]["balance"]!=0:ctx.problem(409,"В реестре остаётся непогашенный долг; зафиксируйте основание остановки")
+                if any(finance.financial_snapshot(connection,user['tenant_id'],key)['invoice']['balance']!=0 for key in case_invoice_ids(connection,parent)):ctx.problem(409,"В реестре остаётся непогашенный долг; зафиксируйте основание остановки")
+            cancelled=[item for item in existing if item['stage']=='order_cancelled']
+            if cancelled and data.stage in ('writ_received','bank_submitted','fssp_submitted','order_issued'):
+                last_cancel=max(item['occurred_on'] for item in cancelled)
+                if not any(item['stage']=='judgment' and item['occurred_on']>=last_cancel for item in existing):
+                    ctx.problem(409,'Приказ отменён. Исполнение возможно после нового судебного решения')
+            if data.stage=='filed' and doc and doc['kind']=='court_order' and cancelled:
+                ctx.problem(409,'Приказ отменён. Подготовьте и согласуйте исковое заявление')
             key=ctx.identifier();stamp=ctx.now()
             connection.execute("INSERT INTO legal_milestones(id,tenant_id,case_id,stage,occurred_on,reference,notes,document_id,evidence_ids_json,actor_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",(key,user["tenant_id"],case_id,data.stage,str(data.occurred_on),data.reference,data.notes,data.document_id,_json(data.evidence_ids),user["id"],stamp))
             connection.execute("UPDATE legal_cases SET updated_at=? WHERE id=? AND tenant_id=?",(stamp,case_id,user["tenant_id"]))

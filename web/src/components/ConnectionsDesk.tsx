@@ -1,4 +1,5 @@
 import { useRouteField } from '../navigation';
+import { FileInput } from './FileInput';
 import { MailSetup } from './MailSetup';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
@@ -537,7 +538,7 @@ export function ConnectionsDesk({
                 </label>
                 <label className="field">
                   Файл банковской выписки
-                  <input type="file" name="statement" required accept=".txt,text/plain" />
+                  <FileInput name="statement" required accept=".txt,text/plain" />
                 </label>
                 <button className="button button-outline" disabled={!!busy}>
                   <Upload size={16} />

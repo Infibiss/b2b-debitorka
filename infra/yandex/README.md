@@ -48,6 +48,24 @@ bash scripts/deploy_yandex_vm.sh \
 
 ## Проверки после запуска
 
+### Обновление уже настроенного домена
+
+Если оператор уже настроил домен, сертификат и `APP_URL`, передавайте его явно:
+
+```sh
+bash scripts/deploy_yandex_vm.sh \
+  --host 158.160.164.25 --public-url https://mandato.ru \
+  --revision FULL_40_CHARACTER_GIT_COMMIT_SHA \
+  --identity-file /path/to/private-key \
+  --known-hosts /path/to/verified-known-hosts
+```
+
+Это режим сохранения существующей конфигурации, а не подключения нового домена. До сборки и остановки приложения проверяются точное совпадение `APP_URL`, соответствие `APP_PUBLIC_IP` целевой VM, закрытые права env-файла и наличие `/etc/agentpay/nginx-site.conf`. Отсутствующий или несовпадающий конфиг отменяет обновление. Скрипт не заменяет доменный Nginx IP-шаблоном и не выпускает IP-сертификат; существующие сертификаты обслуживаются обычным `certbot renew`. Итоговая HTTPS-проверка выполняется по указанному домену. Допускается только адрес вида `https://mandato.ru` без завершающего слеша, порта, пути, параметров, фрагмента и учётных данных.
+
+Без `--public-url` сохраняется прежний режим HTTPS по IP. Он намеренно откажется работать с env-файлом, где уже указан домен: случайный запуск старой команды не откатит домен на IP. Сетевые разрешения SSH этим параметром не меняются.
+
+Если в будущем отдельно разрешён GitHub-autodeploy для этого домена, задайте repository variable `YANDEX_VM_PUBLIC_URL=https://mandato.ru`. Workflow передаст её через отдельные аргументы CLI; пустая переменная оставляет IP-режим. Само добавление URL не включает deploy: прежняя отдельная проверка `YANDEX_VM_DEPLOY_ENABLED` и все ограничения SSH/CI остаются обязательными.
+
 ```sh
 ssh -F /dev/null -i /path/to/private-key -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile=/path/to/verified-known-hosts agentpay@PUBLIC_IPV4

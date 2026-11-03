@@ -205,10 +205,6 @@ export function Landing() {
               </div>
               <ArrowUpRight size={16} />
             </div>
-            <div className="hero-workspace-footer">
-              <Check size={16} />
-              <span>Правила утверждаете вы. История сохраняется.</span>
-            </div>
           </aside>
         </section>
         <div className="trust-line">
@@ -656,7 +652,6 @@ export function Landing() {
       <footer className="site-footer">
         <div>
           <Brand />
-          <p>Деньги возвращаются в дело.</p>
           <a className="footer-email" href="mailto:info@mandato.ru">
             info@mandato.ru
           </a>
@@ -679,7 +674,6 @@ export function Landing() {
           <span>© {new Date().getFullYear()} Mandato</span>
           <button onClick={() => setLegal('privacy')}>Конфиденциальность</button>
           <button onClick={() => setLegal('terms')}>Условия использования</button>
-          <span>Для бизнеса. По-человечески.</span>
         </div>
       </footer>
       {legal && (

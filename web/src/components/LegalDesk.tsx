@@ -51,6 +51,9 @@ type Facts = {
   fee_start_on: string | null;
   fee_model_version?: string;
   lawyer_agreement_reference?: string;
+  responsible_lawyer?: string;
+  lawyer_authority?: string;
+  review_due_on?: string | null;
 };
 type CalculationInput = {
   through_on: string;
@@ -64,6 +67,7 @@ type CalculationInput = {
   override_reason: string;
   excluded_periods: unknown[];
   opening_reductions: unknown[];
+  invoice_opening_reductions?: Record<string, unknown[]>;
 };
 type Calculation = {
   principal_amount: number;
@@ -96,6 +100,7 @@ type Evidence = {
   reference: string;
   occurred_on: string;
   sha256: string;
+  invoice_ids?: string[];
 };
 type LegalDocument = {
   id: string;
@@ -168,6 +173,11 @@ type LegalCase = {
   facts_revision: number;
   suggested_contract_number?: string;
   invoice: Invoice;
+  invoice_ids?: string[];
+  invoices?: Invoice[];
+  invoice_count?: number;
+  balance?: number;
+  next_action?: string;
   stage: string;
   pretrial: {
     sent_on: string | null;
@@ -197,6 +207,7 @@ const evidenceKinds: Record<string, string> = {
   application_copy_sent: 'Отправка копии заявления',
   filing_receipt: 'Квитанция подачи',
   court_act: 'Судебный акт',
+  order_cancellation: 'Определение об отмене приказа',
   writ: 'Исполнительный лист',
   bank_submission: 'Предъявление в банк',
   fssp_submission: 'Предъявление в ФССП',
@@ -208,6 +219,7 @@ const stages: Record<string, string> = {
   claim_delivered: 'Претензия доставлена',
   filed: 'Подача в суд',
   order_issued: 'Судебный приказ получен',
+  order_cancelled: 'Судебный приказ отменён',
   judgment: 'Решение суда получено',
   writ_received: 'Исполнительный лист получен',
   bank_submitted: 'Предъявление в банк',
@@ -427,7 +439,7 @@ function repeatedInput(data: FormData, name: string): Record<string, string | nu
     const row = groups.get(id) ?? {};
     const text = String(raw).trim();
     row[field] =
-      name === 'opening_reductions' && field === 'amount'
+      name.startsWith('opening_reductions') && field === 'amount'
         ? rubles(text)
         : field === 'annual_percent'
           ? text.replace(',', '.')
@@ -439,6 +451,11 @@ function repeatedInput(data: FormData, name: string): Record<string, string | nu
 
 export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
   const { invoiceId } = useWorkContext();
+  const [newInvoiceId, setNewInvoiceId] = useState(invoiceId || '');
+  const [archiveInvoiceId, setArchiveInvoiceId] = useState('');
+  const [contractGroups, setContractGroups] = useState<
+    { invoice_ids: string[]; contract_known: boolean; contract_number: string }[]
+  >([]);
   const [legalId] = useRouteField<string>('legal', '');
   const [tab, setTab] = useRouteField<string>('legalTab', 'Факты');
   const [factsStep, setFactsStep] = useRouteField<string>('factsStep', 'contract');
@@ -464,11 +481,18 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
   }
   useEffect(() => {
     let alive = true;
-    Promise.all([api<{ items: LegalCase[] }>('/legal/cases'), api<Settings>('/settings')])
-      .then(([list, prefs]) => {
+    Promise.all([
+      api<{ items: LegalCase[] }>('/legal/cases'),
+      api<Settings>('/settings'),
+      api<{ items: { invoice_ids: string[]; contract_known: boolean; contract_number: string }[] }>(
+        '/workflow/cases'
+      ),
+    ])
+      .then(([list, prefs, groups]) => {
         if (alive) {
           setCases(list.items);
           setSettings(prefs);
+          setContractGroups(groups.items);
         }
       })
       .catch((e) => {
@@ -484,7 +508,9 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
   useEffect(() => {
     if (loading) return;
     let alive = true;
-    const id = legalId || cases.find((c) => c.invoice_id === invoiceId)?.id;
+    const id =
+      legalId ||
+      cases.find((c) => c.invoice_id === invoiceId || c.invoice_ids?.includes(invoiceId))?.id;
     if (id) {
       void api<LegalCase>(`/legal/cases/${id}`)
         .then((item) => {
@@ -523,13 +549,30 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
   };
   const proofs = selected?.evidence ?? [],
     documents = selected?.documents ?? [];
+  const archiveSource = selected?.invoice_ids?.includes(archiveInvoiceId)
+    ? archiveInvoiceId
+    : selected?.invoice_id || '';
   return (
     <div className="legal-desk">
       <DeskHeading
         eyebrow="ЮРИДИЧЕСКОЕ СОПРОВОЖДЕНИЕ"
         title="Претензии и суд"
         action={
-          <button className="button button-dark" onClick={() => setOpening(true)}>
+          <button
+            className="button button-dark"
+            onClick={() => {
+              setNewInvoiceId(
+                invoices.some(
+                  (inv) =>
+                    inv.id === invoiceId &&
+                    !cases.some((c) => (c.invoice_ids || [c.invoice_id]).includes(inv.id))
+                )
+                  ? invoiceId
+                  : ''
+              );
+              setOpening(true);
+            }}
+          >
             <Plus size={16} />
             Новое дело
           </button>
@@ -544,7 +587,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
             <div>
               <h2>Дела компании</h2>
               <p>
-                Откройте дело по счёту. Оплаты и корректировки будут учтены в расчёте требований.
+                Соберите счета одного договора в общее требование и передайте документы на проверку.
               </p>
             </div>
             <Scale size={22} />
@@ -567,11 +610,19 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 </div>
                 <div>
                   <strong>
-                    {item.invoice.company} · {item.invoice.number}
+                    {item.invoice.company} · {item.facts.contract_number || item.invoice.number}
                   </strong>
                   <span>{stages[item.stage] ?? item.stage}</span>
+                  {item.facts.responsible_lawyer && (
+                    <span>
+                      {item.facts.responsible_lawyer}
+                      {item.facts.review_due_on
+                        ? ` · проверка до ${dateText(item.facts.review_due_on)}`
+                        : ''}
+                    </span>
+                  )}
                 </div>
-                <strong>{money(item.invoice.balance)}</strong>
+                <strong>{money(item.balance ?? item.invoice.balance)}</strong>
               </button>
             ))
           )}
@@ -589,14 +640,32 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
               <ArrowLeft size={14} />
               Все дела
             </button>
-            <span className="ops-badge">{stages[selected.stage] ?? selected.stage}</span>
+            <span className={`ops-badge legal-stage-${selected.stage}`}>
+              {stages[selected.stage] ?? selected.stage}
+            </span>
           </div>
           <div className="ops-context">
             <strong>
-              {selected.invoice.company} · {selected.invoice.number}
+              {selected.invoice.company} ·{' '}
+              {selected.facts.contract_number || selected.invoice.number}
             </strong>
-            <span>Остаток по реестру: {money(selected.invoice.balance)}</span>
+            <span>
+              Счетов: {selected.invoice_count || 1} · Остаток:{' '}
+              {money(selected.balance ?? selected.invoice.balance)}
+            </span>
+            <span>
+              Счета: {(selected.invoices || [selected.invoice]).map((inv) => inv.number).join(', ')}
+            </span>
           </div>
+          {selected.stage === 'order_cancelled' && (
+            <div className="legal-case-next" role="status">
+              <strong>Приказ отменён</strong>
+              <p>Подготовьте иск и передайте его юристу на проверку.</p>
+              <button className="button button-outline small" onClick={() => setTab('Документы')}>
+                Перейти к документам
+              </button>
+            </div>
+          )}
           <div className="ops-tabs legal-tabs" role="tablist" aria-label="Юридическое дело">
             {tabs.map((name) => (
               <button
@@ -616,19 +685,13 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
             <section className="ops-card">
               <div className="ops-card-heading">
                 <div>
-                  <h2>Юридически значимые факты</h2>
+                  <h2>Данные дела</h2>
                   <p>
-                    Укажите стороны, условия договора и основания требования. Сведения нужны для
-                    подготовки документов. Известные реквизиты перенесены из рабочего дела —
-                    проверьте их. Черновик сохраняется автоматически в этой вкладке.
+                    Заполните стороны и условия договора. Реквизиты из реестра проверьте по
+                    документам.
                   </p>
                 </div>
               </div>
-              <p className="ops-context">
-                Требование по счёту {selected.invoice.number}. Рабочее дело может объединять
-                несколько счетов по договору; здесь рассчитывается только выбранный счёт. Проверьте
-                суммы перед подготовкой общего требования.
-              </p>
               <LegalReadiness item={selected} />
               <OperationForm
                 allowIncomplete
@@ -663,6 +726,9 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                     fee_start_on: value(data, 'fee_start_on') || null,
                     fee_model_version: tariff.version,
                     lawyer_agreement_reference: value(data, 'lawyer_agreement_reference'),
+                    responsible_lawyer: value(data, 'responsible_lawyer'),
+                    lawyer_authority: value(data, 'lawyer_authority'),
+                    review_due_on: value(data, 'review_due_on') || null,
                   };
                   await patch(`/legal/cases/${selected.id}`, { facts: f });
                   await refreshCase(selected.id);
@@ -674,11 +740,6 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   done();
                 }}
               >
-                <p className="ops-muted full-width">
-                  Сохраняйте заполненную часть после каждого шага. Неполные факты допустимы;
-                  подготовка документов проверяет весь комплект отдельно. Сохранение не подтверждает
-                  юридическую достоверность.
-                </p>
                 <nav className="legal-facts-nav full-width" aria-label="Разделы фактов">
                   {(
                     [
@@ -733,6 +794,22 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   <h3 id="facts-contract" className="full-width">
                     Обязательство и основание требования
                   </h3>
+                  <Field
+                    label="Ответственный юрист"
+                    name="responsible_lawyer"
+                    initial={selected.facts.responsible_lawyer}
+                  />
+                  <Field
+                    label="Проверить до"
+                    name="review_due_on"
+                    type="date"
+                    initial={selected.facts.review_due_on}
+                  />
+                  <Field
+                    label="Полномочия юриста"
+                    name="lawyer_authority"
+                    initial={selected.facts.lawyer_authority}
+                  />
                   <Field
                     label="Номер договора"
                     name="contract_number"
@@ -894,15 +971,23 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                     excluded_periods: repeatedInput(data, 'excluded_periods'),
                     opening_reductions: repeatedInput(data, 'opening_reductions'),
                   };
+                  if ((selected.invoices?.length || 0) > 1) {
+                    input.invoice_opening_reductions = Object.fromEntries(
+                      selected.invoices!.map((inv) => [
+                        inv.id,
+                        repeatedInput(data, `opening_reductions:${inv.id}`),
+                      ])
+                    );
+                  }
                   if (value(data, 'penalty_daily_percent'))
                     input.penalty_daily_percent = value(data, 'penalty_daily_percent');
                   if (value(data, 'penalty_cap_amount'))
                     input.penalty_cap_amount = rubles(value(data, 'penalty_cap_amount'));
                   if (rates.length) input.rate_override = rates;
-                  const result = await post<Calculation>('/legal/calculations', {
-                    invoice_id: selected.invoice_id,
-                    ...input,
-                  });
+                  const result = await post<Calculation>(
+                    `/legal/cases/${selected.id}/calculation`,
+                    input
+                  );
                   setCalculation(result);
                   setCalculationInput(input);
                 }}
@@ -972,16 +1057,23 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                       { key: 'basis', label: 'Правовое основание исключения' },
                     ]}
                   />
-                  <RepeatableRows
-                    name="opening_reductions"
-                    title="Оплаты начального остатка"
-                    addLabel="Добавить начальную оплату"
-                    fields={[
-                      { key: 'effective_on', label: 'Дата начальной оплаты', type: 'date' },
-                      { key: 'amount', label: 'Начальная оплата, ₽' },
-                      { key: 'evidence', label: 'Подтверждение начальной оплаты' },
-                    ]}
-                  />
+                  {(selected.invoices || [selected.invoice]).map((inv) => (
+                    <RepeatableRows
+                      key={inv.id}
+                      name={
+                        (selected.invoices?.length || 0) > 1
+                          ? `opening_reductions:${inv.id}`
+                          : 'opening_reductions'
+                      }
+                      title={`Оплаты начального остатка: ${inv.number}`}
+                      addLabel="Добавить начальную оплату"
+                      fields={[
+                        { key: 'effective_on', label: 'Дата начальной оплаты', type: 'date' },
+                        { key: 'amount', label: 'Начальная оплата, ₽' },
+                        { key: 'evidence', label: 'Подтверждение начальной оплаты' },
+                      ]}
+                    />
+                  ))}
                   <RepeatableRows
                     name="rate_override"
                     title="Проверенные периоды иной ставки"
@@ -1012,8 +1104,25 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   </p>
                 </div>
               </div>
+              {(selected.invoices?.length || 0) > 1 && (
+                <label className="field full-width">
+                  Документы какого счёта добавить
+                  <select
+                    aria-label="Счёт для выбора доказательств"
+                    value={archiveSource}
+                    onChange={(event) => setArchiveInvoiceId(event.target.value)}
+                  >
+                    {selected.invoices!.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.number}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <ArchiveEvidence
-                invoiceId={selected.invoice_id}
+                key={archiveSource}
+                invoiceId={archiveSource}
                 caseId={selected.id}
                 existing={proofs}
                 onAdded={() => refreshCase(selected.id)}
@@ -1029,6 +1138,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                     reference: value(data, 'reference'),
                     occurred_on: value(data, 'occurred_on'),
                     sha256: '',
+                    invoice_ids: data.getAll('evidence_invoice_ids').map(String),
+                    covers_all_invoices: data.has('covers_all_invoices'),
                   });
                   await refreshCase(selected.id);
                 }}
@@ -1045,6 +1156,21 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   </select>
                 </label>
                 <Field label="Название доказательства" name="title" required />
+                {(selected.invoices?.length || 0) > 1 && (
+                  <fieldset className="full-width">
+                    <legend>Какие счета подтверждает документ</legend>
+                    {selected.invoices!.map((inv) => (
+                      <label className="checkbox-row" key={inv.id}>
+                        <input type="checkbox" name="evidence_invoice_ids" value={inv.id} />
+                        {inv.number}
+                      </label>
+                    ))}
+                    <label className="checkbox-row">
+                      <input type="checkbox" name="covers_all_invoices" />
+                      Документ подтверждает все счета этого дела
+                    </label>
+                  </fieldset>
+                )}
                 <Field label="Номер, ссылка или место хранения" name="reference" area required />
                 <Field
                   label="Дата документа"
@@ -1063,6 +1189,15 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                     </span>
                     <strong>{proof.title}</strong>
                     <div>{proof.reference}</div>
+                    {(selected.invoices?.length || 0) > 1 && (
+                      <span>
+                        Счета:{' '}
+                        {(selected.invoices || [])
+                          .filter((inv) => proof.invoice_ids?.includes(inv.id))
+                          .map((inv) => inv.number)
+                          .join(', ') || 'не указаны'}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1290,7 +1425,9 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
       )}
       {opening && (
         <Dialog title="Новое юридическое дело" onClose={() => setOpening(false)}>
-          <p className="ops-muted">Выберите счёт, по которому готовите претензию или иск.</p>
+          <p className="ops-muted">
+            Выберите счёт. Другие счета того же договора можно включить в общее требование.
+          </p>
           <OperationForm
             label="Открыть дело"
             submit={async (data) => {
@@ -1298,6 +1435,7 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
               if (!invoice) throw new Error('Выберите счёт.');
               const item = await post<LegalCase>('/legal/cases', {
                 invoice_id: invoice.id,
+                invoice_ids: data.getAll('invoice_ids').map(String),
                 facts: {
                   creditor: {
                     name: settings?.company ?? '',
@@ -1314,7 +1452,33 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
               done();
             }}
           >
-            <InvoiceSelect invoices={invoices} />
+            <InvoiceSelect
+              invoices={invoices.filter(
+                (inv) => !cases.some((c) => (c.invoice_ids || [c.invoice_id]).includes(inv.id))
+              )}
+              value={newInvoiceId}
+              onChange={setNewInvoiceId}
+            />
+            {contractGroups
+              .filter((group) => group.contract_known && group.invoice_ids.includes(newInvoiceId))
+              .map((group) => (
+                <fieldset className="full-width" key={group.contract_number}>
+                  <legend>Добавить счета договора {group.contract_number}</legend>
+                  {invoices
+                    .filter(
+                      (inv) =>
+                        inv.id !== newInvoiceId &&
+                        group.invoice_ids.includes(inv.id) &&
+                        !cases.some((c) => (c.invoice_ids || [c.invoice_id]).includes(inv.id))
+                    )
+                    .map((inv) => (
+                      <label className="checkbox-row" key={inv.id}>
+                        <input type="checkbox" name="invoice_ids" value={inv.id} />
+                        {inv.number} · {money(inv.balance)}
+                      </label>
+                    ))}
+                </fieldset>
+              ))}
           </OperationForm>
         </Dialog>
       )}
@@ -1357,8 +1521,18 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                 <option value="changes_requested">Вернуть на исправление</option>
               </select>
             </label>
-            <Field label="Проверяющий" name="reviewer_name" required />
-            <Field label="Полномочия проверяющего" name="authority_reference" required />
+            <Field
+              label="Проверяющий"
+              name="reviewer_name"
+              initial={selected.facts.responsible_lawyer}
+              required
+            />
+            <Field
+              label="Полномочия проверяющего"
+              name="authority_reference"
+              initial={selected.facts.lawyer_authority}
+              required
+            />
             <Field label="Комментарий проверяющего" name="notes" area required />
             <Check
               name="qualification_confirmed"
@@ -1647,7 +1821,13 @@ function LegalReadiness({ item }: { item: LegalCase }) {
     ],
     [
       'Договор и первичка в доказательствах',
-      ['contract', 'performance'].every((kind) => item.evidence?.some((e) => e.kind === kind)),
+      ['contract', 'performance'].every((kind) =>
+        (item.invoice_ids || [item.invoice_id]).every((id) =>
+          item.evidence?.some(
+            (e) => e.kind === kind && (e.invoice_ids || [item.invoice_id]).includes(id)
+          )
+        )
+      ),
     ],
     [
       'Суд и основание подсудности (для судебного пакета)',

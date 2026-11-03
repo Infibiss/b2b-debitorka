@@ -3,7 +3,7 @@
   gap: 24px;
 }
 .yx-invoice {
-  max-width: 700px;
+  max-width: 760px;
 }
 .yx-columns {
   display: grid;
@@ -14,7 +14,7 @@
 .yx-card {
   padding: 28px;
   border: 1px solid var(--border, #e2e6e5);
-  border-radius: 22px;
+  border-radius: 16px;
   background: var(--surface, #fff);
   display: grid;
   gap: 18px;
@@ -47,14 +47,31 @@
 .yx-connection {
   display: grid;
   gap: 5px;
-  background: #edf3ef;
+  background: var(--surface-subtle, #f4f5ef);
+  border: 1px solid var(--border, #dce1d7);
   border-radius: 12px;
   padding: 14px 16px;
   line-height: 1.5;
   font-size: 0.85rem;
 }
 .yx-connection-missing {
-  background: #f4f1e8;
+  background: var(--warning-bg, #fff6df);
+  border-color: var(--warning-border, #e7cf91);
+  color: var(--warning-text, #79551c);
+}
+.yx-connection-success {
+  background: var(--success-bg, #edf4e9);
+  border-color: var(--success-border, #c7d8be);
+  color: var(--success-text, #34552e);
+}
+.yx-connection-error {
+  background: var(--danger-bg, #fff0ec);
+  border-color: var(--danger-border, #e9b9ac);
+  color: var(--danger-text, #913b2d);
+}
+.yx-mode-ocr .yx-columns,
+.yx-mode-voice .yx-columns {
+  grid-template-columns: minmax(0, 1fr);
 }
 .yx-connection small {
   overflow-wrap: anywhere;
@@ -157,9 +174,9 @@
 .yx-warning,
 .yx-callout {
   padding: 12px 16px;
-  background: #fcf0db;
+  background: var(--warning-bg, #fff6df);
   border-radius: 10px;
-  color: #745016;
+  color: var(--warning-text, #79551c);
 }
 .yx-recording {
   box-shadow: 0 0 0 4px #cfe7d6;

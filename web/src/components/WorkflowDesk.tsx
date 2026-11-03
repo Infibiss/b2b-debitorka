@@ -29,6 +29,7 @@ import './workflow.css';
 type Queue = 'needs_decision' | 'in_progress' | 'results';
 type Stage =
   | 'verification'
+  | 'legal'
   | 'documents'
   | 'contact'
   | 'waiting'
@@ -135,6 +136,7 @@ const queues: { id: Queue; name: string; detail: string; icon: typeof AlertCircl
 ];
 const stages: Record<Stage, string> = {
   verification: 'Проверка',
+  legal: 'Юридическая работа',
   documents: 'Документы',
   contact: 'Контакт',
   waiting: 'Ожидание',
@@ -236,9 +238,7 @@ export function WorkflowDesk({
     <div className="wf-desk" data-tour="workflow-board">
       <div className="wf-heading">
         <div>
-          <span className="wf-eyebrow">Единый рабочий процесс</span>
           <h1>Работа по дебиторке</h1>
-          <p>Mandato ведёт дела. Вы подключаетесь там, где нужно решение.</p>
         </div>
         <div className="wf-actions">
           <button
@@ -502,20 +502,6 @@ export function WorkflowDesk({
           </div>
         )}
       </section>
-      <div className="wf-toolstrip">
-        <span>
-          <ShieldCheck size={16} />
-          Этапы меняются по событиям и документам
-        </span>
-        <button onClick={() => onNavigate('audit')}>
-          Проверить реестр
-          <ArrowRight size={14} />
-        </button>
-        <button onClick={() => onNavigate('finance')}>
-          Разобрать поступления
-          <ArrowRight size={14} />
-        </button>
-      </div>
       {selected && (
         <CaseDialog
           id={selected}
@@ -560,7 +546,7 @@ function CaseCard({ item, onOpen }: { item: WorkCase; onOpen: () => void }) {
     >
       <div className="wf-case-top">
         <StageBadge stage={item.stage} />
-        {item.legal_escalation && (
+        {item.legal_escalation && item.stage !== 'legal' && (
           <span className="wf-stage wf-stage-disputed">Юридическая работа</span>
         )}
         {item.automation_active && <Bot size={15} aria-label="Автоматизация активна" />}
@@ -1183,7 +1169,6 @@ export function WorkflowManagement({
     <div className="wf-desk" data-tour="workflow-policy">
       <div className="wf-heading">
         <div>
-          <span className="wf-eyebrow">Полномочия и контроль</span>
           <h1>Правила и команда</h1>
           <p>Задайте рамки, в которых Mandato работает самостоятельно.</p>
         </div>
@@ -1443,10 +1428,6 @@ export function WorkflowManagement({
                     ))}
                 </div>
               )}
-              <div className="wf-team-note">
-                <Clock3 size={17} />
-                <p>Действия и решения сохраняются в истории дела.</p>
-              </div>
             </section>
           </div>
         )
