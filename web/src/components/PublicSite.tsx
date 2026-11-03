@@ -578,11 +578,11 @@ function RequestDemo() {
               <input name="email" type="email" autoComplete="email" required maxLength={254} />
             </label>
             <label>
-              Компания <span>(необязательно)</span>
+              Компания (необязательно)
               <input name="company" autoComplete="organization" maxLength={200} />
             </label>
             <label>
-              Что хотите обсудить <span>(необязательно)</span>
+              Что хотите обсудить (необязательно)
               <textarea name="note" maxLength={2000} rows={3} />
             </label>
             <label className="pub-check">
