@@ -1,0 +1,46 @@
+{
+  "trial_days": 14,
+  "payment_mode": "sandbox",
+  "items": [
+    {
+      "id": "start",
+      "name": "Старт",
+      "price_monthly": 990000,
+      "currency": "RUB",
+      "billing_period": "month",
+      "active_invoice_limit": 100,
+      "user_limit": 2,
+      "features": ["Реестр дебиторской задолженности", "Планирование напоминаний", "История работы с контрагентами"]
+    },
+    {
+      "id": "team",
+      "name": "Команда",
+      "price_monthly": 1990000,
+      "currency": "RUB",
+      "billing_period": "month",
+      "active_invoice_limit": 500,
+      "user_limit": 5,
+      "features": ["Возможности Старт", "Совместная работа", "Прогноз поступлений и сверка платежей"]
+    },
+    {
+      "id": "scale",
+      "name": "Масштаб",
+      "price_monthly": 3990000,
+      "currency": "RUB",
+      "billing_period": "month",
+      "active_invoice_limit": 2000,
+      "user_limit": 15,
+      "features": ["Возможности Команда", "Расширенный портфель задолженности", "Подготовка материалов для юридической работы"]
+    },
+    {
+      "id": "custom",
+      "name": "Индивидуальный",
+      "price_monthly": null,
+      "currency": "RUB",
+      "billing_period": "month",
+      "active_invoice_limit": null,
+      "user_limit": null,
+      "features": ["Объём счетов и состав команды по договорённости", "Обсуждение интеграций и внедрения"]
+    }
+  ]
+}

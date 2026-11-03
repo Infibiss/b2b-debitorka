@@ -1,83 +1,64 @@
 import { test, expect } from './fixtures';
-
-test('pricing separates pretrial recovery, filed packages and the lawyer agreement', async ({
+test('separate pricing page discloses monthly tiers and additional recovery charges', async ({
   page,
 }, info) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  const pricing = page.getByRole('region', { name: 'Стоимость Mandato', exact: true });
-  await pricing.scrollIntoViewIfNeeded();
-  await expect(pricing).toContainText(/9\s?900\s?₽/);
-  await expect(pricing).toContainText('После пилота — за весь портфель долгов.');
-  await expect(pricing).not.toContainText('15 000');
-  await expect(pricing).toContainText('6%');
-  await expect(pricing).toContainText('После направления претензии и до подачи заявления в суд');
-  await expect(pricing).toContainText(/Судебный приказ — 7\s?000\s?₽/);
-  await expect(pricing).toContainText(/Исковое заявление — 12\s?000\s?₽/);
-  await expect(pricing).toContainText('Адвокату отдельно — 12%');
-  await expect(pricing).toContainText('по прямому соглашению с клиентом');
-  await expect(pricing).toContainText('Аудит и мониторинг в пилоте бесплатно');
-  await expect(pricing).not.toContainText('14 900');
-  await expect(pricing).not.toContainText('15%');
-  await pricing.getByRole('heading', { name: 'Стоимость Mandato', exact: true }).click();
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
-  ).toBeLessThanOrEqual(2);
-  await pricing.screenshot({
-    path: info.outputPath('application-pricing.png'),
-    animations: 'disabled',
-  });
+  await page.goto('/pricing');
+  const pricing = page.getByRole('region', { name: 'Тарифы Mandato' });
+  await expect(pricing.locator('article')).toHaveCount(4);
+  for (const amount of ['9\\s?900', '19\\s?900', '39\\s?900'])
+    await expect(pricing).toContainText(new RegExp(amount));
+  await expect(page.getByText('Госпошлина оплачивается отдельно', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '6% от поступлений' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '7 000 / 12 000 ₽' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Адвокату — 12%' })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('pricing.png'), fullPage: true });
 });
-
-test('landing explains credit interest and calculates only the entered financing cost', async ({
+test('home focuses on product and links to trial and demonstration without FAQ', async ({
   page,
 }) => {
   await page.goto('/');
-  const calculator = page.getByRole('region', { name: 'Стоимость задержки оплаты', exact: true });
-  await calculator.scrollIntoViewIfNeeded();
-  await expect(calculator).toContainText('Если покрываете неоплаченные счета кредитом');
-  await expect(page.getByText('Стоимость денег в год', { exact: true })).toHaveCount(0);
-  await calculator.getByLabel('Задержка оплаты').fill('73');
-  await calculator.getByLabel('Ставка по кредиту, годовых').fill('12');
-  await calculator.getByLabel('Сумма неоплаченных счетов').focus();
-  await calculator.getByLabel('Сумма неоплаченных счетов').press('Home');
-  await expect(calculator.locator('output')).toHaveText(/2\s?400\s?₽/);
-  await calculator.getByLabel('Задержка оплаты').fill('365');
-  await expect(calculator.locator('output')).toHaveText(/12\s?000\s?₽/);
-  await expect(calculator).toContainText('Проценты за время ожидания');
-  await expect(calculator).not.toContainText('Вы сэкономите');
+  await expect(page.getByRole('link', { name: 'Заказать демонстрацию', exact: true })).toHaveCount(
+    1
+  );
+  await expect(page.getByRole('link', { name: 'Попробовать бесплатно', exact: true })).toHaveCount(
+    1
+  );
+  await expect(page.getByRole('heading', { name: 'Вопросы и ответы' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Попробовать бесплатно', exact: true }).click();
+  await expect(page).toHaveURL(/\/start\?plan=trial/);
+  await expect(page.getByLabel('Компания', { exact: true })).toBeVisible();
+});
+test('public routes have readable content without horizontal overflow', async ({ page }) => {
+  for (const path of [
+    '/',
+    '/pricing',
+    '/product',
+    '/solutions',
+    '/integrations',
+    '/security',
+    '/demo',
+    '/privacy',
+    '/terms',
+    '/refunds',
+    '/cookies',
+    '/company',
+    '/data-request',
+  ]) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+      path
+    ).toBeLessThanOrEqual(2);
+  }
 });
 
-test('FAQ and final action use readable aligned layouts on each viewport', async ({
+test('unknown public routes return a real 404 and let the visitor return home', async ({
   page,
-}, info) => {
-  await page.goto('/');
-  const faq = page.getByRole('region', { name: 'Вопросы и ответы', exact: true });
-  await faq.scrollIntoViewIfNeeded();
-  const heading = faq.getByRole('heading', { name: 'Вопросы и ответы', exact: true });
-  const question = faq.getByRole('button', { name: 'Как начать работу?', exact: true });
-  await question.click();
-  await expect(faq.getByText('Загрузите реестр счетов в CSV из Excel или 1С.')).toHaveCount(0);
-  await question.click();
-  await expect(faq.getByText('Загрузите реестр счетов в CSV из Excel или 1С.')).toBeVisible();
-  const faqBox = await faq.boundingBox();
-  const headingBox = await heading.boundingBox();
-  expect(headingBox!.width).toBeLessThanOrEqual(faqBox!.width);
-  const fontSize = await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(fontSize).toBeLessThanOrEqual(40);
-  if (info.project.name === 'desktop') {
-    expect(headingBox!.height).toBeLessThan(fontSize * 2);
-  }
-  const finalAction = page.getByRole('region', { name: 'Начните со своего реестра', exact: true });
-  await finalAction.scrollIntoViewIfNeeded();
-  const titleBox = await finalAction.getByRole('heading').boundingBox();
-  const buttonBox = await finalAction.getByRole('link', { name: 'Загрузить реестр' }).boundingBox();
-  expect(Math.abs(titleBox!.x - buttonBox!.x)).toBeLessThanOrEqual(2);
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-  ).toBeLessThanOrEqual(2);
-  await page.screenshot({
-    path: info.outputPath('landing-final-action.png'),
-    animations: 'disabled',
-  });
+}) => {
+  const response = await page.goto('/missing-public-page');
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: 'Страница не найдена' })).toBeVisible();
+  await page.getByRole('link', { name: 'Вернуться на главную', exact: true }).click();
+  await expect(page).toHaveURL('/');
 });

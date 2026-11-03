@@ -31,11 +31,10 @@ async function account(page: Page, suffix: string) {
   return { invoice, headers };
 }
 
-test('landing import intent survives registration and empty workbench has a short start', async ({
+test('direct import intent survives registration and empty workbench has a short start', async ({
   page,
 }, info) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Загрузить реестр', exact: false }).first().click();
+  await page.goto('/app?intent=import');
   await page.getByLabel('Компания', { exact: true }).fill('Первый клиент');
   await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
   await page

@@ -8,8 +8,7 @@ const nextWeek = businessDate(new Date(Date.now() + 7 * 86_400_000));
 
 async function register(page: Page) {
   const email = `e2e-${Date.now()}-${Math.random().toString(16).slice(2)}@example.ru`;
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Начать работу', exact: true }).first().click();
+  await page.goto('/app');
   await expect(page).toHaveURL(/\/app/);
   await page.getByLabel('Компания', { exact: true }).fill('ООО Проверка');
   await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
@@ -71,20 +70,11 @@ test('public website is readable, interactive, and offers a real signup', async 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('h1')).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Начать работу', exact: true }).first()
-  ).toBeVisible();
-  const lastStep = page.getByRole('tab', { name: /Учитываем реальные поступления/ });
+  await expect(page.getByRole('link', { name: 'Попробовать бесплатно', exact: true })).toBeVisible();
+  const lastStep = page.getByRole('tab', { name: /Подтверждать оплату/ });
   await lastStep.click();
   await expect(lastStep).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('300 000');
-  const initialCost = await page.locator('.calc-result output').innerText();
-  await page.getByLabel('Задержка оплаты').fill('60');
-  await expect(page.locator('.calc-result output')).not.toHaveText(initialCost);
-  await page
-    .getByRole('button', { name: 'Нужно сразу подключать 1С и банк?', exact: true })
-    .click();
-  await expect(page.getByText(/Для начала достаточно выгрузки счетов/)).toBeVisible();
+  await expect(page.getByRole('tabpanel')).toContainText('320 000');
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);
@@ -93,7 +83,7 @@ test('public website is readable, interactive, and offers a real signup', async 
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('link', { name: 'Начать работу', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Попробовать бесплатно', exact: true }).click();
   await expect(page.getByLabel('Компания', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 });

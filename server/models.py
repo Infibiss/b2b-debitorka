@@ -54,6 +54,24 @@ class Register(Login):
     name: str = Field(min_length=1, max_length=100)
     company: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=10, max_length=256)
+    terms_accepted: Literal[True] | None = None
+    terms_version: Literal['2026-11-04'] | None = None
+
+    @field_validator('terms_accepted', mode='before')
+    @classmethod
+    def explicit_terms_acceptance(cls, value):
+        # Literal[True] alone also accepts integer 1. Consent must be JSON true.
+        if value is not None and value is not True:
+            raise ValueError('Согласие с условиями должно быть явно подтверждено')
+        return value
+
+    @model_validator(mode='after')
+    def terms_pair(self):
+        supplied = self.model_fields_set
+        if (('terms_accepted' in supplied) != ('terms_version' in supplied)
+                or (self.terms_accepted is True) != (self.terms_version is not None)):
+            raise ValueError('Подтверждение условий и их версия передаются вместе')
+        return self
 
     @field_validator("name", "company", mode="before")
     @classmethod

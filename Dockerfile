@@ -5,6 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json vite.config.ts ./
 COPY server/fee_tariff.json ./server/fee_tariff.json
+COPY server/plan_catalog.json ./server/plan_catalog.json
 COPY web ./web
 RUN npm run build
 

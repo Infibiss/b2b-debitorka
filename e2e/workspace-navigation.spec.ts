@@ -70,6 +70,8 @@ test('operations remain visible, profile contains company and settings, advice c
   await profile.press('Enter');
   await expect(page.getByRole('menuitem', { name: 'Настройки', exact: true })).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: 'Тариф и аккаунт', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitem', { name: 'Выйти', exact: true })).toBeFocused();
   await page.keyboard.press('Home');
   await expect(page.getByRole('menuitem', { name: 'Настройки', exact: true })).toBeFocused();
@@ -107,11 +109,7 @@ test('landing and workspace remain usable at narrow and intermediate widths', as
   for (const width of [320, 650, 768, 1024, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
-    const final = page.getByRole('region', { name: 'Начните со своего реестра', exact: true });
-    await final.scrollIntoViewIfNeeded();
-    const title = await final.getByRole('heading').boundingBox();
-    const link = await final.getByRole('link', { name: 'Загрузить реестр' }).boundingBox();
-    expect(Math.abs(title!.x - link!.x)).toBeLessThanOrEqual(2);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
     ).toBeLessThanOrEqual(2);

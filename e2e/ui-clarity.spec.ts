@@ -18,18 +18,18 @@ test('landing has controlled headline, concise copy and spaced footer contacts',
 }, info) => {
   await page.goto('/');
   if (info.project.name === 'desktop') await page.setViewportSize({ width: 1728, height: 1100 });
-  await expect(page.locator('.hero h1')).toBeVisible();
-  await expect(page.locator('.hero h1 br')).toHaveCount(0);
+  await expect(page.locator('.pub-hero h1')).toBeVisible();
+  await expect(page.locator('.pub-hero h1 br')).toHaveCount(1);
   const size = await page
-    .locator('.hero h1')
+    .locator('.pub-hero h1')
     .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(size).toBeLessThanOrEqual(72);
+  expect(size).toBeLessThanOrEqual(80);
   await expect(page.getByText('ВАШИ КЛИЕНТЫ · ВАШИ ПРАВИЛА', { exact: true })).toHaveCount(0);
   await expect(page.locator('.section-kicker')).toHaveCount(0);
   const note = page.getByText('Правила утверждаете вы. История сохраняется.', { exact: true });
   await expect(note).toHaveCount(0);
   await expect(page.getByText('Для бизнеса. По-человечески.', { exact: true })).toHaveCount(0);
-  const footer = page.locator('.site-footer');
+  const footer = page.locator('.pub-footer');
   const brand = await footer.getByRole('link', { name: 'Mandato — на главную' }).boundingBox();
   const email = await footer.getByRole('link', { name: 'info@mandato.ru', exact: true }).boundingBox();
   expect(brand).not.toBeNull();

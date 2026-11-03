@@ -24,6 +24,7 @@ import importlib
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 from fastapi import Depends, FastAPI, HTTPException, Request
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -110,8 +111,8 @@ class GuardMiddleware:
             original_receive = receive
         if path.startswith("/api/"):
             ip = (scope.get("client") or ("unknown",))[0]
-            group = "auth" if path in ("/api/auth/login", "/api/auth/register", "/api/auth/recovery", "/api/auth/reset-password", "/api/workflow/invitations/accept") else "api"
-            limit = 15 if group == "auth" else 300
+            group = "commercial" if path == "/api/commercial/requests" else "auth" if path in ("/api/auth/login", "/api/auth/register", "/api/auth/recovery", "/api/auth/reset-password", "/api/workflow/invitations/accept") else "api"
+            limit = 15 if group in ("auth", "commercial") else 300
             key, clock = (ip, group), time.monotonic()
             with self.lock:
                 # Remove stale keys as well as individual timestamps to bound memory.
@@ -137,6 +138,8 @@ class GuardMiddleware:
                 ])
                 if path.startswith("/api/"):
                     response_headers.append((b"cache-control", b"no-store"))
+                elif path.startswith("/assets/") and message.get("status") in (200, 304):
+                    response_headers.append((b"cache-control", b"public, max-age=31536000, immutable"))
                 if self.config.production:
                     response_headers.append((b"strict-transport-security", b"max-age=31536000; includeSubDomains"))
                 message["headers"] = response_headers
@@ -274,6 +277,7 @@ def create_app():
                           docs_url=None if config.production else "/api/docs", redoc_url=None,
                           openapi_url=None if config.production else "/api/openapi.json")
     application.state.config = config
+    application.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
     application.add_middleware(GuardMiddleware, config=config)
 
     @application.exception_handler(RequestValidationError)
@@ -299,6 +303,10 @@ def create_app():
                 connection.execute("INSERT INTO users VALUES(?,?,?,?,?,?)", (user_id, tenant_id, data.name, data.email, password_hash, now()))
                 connection.execute("INSERT INTO workflow_memberships VALUES(?,?,?,?)", (user_id, tenant_id, "manager", now()))
                 connection.execute("INSERT INTO settings(tenant_id,sender_name,reply_to) VALUES(?,?,?)", (tenant_id, data.name, data.email))
+                if data.terms_accepted is True:
+                    # Registration acceptance is append-only and shares the
+                    # identity/session transaction. Legacy clients imply none.
+                    connection.execute("INSERT INTO registration_acceptances(user_id,tenant_id,terms_version,accepted_at) VALUES(?,?,?,?)", (user_id, tenant_id, data.terms_version, now()))
                 user = {"id": user_id, "name": data.name, "company": data.company, "email": data.email, "tenant_id": tenant_id}
                 return create_session(connection, user, config, 201)
         except sqlite3.IntegrityError:
@@ -320,6 +328,16 @@ def create_app():
             if old_token:
                 connection.execute("DELETE FROM sessions WHERE token_hash=?", (digest(old_token),))
             return create_session(connection, user, config)
+
+    @application.get("/api/auth/session")
+    def optional_session(request: Request):
+        try:
+            user = get_user(request)
+        except HTTPException as error:
+            if error.status_code == 401:
+                return {"session": None}
+            raise
+        return {"session": {"user": {key: user[key] for key in ("id", "name", "company", "email", "role")}, "csrf_token": user["csrf_token"]}}
 
     @application.get("/api/auth/me")
     def me(user=Depends(get_user)):
@@ -614,7 +632,7 @@ def create_app():
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:
@@ -637,7 +655,9 @@ def create_app():
         if candidate.is_relative_to(web_dist.resolve()) and candidate.is_file():
             return FileResponse(candidate)
         if (web_dist / "index.html").is_file():
-            return FileResponse(web_dist / "index.html", headers={"Cache-Control": "no-cache"})
+            public_pages = {"", "product", "solutions", "integrations", "pricing", "security", "demo", "start", "account", "privacy", "terms", "refunds", "cookies", "company", "data-request"}
+            status = 200 if path.strip("/") in public_pages or path.startswith("app") else 404
+            return FileResponse(web_dist / "index.html", status_code=status, headers={"Cache-Control": "no-cache"})
         return JSONResponse({"detail": "Соберите фронтенд: cd web && npm run build"}, 404)
 
     return application

@@ -84,6 +84,16 @@ export function WorkspaceProfile({
             role="menuitem"
             onClick={() => {
               setOpen(false);
+              location.assign('/account');
+            }}
+          >
+            <Settings size={16} aria-hidden="true" />
+            Тариф и аккаунт
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
               onLogout();
             }}
           >

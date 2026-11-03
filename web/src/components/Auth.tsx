@@ -23,7 +23,12 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
     setBusy(true);
     setError('');
     try {
-      onSession(await post<Session>(`/auth/${mode}`, data));
+      onSession(
+        await post<Session>(`/auth/${mode}`, {
+          ...data,
+          ...(mode === 'register' ? { terms_accepted: true, terms_version: '2026-11-04' } : {}),
+        })
+      );
       navigate({ mode: null }, true);
     } catch (e) {
       setError((e as Error).message);
@@ -131,13 +136,26 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               <label className="auth-consent">
                 <input type="checkbox" required />
                 <span>
-                  Я уполномочен работать от имени компании и принимаю{' '}
-                  <a href="/#pricing" target="_blank" rel="noreferrer">
-                    условия подключения
+                  Я уполномочен работать от имени компании и ознакомился с{' '}
+                  <a href="/terms" target="_blank" rel="noreferrer">
+                    условиями использования
                   </a>
                   .
                 </span>
               </label>
+            )}
+            {mode === 'register' && (
+              <p className="auth-policy-note">
+                Как используются имя, рабочая почта и данные компании — в{' '}
+                <a href="/privacy" target="_blank" rel="noreferrer">
+                  политике обработки данных
+                </a>
+                . Запрос на исправление или удаление можно направить{' '}
+                <a href="/data-request" target="_blank" rel="noreferrer">
+                  отдельно
+                </a>
+                .
+              </p>
             )}
             {error && (
               <p className="form-error" role="alert">
@@ -218,6 +236,17 @@ function InvitationRegistration({
                 autoComplete="new-password"
               />
             </label>
+            <p className="auth-policy-note">
+              Присоединяясь, вы работаете в пределах доступа, предоставленного организацией.{' '}
+              <a href="/terms" target="_blank" rel="noreferrer">
+                Условия использования
+              </a>{' '}
+              и{' '}
+              <a href="/privacy" target="_blank" rel="noreferrer">
+                обработка данных
+              </a>
+              .
+            </p>
             {error && (
               <p className="form-error" role="alert">
                 {error}
