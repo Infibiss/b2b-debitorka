@@ -118,3 +118,30 @@ test('communication tabs visibly identify the selected channel', async ({ page }
   await expect(calls).toHaveCSS('background-color', selected);
   await expect(history).not.toHaveCSS('background-color', selected);
 });
+
+test('data settings deep link stays visible after delayed mail settings load', async ({
+  page,
+}, info) => {
+  await account(page, `data-anchor-${info.project.name}`);
+  let releaseMail!: () => void;
+  const mailGate = new Promise<void>((resolve) => {
+    releaseMail = resolve;
+  });
+  await page.route('**/api/mail/setup', async (route) => {
+    const response = await route.fetch();
+    await mailGate;
+    await route.fulfill({ response });
+  });
+  await page.goto('/app?section=settings#workspace-data');
+  const data = page.getByRole('region', { name: 'Данные организации' });
+  try {
+    await expect(data.getByRole('button', { name: 'Запросить удаление данных' })).toBeVisible();
+    await expect(page.getByText('Проверяем подключение…', { exact: true })).toBeVisible();
+  } finally {
+    releaseMail();
+  }
+  await expect(
+    page.getByRole('button', { name: 'Оставить заявку на подключение', exact: true })
+  ).toBeVisible();
+  await expect(data.getByRole('heading')).toBeInViewport({ ratio: 1 });
+});

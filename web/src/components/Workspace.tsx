@@ -900,6 +900,8 @@ function SettingsPanel({
   onSave: (s: Partial<Settings>) => Promise<void>;
 }) {
   const draft = useFormDraft('settings');
+  const [mailLoaded, setMailLoaded] = useState(false);
+  const onMailLoaded = useCallback(() => setMailLoaded(true), []);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -1016,8 +1018,8 @@ function SettingsPanel({
           </button>
         </div>
       </form>
-      <MailSetup />
-      <WorkspaceDataSettings />
+      <MailSetup onLoaded={onMailLoaded} />
+      <WorkspaceDataSettings layoutReady={mailLoaded} />
     </>
   );
 }

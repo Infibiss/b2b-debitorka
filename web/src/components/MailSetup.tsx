@@ -16,7 +16,7 @@ type Setup = {
     verification_reference?: string;
   };
 };
-export function MailSetup() {
+export function MailSetup({ onLoaded }: { onLoaded?: () => void }) {
   const { invoiceId, caseId } = useWorkContext();
   const [setup, setSetup] = useState<Setup | null>(null),
     [error, setError] = useState('');
@@ -25,8 +25,8 @@ export function MailSetup() {
       .then(setSetup)
       .catch((e) => setError((e as Error).message));
   useEffect(() => {
-    void load();
-  }, []);
+    void load().finally(() => onLoaded?.());
+  }, [onLoaded]);
   return (
     <section className="ops-card mail-setup">
       <div className="mail-setup-heading">

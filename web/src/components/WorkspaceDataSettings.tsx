@@ -5,7 +5,7 @@ import './workspace-data-settings.css';
 type DeletionRequest = { id: string; status: string };
 type DataAccount = { can_manage: boolean; deletion_request: DeletionRequest | null };
 
-export default function WorkspaceDataSettings() {
+export default function WorkspaceDataSettings({ layoutReady = true }: { layoutReady?: boolean }) {
   const sectionRef = useRef<HTMLElement>(null);
   const didScroll = useRef(false);
   const [account, setAccount] = useState<DataAccount | null>(null);
@@ -18,11 +18,16 @@ export default function WorkspaceDataSettings() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!didScroll.current && window.location.hash === '#workspace-data') {
+    if (
+      layoutReady &&
+      !loading &&
+      !didScroll.current &&
+      window.location.hash === '#workspace-data'
+    ) {
       sectionRef.current?.scrollIntoView({ block: 'start' });
       didScroll.current = true;
     }
-  }, []);
+  }, [layoutReady, loading]);
 
   useEffect(() => {
     let active = true;
