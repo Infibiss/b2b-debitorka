@@ -73,10 +73,10 @@ test('public website is readable, interactive, and offers a real signup', async 
   await expect(
     page.locator('.pub-hero').getByRole('link', { name: 'Попробовать бесплатно', exact: true })
   ).toBeVisible();
-  const lastStep = page.getByRole('tab', { name: /Подтверждать оплату/ });
+  const lastStep = page.getByRole('tab', { name: /Закрытие/ });
   await lastStep.click();
   await expect(lastStep).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('320 000');
+  await expect(page.getByRole('tabpanel')).toContainText('Остаток обнулён');
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);

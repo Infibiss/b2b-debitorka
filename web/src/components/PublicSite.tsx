@@ -15,6 +15,8 @@ import { api, post, setCsrf, money, ApiError, type Session } from '../api';
 import catalog from '../../../server/plan_catalog.json';
 import { PublicLegal, type PublicLegalKind } from './PublicLegal';
 import './public-site.css';
+import { PublicProcess } from './PublicProcess';
+import { PublicStoryPages } from './PublicStoryPages';
 
 type Plan = {
   id: string;
@@ -120,7 +122,6 @@ function Footer() {
         <a href="/terms">Условия использования</a>
         <a href="/refunds">Возврат средств</a>
         <a href="/cookies">Файлы cookie</a>
-        <a href="/data-request">Удаление данных</a>
       </nav>
       <p>© {new Date().getFullYear()} Mandato</p>
     </footer>
@@ -154,109 +155,6 @@ function CookieNotice() {
     </aside>
   ) : null;
 }
-function Process() {
-  const [step, setStep] = useState(0);
-  const labels = ['Видеть задолженность', 'Действовать вовремя', 'Подтверждать оплату'];
-  return (
-    <section className="pub-process" aria-label="Работа с задолженностью">
-      <h2 className="pub-sr-only">Работа с дебиторкой по шагам</h2>
-      <div className="pub-process-nav" role="tablist" aria-label="Этапы работы">
-        {labels.map((label, i) => (
-          <button
-            key={label}
-            role="tab"
-            tabIndex={step === i ? 0 : -1}
-            onKeyDown={(event) => {
-              const keys = ['ArrowRight', 'ArrowLeft', 'Home', 'End'];
-              if (!keys.includes(event.key)) return;
-              event.preventDefault();
-              const next =
-                event.key === 'Home'
-                  ? 0
-                  : event.key === 'End'
-                    ? labels.length - 1
-                    : (i + (event.key === 'ArrowRight' ? 1 : -1) + labels.length) % labels.length;
-              setStep(next);
-              event.currentTarget.parentElement
-                ?.querySelectorAll<HTMLButtonElement>('button')
-                [next]?.focus();
-            }}
-            aria-selected={step === i}
-            id={`public-step-${i}`}
-            aria-controls="public-process-panel"
-            onClick={() => setStep(i)}
-          >
-            <span>0{i + 1}</span>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div
-        id="public-process-panel"
-        role="tabpanel"
-        aria-labelledby={`public-step-${step}`}
-        className="pub-process-panel"
-        key={step}
-      >
-        <div className="pub-screen-top">
-          <span>Дело по договору № 12</span>
-          <span className="pub-neutral-tag">
-            {['Проверка портфеля', 'Контроль срока', 'Поступление учтено'][step]}
-          </span>
-        </div>
-        <div className="pub-screen-grid">
-          <div>
-            <p>ООО «Северстрой»</p>
-            <h3>{step === 2 ? '320 000 ₽' : '480 000 ₽'}</h3>
-            <p>Осталось к оплате</p>
-            <div className="pub-invoice">
-              <FileText size={18} aria-hidden="true" />
-              <span>Счёт № 417</span>
-              <strong>180 000 ₽</strong>
-            </div>
-            <div className="pub-invoice">
-              <FileText size={18} aria-hidden="true" />
-              <span>Счёт № 428</span>
-              <strong>160 000 ₽</strong>
-            </div>
-            <div className="pub-invoice">
-              <FileText size={18} aria-hidden="true" />
-              <span>Счёт № 436</span>
-              <strong>140 000 ₽</strong>
-            </div>
-          </div>
-          <div className="pub-event">
-            <span className="pub-event-icon">
-              {step === 2 ? <Check aria-hidden="true" /> : <MessagesSquare aria-hidden="true" />}
-            </span>
-            <h3>
-              {
-                [
-                  'У каждого долга — следующий шаг',
-                  'Договорённость остаётся в деле',
-                  'Частичная оплата не теряется',
-                ][step]
-              }
-            </h3>
-            <p>
-              {
-                [
-                  'Сумма, срок, документы и ответственный видны вместе. Начните с того, что требует внимания.',
-                  'Клиент обещал оплату в пятницу. Mandato сохранит срок и вернёт дело в работу, если деньги не поступят.',
-                  'Поступило 160 000 ₽. Оплата сопоставлена со счётом, остаток обновлён. Работа по другим счетам продолжается.',
-                ][step]
-              }
-            </p>
-            <div className="pub-event-line">
-              <Check size={16} aria-hidden="true" />
-              {['Реестр проверен', 'Обещание записано', 'Выписка сверена'][step]}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 function Home() {
   return (
     <>
@@ -278,7 +176,7 @@ function Home() {
         </div>
         <p className="pub-caption">14 дней без карты и автоматического продления</p>
       </section>
-      <Process />
+      <PublicProcess />
       <section className="pub-section">
         <div className="pub-section-title">
           <h2>
@@ -437,13 +335,14 @@ function Pricing() {
         <div className="pub-section-title">
           <h2>Сравните условия</h2>
           <p>
-            Одна организация — одна подписка. Дополнительные услуги взыскания оплачиваются отдельно
-            и согласуются до начала работы.
+            В пробном периоде доступны все инструменты. Одна организация — одна подписка. Каждый
+            следующий тариф включает предыдущий. Подключение внешних систем и услуги взыскания
+            согласуются отдельно до начала работы.
           </p>
         </div>
         <div className="pub-table-scroll">
           <table className="pub-compare">
-            <caption>Лимиты и возможности тарифов</caption>
+            <caption>Состав подписки по тарифам</caption>
             <thead>
               <tr>
                 <th scope="col">Возможности</th>
@@ -463,15 +362,21 @@ function Pricing() {
                   ),
                 ],
                 ['Участники команды', ...plans.map((p) => String(p.user_limit || 'По договору'))],
-                ['Реестр, аудит и сверка', 'Включено', 'Включено', 'Включено', 'Включено'],
-                ['Юридические дела', 'Включено', 'Включено', 'Включено', 'Включено'],
+                ['Реестр, аудит и документы', 'Включено', 'Включено', 'Включено', 'Включено'],
                 [
-                  'Сложные подключения',
-                  'По согласованию',
-                  'По согласованию',
-                  'По согласованию',
-                  'Индивидуально',
+                  'Оплаты, частичные платежи и сверка',
+                  'Включено',
+                  'Включено',
+                  'Включено',
+                  'Включено',
                 ],
+                ['Напоминания и история общения', 'Включено', 'Включено', 'Включено', 'Включено'],
+                ['Роли и согласование условий', '—', 'Включено', 'Включено', 'Включено'],
+                ['Прогноз поступлений', '—', 'Включено', 'Включено', 'Включено'],
+                ['Скидки, отсрочки и рассрочки', '—', 'Включено', 'Включено', 'Включено'],
+                ['Юридические дела и расчёт требований', '—', '—', 'Включено', 'Включено'],
+                ['Подготовка претензии и судебного пакета', '—', '—', 'Включено', 'Включено'],
+                ['Особые требования к внедрению', '—', '—', '—', 'По договору'],
               ].map(([name, ...values]) => (
                 <tr key={name}>
                   <th scope="row">{name}</th>
@@ -1212,6 +1117,30 @@ export function PublicSite() {
     };
     document.title = `${names[path] || 'Информация о сервисе'} — Mandato`;
   }, [path]);
+  useEffect(() => {
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      !('IntersectionObserver' in window)
+    )
+      return;
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('pub-revealed');
+            observer.unobserve(entry.target);
+          }
+        }),
+      { threshold: 0.08 }
+    );
+    document
+      .querySelectorAll('#public-main > section, #public-main > .story-page > section')
+      .forEach((section) => {
+        section.classList.add('pub-reveal');
+        observer.observe(section);
+      });
+    return () => observer.disconnect();
+  }, [path]);
   if (legalRoutes[path])
     return (
       <div className="public-site">
@@ -1236,7 +1165,9 @@ export function PublicSite() {
           <Access />
         ) : legalRoutes[path] ? (
           <PublicLegal kind={legalRoutes[path] as PublicLegalKind} />
-        ) : ['product', 'solutions', 'integrations', 'security'].includes(kind) ? (
+        ) : kind === 'product' || kind === 'solutions' || kind === 'integrations' ? (
+          <PublicStoryPages kind={kind} />
+        ) : kind === 'security' ? (
           <ContentPage kind={kind} />
         ) : (
           <section className="pub-page-hero">
