@@ -315,11 +315,11 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                 <table className="invoice-table ops-table">
                   <thead>
                     <tr>
-                      <th scope="col">ВЫБОР</th>
-                      <th scope="col">ПОКУПАТЕЛЬ</th>
-                      <th scope="col">ПО ИСТОЧНИКУ</th>
-                      <th scope="col">СЕЙЧАС В РЕЕСТРЕ</th>
-                      <th scope="col">РАСХОЖДЕНИЕ</th>
+                      <th scope="col">Выбор</th>
+                      <th scope="col">Покупатель</th>
+                      <th scope="col">По источнику</th>
+                      <th scope="col">Сейчас в реестре</th>
+                      <th scope="col">Расхождение</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -402,10 +402,10 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             <table className="invoice-table ops-table">
               <thead>
                 <tr>
-                  <th scope="col">ИСТОЧНИК</th>
-                  <th scope="col">ПОКУПАТЕЛЬ</th>
-                  <th scope="col">ОСТАТОК ИСТОЧНИКА</th>
-                  <th scope="col">РАСХОЖДЕНИЕ НА МОМЕНТ СВЕРКИ</th>
+                  <th scope="col">Источник</th>
+                  <th scope="col">Покупатель</th>
+                  <th scope="col">Остаток источника</th>
+                  <th scope="col">Расхождение на момент сверки</th>
                 </tr>
               </thead>
               <tbody>

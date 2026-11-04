@@ -133,9 +133,11 @@ test('context help preserves partial legal intake, steps and route through reloa
   await page.getByLabel('Номер договора', { exact: true }).fill('ЧАСТЬ-42');
   const before = page.url();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Юридическое дело', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('complementary', { name: 'Обучение: Претензии и суд', exact: true })
+  ).toBeVisible();
   expect(page.url()).toBe(before);
-  await page.getByRole('dialog').getByRole('button', { name: 'Закрыть', exact: true }).click();
+  await page.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
   await expect(page.getByLabel('Номер договора', { exact: true })).toHaveValue('ЧАСТЬ-42');
   await page.getByRole('button', { name: 'Сохранить факты', exact: true }).click();
   await expect(page.getByText('Факты сохранены', { exact: true })).toBeVisible();
@@ -247,5 +249,9 @@ test('compact queue keeps filters in URL and financial source labels are explici
   const captions = await page
     .locator('.portfolio-metrics small, .portfolio-metrics span, .portfolio-desk .page-date')
     .evaluateAll((elements) => elements.map((el) => parseFloat(getComputedStyle(el).fontSize)));
-  expect(Math.min(...captions)).toBeGreaterThanOrEqual(13);
+  expect(Math.min(...captions)).toBeGreaterThanOrEqual(12);
+  const labels = await page
+    .locator('.portfolio-metrics span')
+    .evaluateAll((elements) => elements.map((el) => parseFloat(getComputedStyle(el).fontSize)));
+  expect(Math.min(...labels)).toBeGreaterThanOrEqual(14);
 });

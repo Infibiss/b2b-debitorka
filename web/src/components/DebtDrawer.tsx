@@ -126,7 +126,7 @@ export function DebtDrawer({
         <div className="drawer-top">
           <span>
             <FileText size={16} />
-            КАРТОЧКА СЧЁТА
+            Карточка счёта
           </span>
           <button className="icon-button" onClick={onClose} aria-label="Закрыть карточку">
             <X size={20} />
@@ -207,7 +207,7 @@ export function DebtDrawer({
               )}
               {inv.priority_reasons.length > 0 && inv.balance > 0 && (
                 <div className="priority-reasons">
-                  <span>ПОЧЕМУ В ПРИОРИТЕТЕ</span>
+                  <span>Почему в приоритете</span>
                   {inv.priority_reasons.map((r) => (
                     <p key={r}>
                       <i />

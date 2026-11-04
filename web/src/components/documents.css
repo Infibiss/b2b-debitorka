@@ -12,14 +12,14 @@
 }
 .documents-desk .ops-tabs {
   justify-self: start;
-  padding: 5px;
-  border: 1px solid var(--border, #dce1d7);
+  padding: 4px;
+  border: 1px solid var(--border, var(--line));
   border-radius: 12px;
   background: var(--surface, #fff);
   gap: 4px;
 }
 .documents-desk .ops-tabs button {
-  padding: 11px 18px;
+  padding: 12px 20px;
   border-radius: 8px;
 }
 .documents-desk .ops-tabs button[aria-pressed='true'] {
@@ -58,12 +58,12 @@
   cursor: pointer;
 }
 .documents-upload:focus-within {
-  outline: 2px solid var(--green-dark, #1d4033);
-  outline-offset: 3px;
+  outline: 2px solid var(--green-dark, var(--green));
+  outline-offset: 2px;
 }
 .documents-file-hint,
 .documents-filename {
-  font-size: 0.875rem;
+  font-size: 12px;
   color: var(--muted, #677362);
   overflow-wrap: anywhere;
 }
@@ -73,13 +73,13 @@
 .documents-comment summary {
   color: var(--muted, #677362);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 .documents-comment .field {
-  margin-top: 14px;
+  margin-top: 16px;
 }
 .documents-empty {
-  padding: 38px 12px;
+  padding: 40px 12px;
   display: grid;
   gap: 12px;
   justify-items: center;
@@ -114,6 +114,6 @@
     grid-template-columns: 1fr 1fr;
   }
   .documents-desk .ops-tabs button {
-    padding: 10px 8px;
+    padding: 12px 8px;
   }
 }

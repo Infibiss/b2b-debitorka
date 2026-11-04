@@ -202,10 +202,10 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                 <table className="invoice-table ops-table">
                   <thead>
                     <tr>
-                      <th scope="col">ПЛАТЁЖ / ПОКУПАТЕЛЬ</th>
-                      <th scope="col">СУММА</th>
-                      <th scope="col">РАСПРЕДЕЛЕНО</th>
-                      <th scope="col">ДОСТУПНО</th>
+                      <th scope="col">Платёж / покупатель</th>
+                      <th scope="col">Сумма</th>
+                      <th scope="col">Распределено</th>
+                      <th scope="col">Доступно</th>
                       <th />
                     </tr>
                   </thead>
@@ -904,10 +904,10 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
               <table className="invoice-table ops-table">
                 <thead>
                   <tr>
-                    <th scope="col">СЧЁТ</th>
-                    <th scope="col">ИЗМЕНЕНИЕ</th>
-                    <th scope="col">ПРЕЖНИЙ ОСТАТОК</th>
-                    <th scope="col">НОВЫЙ ОСТАТОК</th>
+                    <th scope="col">Счёт</th>
+                    <th scope="col">Изменение</th>
+                    <th scope="col">Прежний остаток</th>
+                    <th scope="col">Новый остаток</th>
                   </tr>
                 </thead>
                 <tbody>

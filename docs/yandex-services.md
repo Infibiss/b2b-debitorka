@@ -1,4 +1,4 @@
-# Private document recognition and browser dialogue
+# Private document recognition and voice calls
 
 Implemented for the approved 26 October 2026 workflow. These adapters send real
 requests to fixed Yandex endpoints only when explicitly enabled for the bound
@@ -35,9 +35,7 @@ No roles, billing settings or cloud resources are changed by this module.
 `not_checked` means no successful access verification has happened. Provider
 401/403 responses become `permission_required`; the UI names the required roles.
 This status route does not make a paid probe. The last request status is
-historical, not a guarantee about future availability. Enable the browser
-microphone for this origin through `Permissions-Policy: microphone=(self)`;
-HTTPS and an explicit browser permission are required for capture.
+historical, not a guarantee about future availability.
 
 ## Official request contracts
 
@@ -102,29 +100,75 @@ An identical repeat returns its original version; changing an accepted version
 is a conflict. Acceptance never inserts invoices, payments, promises or ledger
 adjustments. Recognized text is not proof of a debt.
 
-## Browser voice and dialogue graph
+## Voice call preparation and telephony boundary
 
-`YandexDesk` exports props `{invoices: Invoice[], notify, invoiceId?}` and shows
-“Разговор по счёту”. The browser user plays the selected counterparty's
-representative; Mandato speaks as the creditor's assistant. This browser roleplay
-is not an external phone call, verified debtor communication or authority to
-change financial records. There is no external telephone number.
+The working entry point is **Переписка → Звонки**. `YandexDesk mode="voice"`
+selects an invoice; `VoiceCallPanel` collects the counterparty phone and the
+operator's confirmation of authority to contact that number. This is a call
+workflow, not a browser roleplay. No microphone, typed debtor impersonation or
+training conversation is shown in working sections or help.
 
-Click “Начать разговор” to hear a business greeting and questions about a
-convenient time and authorized representation. The server discloses no company,
-invoice number or amount until the logged-in operator explicitly confirms the
-roleplay representation switch for the selected invoice. That confirmation is
-recorded with actor and invoice. It is **not** real-world identity verification.
-The switch resets when changing invoices; every utterance must carry the boolean
-`identity_confirmed=true` to permit disclosure. A spoken “yes” alone cannot bypass
-this gate. Request fingerprints include that flag to prevent a retry key from
-returning a different disclosure level.
+`GET /api/yandex/voice/readiness` reports `speech_configured` independently of
+`telephony.ready/status/provider/message/setup_steps`. Speech configuration is
+not proof of a working telephone line. No readiness request contacts a provider.
 
-The microphone starts only on explicit click. Capture stops at 20 seconds and
-resamples to mono 16 kHz PCM16LE, at most 640,000 bytes. Stop-and-send and discard
-are separate buttons. Tracks, audio nodes, contexts and timers are released on
-stop, cancellation, invoice change and unmount; late permission results after
-unmount are discarded. No recording starts on page load.
+`POST /api/yandex/voice/calls/prepare` accepts
+`{invoice_id, phone, contact_authorized}`. The boolean is strict. The server
+normalizes whitespace, parentheses and hyphens, validates the international
+number shape, checks tenant ownership, adjusted positive balance, disputes,
+pauses, counterparty hold/contact permission and mandate expiry. The checkbox
+cannot override a stored restriction. Number format does not establish number
+ownership; the operator's assertion is not a verified telephone connection.
+The balance gate uses the same `finance.balance` contract as invoice views,
+including canonical adjustment and net payment totals. Missing financial totals
+block preparation rather than defaulting adjustments to zero. This keeps call
+preparation aligned with credits, returns, debit adjustments and payment refunds.
+Preparation reuses the existing LangGraph identity-safe opening without a paid
+STT, intent or TTS request. It neither creates a call record nor changes money.
+
+`server/voice_calls.py` defines `CallRequest`, `Readiness` and `VoiceCallAdapter`.
+`get_voice_call_adapter()` is the single provider integration point. Currently it
+returns `UnconnectedVoiceCallAdapter`: `ready=false`, `status=adapter_required`,
+`provider=null`. No SIP/API environment variable can unlock an unimplemented
+transport. `start_call` refuses execution. Preparation returns
+`status=connection_required`, `call_started=false`, `next_action=configure_telephony`
+and the concrete setup steps; there is no fake `call_id`, dial event, recording
+or successful-call history. The button opens these settings after validating the
+request. Copying a setup task is local only and sends no external message.
+
+Before enabling dialing, the organization's telephony administrator must:
+
+1. Select the organization's existing telephony and supply its authorized API or
+   SIP documentation; no provider is implicitly supported by this code.
+2. Confirm the outgoing caller number, allowed destinations, authority for
+   contact and recording rules. Supply secrets through the operator's protected
+   server configuration and bind them to the right Mandato tenant.
+3. Implement and verify the adapter's authenticated call lifecycle, signed
+   provider events, media exchange with the existing speech/dialogue workflow,
+   conversation isolation, identity gate, transcript provenance and human handoff.
+4. Add the actual dispatch gate with repeated financial/contact policy checks,
+   approved contact calendar and rate limits, idempotent reservation, a provider
+   receipt, bounded retries and explicit handling of uncertain outcomes. A
+   successful preparation must never itself dial; even with an installed
+   adapter it only returns `prepared`, `call_started=false`, `review_dispatch`.
+5. Obtain explicit permission for a verification call to an agreed number and
+   accept the connection before enabling customer calls. Existing SpeechKit
+   permissions and quotas must also be verified. No verification call is made by
+   this implementation.
+
+The UI displays the existing conversation steps: identity confirmation, reason
+for delay, precise amount/date, bank verification for paid claims, and staff
+handoff for a dispute. These are preparation, not claims of completed contact.
+
+## Speech and bounded dialogue backend
+
+The original bounded dialogue endpoints remain available for authenticated
+integration/developer contract verification. Their results retain
+`training_only=true` and `simulation_only=true`: they are not provider-attested
+telephone events and must never be imported as completed calls. There is no
+working-section or help UI for impersonating a debtor. Their identity flag is
+an operator assertion, not verified real-world identity. A real telephone
+adapter must establish call-scoped identity and provenance independently.
 
 `POST /api/yandex/voice/opening` accepts `{invoice_id, request_id}` and produces the
 greeting without STT. `POST /api/yandex/voice/turn` accepts `{audio, invoice_id,
@@ -165,10 +209,7 @@ workflow exception or staff assignment is claimed to have occurred. Staff must
 review the transcript and perform any authorized action in the case workflow.
 
 The reply is sent to real SpeechKit TTS and returned as base64 `audio/ogg` with
-transcript, reply, intent source and executed node names. The UI offers native
-audio controls and tries to play only the newly returned answer; historical turns
-never autoplay. Browsers blocking playback or Ogg still retain the transcript and
-answer. A synthesis failure retains the text and is visibly unavailable rather
+transcript, reply, intent source and executed node names. A synthesis failure retains the text and is marked unavailable rather
 than a fake audio success. Audio input is not stored; transcripts, replies and
 synthesized audio remain private in the database. No external phone number or
 outbound call is configured or claimed.

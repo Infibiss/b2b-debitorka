@@ -5,7 +5,14 @@ export function Brand({ light = false }: { light?: boolean }) {
       href="/"
       aria-label="Mandato — на главную"
     >
-      <svg className="mandato-mark" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+      <svg
+        className="mandato-mark"
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        fill="currentColor"
+        aria-hidden="true"
+      >
         <path
           fillRule="evenodd"
           d="M20.3 3.8C13.2 1.3 5.5 5.4 3.5 12.7C1.3 20.7 6.8 28.8 14.9 29.6C23.1 30.4 29.8 24.3 29.8 16.3C29.8 12.2 28.1 8.5 25.2 6.1C24.4 5.4 23.3 5.5 22.6 6.2L19.4 9.5C18.8 10.1 19.2 11.1 20.1 11.2L23.4 11.5C24.2 12.9 24.7 14.6 24.7 16.4C24.7 21.7 20.3 25.8 15 25.1C9.6 24.5 6.1 19.3 7.6 14.1C9.1 8.8 14.8 5.7 20.3 3.8Z M23.5 8.4a.85.85 0 1 0 1.7 0a.85.85 0 1 0-1.7 0Z"

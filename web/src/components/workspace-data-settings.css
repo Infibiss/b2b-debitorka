@@ -1,0 +1,139 @@
+.workspace .workspace-data {
+  width: 100%;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--ink);
+  scroll-margin-top: 24px;
+}
+.workspace .workspace-data-heading h2 {
+  margin: 0 0 8px;
+  font-size: var(--type-panel-title);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.workspace .workspace-data p {
+  max-width: 800px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-control);
+  line-height: 1.65;
+}
+.workspace .workspace-data-heading {
+  margin-bottom: 20px;
+}
+.workspace .workspace-data-form {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  max-width: 640px;
+}
+.workspace .workspace-data-field {
+  font-size: var(--type-control);
+  font-weight: 500;
+}
+.workspace .workspace-data-form > input {
+  width: 100%;
+  max-width: 320px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-control);
+}
+.workspace .workspace-data-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: var(--type-control);
+  line-height: 1.6;
+}
+.workspace .workspace-data-consent input {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--green);
+}
+.workspace .workspace-data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workspace :is(.workspace-data-primary, .workspace-data-secondary) {
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-control);
+  font-weight: 500;
+  line-height: 1.4;
+  transition:
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out);
+}
+.workspace .workspace-data-primary {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.workspace .workspace-data-secondary:hover {
+  background: var(--surface-subtle);
+}
+.workspace .workspace-data-primary:hover {
+  background: color-mix(in srgb, var(--green) 88%, var(--surface) 12%);
+}
+.workspace :is(.workspace-data-primary, .workspace-data-secondary):disabled {
+  cursor: default;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  border-color: var(--line);
+}
+.workspace .workspace-data-status {
+  padding: 16px;
+  border-left: 2px solid var(--line);
+  background: var(--surface-subtle);
+  overflow-wrap: anywhere;
+}
+.workspace .workspace-data-status p + p {
+  margin-top: 8px;
+}
+.workspace .workspace-data-status strong {
+  font-weight: 600;
+}
+.workspace .workspace-data p.workspace-data-error {
+  margin-bottom: 16px;
+  color: var(--danger-ink);
+}
+.workspace .workspace-data-policy {
+  display: block;
+  width: fit-content;
+  margin-top: 20px;
+  color: var(--green);
+  font-size: var(--type-control);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.workspace .workspace-data :is(input, button, a):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .workspace .workspace-data {
+    padding: 20px;
+  }
+  .workspace .workspace-data-actions {
+    width: 100%;
+  }
+  .workspace .workspace-data-actions button {
+    flex: 1 1 180px;
+  }
+}

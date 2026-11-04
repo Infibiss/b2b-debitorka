@@ -372,8 +372,12 @@ function DataRequest() {
       <Section title="Как направить обращение">
         <p>
           Администратор компании может отправить запрос на удаление рабочего пространства на
-          странице <a href="/account">«Тариф и аккаунт»</a>. Запрос получит номер; удаление
-          выполняется после проверки полномочий и обязательств по хранению данных.
+          странице{' '}
+          <a href="/app?mode=login&section=settings#workspace-data">
+            «Настройки» рабочего кабинета
+          </a>
+          . Запрос получит номер; удаление выполняется после проверки полномочий и обязательств по
+          хранению данных.
         </p>
         <p>
           Напишите с почты аккаунта на <a href={deletionEmail}>info@mandato.ru</a>. Укажите вид
@@ -382,8 +386,8 @@ function DataRequest() {
           согласовать отдельно. Не прикладывайте паспорт или пароль к первому письму.
         </p>
         <div className="public-legal-actions">
-          <a className="pub-button" href="/account">
-            Отправить запрос в аккаунте <ArrowUpRight size={17} aria-hidden="true" />
+          <a className="pub-button" href="/app?mode=login&section=settings#workspace-data">
+            Открыть настройки данных <ArrowUpRight size={17} aria-hidden="true" />
           </a>
           <a className="pub-button pub-secondary" href={deletionEmail}>
             Подготовить письмо

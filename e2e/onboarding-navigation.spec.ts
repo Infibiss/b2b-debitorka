@@ -69,7 +69,6 @@ test('local work lesson highlights a compact empty action and then an actual cas
   const session = await account(page, `local-${info.project.name}`);
   await page.getByRole('button', { name: 'Позже', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const coach = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await coach.getByRole('button', { name: 'Далее', exact: true }).click();
   await expect(
@@ -93,7 +92,6 @@ test('local work lesson highlights a compact empty action and then an actual cas
   expect(added.status()).toBe(201);
   await page.reload();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await coach.getByRole('button', { name: 'Далее', exact: true }).click();
   await expect(coach.getByRole('heading', { name: 'Откройте дело', exact: true })).toBeVisible();
   const highlighted = page.locator('[data-tour="workflow-case"].wf-tour-highlight');
@@ -106,7 +104,6 @@ test('local work lesson highlights a compact empty action and then an actual cas
     .fill('Нет такого контрагента');
   await expect(page.getByRole('button', { name: 'Сбросить фильтры', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await coach.getByRole('button', { name: 'Далее', exact: true }).click();
   await expect(coach.getByRole('heading', { name: 'Сбросьте фильтр', exact: true })).toBeVisible();
   await expect(page.locator('[data-tour="workflow-filter-empty"]')).toHaveClass(
@@ -121,7 +118,6 @@ test('local work lesson highlights a compact empty action and then an actual cas
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await expect(coach).toHaveCount(0);
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await expect(
     page.getByRole('complementary', { name: 'Обучение: Аудит', exact: true })
   ).toBeVisible();

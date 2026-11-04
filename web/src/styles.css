@@ -62,8 +62,8 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid #7b9c45;
-  outline-offset: 4px;
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 a,
 button {

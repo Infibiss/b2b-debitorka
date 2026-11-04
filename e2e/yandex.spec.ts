@@ -32,10 +32,12 @@ test('document and voice tools explain missing access without fabricating result
   await navigate(page, 'Документы и голос');
   await expect(page.getByRole('heading', { name: 'Распознавание документов' })).toBeVisible();
   await expect(page.getByLabel('Загрузить документ для распознавания')).toBeDisabled();
-  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Учебный разговор', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Начать разговор', exact: true })).toBeDisabled();
-  await expect(page.getByText('Нужно подключение', { exact: true })).toHaveCount(2);
+  await navigate(page, 'Переписка');
+  await page.getByRole('button', { name: 'Звонки', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Звонок по счёту' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Позвонить', exact: true })).toBeDisabled();
+  await expect(page.getByText('Нужно подключить телефонию', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Учебный разговор', exact: true })).toHaveCount(0);
   expect((await (await page.request.get('/api/invoices')).json()).items[0].balance).toBe(125050);
 });
 
@@ -66,7 +68,7 @@ test('document upload keeps the selected file visible and recognition has one pa
   );
 });
 
-test('provider-contract UI renders OCR acceptance and a voice exchange without touching money', async ({
+test('OCR acceptance and voice preparation stop at the real connection boundary', async ({
   page,
 }, info) => {
   const inv = await setup(page, `contract-${info.project.name}`);
@@ -105,31 +107,6 @@ test('provider-contract UI renders OCR acceptance and a voice exchange without t
     recognizedDocument = { ...recognizedDocument, acceptance: body };
     await route.fulfill({ json: recognizedDocument });
   });
-  await page.route('**/api/yandex/voice/turns?*', (route) =>
-    route.fulfill({ json: { items: [] } })
-  );
-  await page.route('**/api/yandex/voice/text', async (route) => {
-    const body = route.request().postDataJSON();
-    expect(body.identity_confirmed).toBe(true);
-    await route.fulfill({
-      json: {
-        id: 'voice-ui',
-        status: 'completed',
-        transcript: body.text,
-        reply: 'Уточните дату, сумму и номер платёжного поручения. Мы сверим поступление.',
-        audio: '',
-        audio_mime: 'audio/ogg',
-        error_code: '',
-      },
-    });
-  });
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
-      value: async () => {
-        throw new DOMException('Permission denied', 'NotAllowedError');
-      },
-    });
-  });
   await page.goto('/app');
   await navigate(page, 'Документы и голос');
   await page.getByLabel('Счёт для документа', { exact: true }).selectOption(inv.id);
@@ -141,15 +118,30 @@ test('provider-contract UI renders OCR acceptance and a voice exchange without t
   await page.getByLabel('Что проверено по оригиналу').fill('Сверено бухгалтером');
   await page.getByRole('button', { name: 'Сохранить проверенную версию' }).click();
   await expect(page.getByText('Проверенная версия сохранена.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Учебный разговор', exact: true }).click();
-  await page.getByRole('dialog').getByLabel('Счёт для документов и диалога').selectOption(inv.id);
-  await page.getByRole('dialog').getByRole('checkbox').check();
-  await page.getByLabel('Или введите реплику').fill('Мы оплатили вчера');
-  await page.getByRole('button', { name: 'Ответить Mandato', exact: true }).click();
-  await expect(page.getByLabel('История диалога')).toContainText('номер платёжного поручения');
-  await page.getByRole('button', { name: 'Начать запись', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Доступ к микрофону не разрешён');
+  await navigate(page, 'Переписка');
+  await page.getByRole('button', { name: 'Звонки', exact: true }).click();
+  await page.getByLabel('Счёт для звонка', { exact: true }).selectOption(inv.id);
+  await page.getByLabel('Телефон контрагента', { exact: true }).fill('+7 (999) 123-45-67');
+  await page
+    .getByRole('checkbox', {
+      name: 'Номер принадлежит представителю контрагента, полномочия на контакт проверены',
+    })
+    .check();
+  const prepared = page.waitForResponse('**/api/yandex/voice/calls/prepare');
+  await page.getByRole('button', { name: 'Позвонить', exact: true }).click();
+  const preparation = await (await prepared).json();
+  expect(preparation.status).toBe('connection_required');
+  expect(preparation.call_started).toBe(false);
+  expect(preparation.phone).toBe('+79991234567');
+  expect(preparation).not.toHaveProperty('call_id');
+  await expect(page.getByText('Звонок не начат', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Скопировать задание на подключение' })
+  ).toBeVisible();
+  await expect(page.getByText('Это разговор в браузере', { exact: false })).toHaveCount(0);
+  expect(
+    (await (await page.request.get('/api/yandex/voice/turns?invoice_id=' + inv.id)).json()).items
+  ).toHaveLength(0);
   expect((await (await page.request.get('/api/invoices')).json()).items[0].balance).toBe(125050);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2)).toBe(
     false

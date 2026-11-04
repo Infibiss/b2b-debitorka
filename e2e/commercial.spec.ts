@@ -1,4 +1,4 @@
-import { test, expect, type Page } from './fixtures';
+import { test, expect, navigate, type Page } from './fixtures';
 async function signup(page: Page, suffix: string) {
   await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
   await page.getByLabel('Компания', { exact: true }).fill('ООО Практика');
@@ -63,11 +63,76 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     await page.getByRole('button', { name: 'Подтвердить отмену' }).click();
     await expect(page.getByText('Отменён', { exact: true })).toBeVisible();
   }
-  await page.getByRole('button', { name: 'Запросить удаление данных' }).click();
-  await page.getByLabel('Введите УДАЛИТЬ').fill('УДАЛИТЬ');
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Отправить запрос', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Запросить удаление данных' })).toHaveCount(0, {
+    timeout: 1500,
+  });
+  await page.getByRole('link', { name: 'Управлять данными в настройках' }).click();
+  await expect(page).toHaveURL('/app?mode=login&section=settings#workspace-data');
+  const data = page.getByRole('region', { name: 'Данные организации' });
+  await expect(data).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
+  await expect(data).toContainText('вручную');
+  await data.getByRole('button', { name: 'Запросить удаление данных' }).click();
+  await expect(data.getByRole('checkbox')).not.toBeChecked();
+  await expect(data.getByRole('button', { name: 'Отправить запрос', exact: true })).toBeDisabled();
+  await data.getByLabel('Введите УДАЛИТЬ').fill('УДАЛИТЬ');
+  await data.getByRole('checkbox').check();
+  await data.getByRole('button', { name: 'Отправить запрос', exact: true }).click();
   await expect(
     page.getByText('Запрос на удаление зарегистрирован.', { exact: false })
   ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('region', { name: 'Данные организации' }).getByRole('status')
+  ).toContainText('Номер запроса:');
+  await expect(page.getByRole('button', { name: 'Запросить удаление данных' })).toHaveCount(0);
+  await navigate(page, 'Счета');
+  await expect(page.getByRole('heading', { name: 'Счета', exact: true })).toBeVisible();
+});
+
+test('data request page leads to workspace settings', async ({ page }) => {
+  await page.goto('/data-request');
+  await expect(page.getByRole('link', { name: 'Открыть настройки данных' })).toHaveAttribute(
+    'href',
+    '/app?mode=login&section=settings#workspace-data'
+  );
+  await page.getByRole('link', { name: 'Открыть настройки данных' }).click();
+  await expect(page.getByRole('heading', { name: 'Войти в Mandato', exact: true })).toBeVisible();
+});
+
+test('accountant sees data settings without permission to request deletion', async ({
+  page,
+}, info) => {
+  const stamp = `${info.project.name}-${Date.now()}`;
+  const registration = await page.request.post('/api/auth/register', {
+    data: {
+      name: 'Анна',
+      company: 'ООО Практика',
+      email: `data-manager-${stamp}@example.ru`,
+      password: 'Mandato-commercial-2026!',
+    },
+  });
+  expect(registration.status()).toBe(201);
+  const manager = await registration.json();
+  const email = `data-accountant-${stamp}@example.ru`;
+  const invitation = await page.request.post('/api/workflow/invitations', {
+    headers: { 'X-CSRF-Token': manager.csrf_token },
+    data: { email },
+  });
+  expect(invitation.status()).toBe(201);
+  const { token } = await invitation.json();
+  await page.request.post('/api/auth/logout', { headers: { 'X-CSRF-Token': manager.csrf_token } });
+  const accepted = await page.request.post('/api/workflow/invitations/accept', {
+    data: { token, name: 'Бухгалтер', password: 'Mandato-commercial-2026!' },
+  });
+  expect(accepted.status()).toBe(201);
+  const login = await page.request.post('/api/auth/login', {
+    data: { email, password: 'Mandato-commercial-2026!' },
+  });
+  expect(login.status()).toBe(200);
+  await page.goto('/app?mode=login&section=settings#workspace-data');
+  const data = page.getByRole('region', { name: 'Данные организации' });
+  await expect(data).toContainText('только администратор организации');
+  await expect(data.getByRole('button', { name: 'Запросить удаление данных' })).toHaveCount(0);
+  await expect(data.getByRole('form')).toHaveCount(0);
 });

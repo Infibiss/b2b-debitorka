@@ -2,11 +2,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   min-height: 48px;
   min-width: 0;
-  padding: 5px;
-  border: 1px solid var(--border, #d7ded3);
+  padding: 4px;
+  border: 1px solid var(--border, var(--line));
   border-radius: 10px;
   background: var(--surface, #fff);
 }
@@ -19,8 +19,8 @@
   min-height: 36px;
   padding: 8px 12px;
   border-radius: 6px;
-  background: #edf1e8;
-  color: #294a36;
+  background: var(--surface-subtle);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
 }
@@ -30,8 +30,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   padding-right: 8px;
-  color: #647166;
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: 14px;
   font-weight: 400;
 }
 .file-picker input.file-picker-input {
@@ -45,8 +45,8 @@
   cursor: pointer;
 }
 .file-picker:focus-within {
-  outline: 2px solid #507b50;
-  outline-offset: 3px;
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 .file-picker:has(input:disabled) {
   opacity: 0.55;
@@ -59,7 +59,7 @@
     gap: 8px;
   }
   .file-picker .file-picker-button {
-    font-size: 13px;
-    padding-inline: 9px;
+    font-size: 14px;
+    padding-inline: 8px;
   }
 }

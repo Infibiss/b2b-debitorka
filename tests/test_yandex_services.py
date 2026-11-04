@@ -77,6 +77,104 @@ def test_unbound_tenant_rejected_even_development(service,monkeypatch):
     assert client.post('/api/yandex/documents',json={'content':encoded(PNG),'mime_type':'image/png','filename':'x.png'}).status_code==403
 
 
+@pytest.fixture
+def call_service(service):
+    client,y,user,db=service
+    with db(None,write=True) as c:
+        c.execute('ALTER TABLE invoices ADD COLUMN counterparty_id TEXT')
+        c.execute('ALTER TABLE invoices ADD COLUMN adjustment_amount INTEGER NOT NULL DEFAULT 0')
+        c.execute("UPDATE invoices SET counterparty_id='counterparty'")
+        c.execute('CREATE TABLE finance_counterparties(id TEXT,tenant_id TEXT,hold INTEGER,contact_allowed INTEGER,mandate_expires_on TEXT)')
+        c.execute('INSERT INTO finance_counterparties VALUES(?,?,?,?,?)',('counterparty',TENANT,0,1,None))
+    return service
+
+
+def test_call_readiness_never_confuses_speech_key_with_telephony(service,monkeypatch):
+    client,y,_,_=service
+    monkeypatch.setenv('SIP_PASSWORD','must-not-unlock-unimplemented-adapter')
+    monkeypatch.setattr(y,'_request',lambda *a,**k:pytest.fail('readiness must not charge'))
+    response=client.get('/api/yandex/voice/readiness')
+    assert response.status_code==200
+    result=response.json()
+    assert result['speech_configured'] is True
+    assert result['telephony']['ready'] is False
+    assert result['telephony']['status']=='adapter_required'
+    assert result['telephony']['setup_steps'] and result['telephony']['provider'] is None
+
+
+def test_prepare_call_checks_contact_then_stops_at_connection_without_fake_call(call_service,monkeypatch):
+    client,y,_,db=call_service
+    monkeypatch.setattr(y,'_request',lambda *a,**k:pytest.fail('preparation must not charge'))
+    response=client.post('/api/yandex/voice/calls/prepare',json={'invoice_id':'invoice','phone':'+7 (999) 123-45-67','contact_authorized':True})
+    assert response.status_code==200,response.text
+    result=response.json()
+    assert result['status']=='connection_required' and result['call_started'] is False
+    assert result['phone']=='+79991234567' and 'call_id' not in result
+    assert result['next_action']=='configure_telephony' and result['checks']['contact_allowed']
+    assert '80,00' not in result['opening'] and '42' not in result['opening']
+    assert result['dialogue_state']['stage']=='identity'
+    assert result['graph_nodes']==['safe_facts','bounded_intent','next_response']
+    with db(None) as c:
+        assert c.execute('SELECT COUNT(*) FROM yandex_service_requests').fetchone()[0]==0
+        assert c.execute('SELECT paid_amount FROM invoices').fetchone()[0]==2000
+
+
+@pytest.mark.parametrize('changes',[
+    {'phone':'123'}, {'phone':'+79991234567 ext 1'},
+    {'contact_authorized':False}, {'contact_authorized':'true'},
+])
+def test_prepare_call_rejects_invalid_number_or_missing_authority(call_service,monkeypatch,changes):
+    client,y,_,_=call_service
+    monkeypatch.setattr(y,'_request',lambda *a,**k:pytest.fail('must not charge'))
+    body={'invoice_id':'invoice','phone':'+79991234567','contact_authorized':True,**changes}
+    assert client.post('/api/yandex/voice/calls/prepare',json=body).status_code in (409,422)
+
+
+@pytest.mark.parametrize('change',[
+    "UPDATE invoices SET status='disputed'", "UPDATE invoices SET status='paused'",
+    'UPDATE invoices SET paid_amount=amount',
+    'UPDATE finance_counterparties SET hold=1',
+    'UPDATE finance_counterparties SET contact_allowed=0',
+    "UPDATE finance_counterparties SET mandate_expires_on='2000-01-01'",
+])
+def test_prepare_call_respects_financial_and_contact_guards(call_service,change):
+    client,_,_,db=call_service
+    with db(None,write=True) as c:c.execute(change)
+    response=client.post('/api/yandex/voice/calls/prepare',json={'invoice_id':'invoice','phone':'+79991234567','contact_authorized':True})
+    assert response.status_code==409
+
+
+def test_prepare_call_rejects_foreign_invoice_before_connection(call_service):
+    client,_,user,_=call_service
+    user['tenant_id']=OTHER
+    assert client.post('/api/yandex/voice/calls/prepare',json={'invoice_id':'invoice','phone':'+79991234567','contact_authorized':True}).status_code==404
+
+
+def test_prepare_call_refuses_incomplete_financial_totals(call_service):
+    client,_,_,db=call_service
+    with db(None,write=True) as c:c.execute('ALTER TABLE invoices DROP COLUMN adjustment_amount')
+    response=client.post('/api/yandex/voice/calls/prepare',json={'invoice_id':'invoice','phone':'+79991234567','contact_authorized':True})
+    assert response.status_code==409
+    assert 'финансов' in response.json()['detail'].lower()
+
+
+def test_prepare_call_adjusted_balance_closes_and_reopens_after_debit_or_payment_refund(call_service):
+    client,_,_,db=call_service
+    body={'invoice_id':'invoice','phone':'+79991234567','contact_authorized':True}
+    # Canonical totals are maintained atomically by finance.adjust/reverse.
+    # A closing credit/return offsets the outstanding 80 rubles.
+    with db(None,write=True) as c:c.execute('UPDATE invoices SET adjustment_amount=-8000')
+    assert client.post('/api/yandex/voice/calls/prepare',json=body).status_code==409
+    # A debit adjustment reopens 10 rubles, then another credit closes it.
+    with db(None,write=True) as c:c.execute('UPDATE invoices SET adjustment_amount=-7000')
+    assert client.post('/api/yandex/voice/calls/prepare',json=body).json()['status']=='connection_required'
+    with db(None,write=True) as c:c.execute('UPDATE invoices SET adjustment_amount=-8000')
+    assert client.post('/api/yandex/voice/calls/prepare',json=body).status_code==409
+    # Refund/correction of the prior payment reopens the net balance.
+    with db(None,write=True) as c:c.execute('UPDATE invoices SET paid_amount=1000')
+    assert client.post('/api/yandex/voice/calls/prepare',json=body).json()['status']=='connection_required'
+
+
 @pytest.mark.parametrize('content,mime',[(b'fake','image/png'),(PNG,'image/jpeg'),(b'x'*1_000_001,'image/png'),(b'%PDF-1.7\ninvalid','application/pdf')],ids=['bad-png','mime-mismatch','oversize','bad-pdf'])
 def test_bad_document_rejected_before_provider(service,monkeypatch,content,mime):
     client,y,_,_=service

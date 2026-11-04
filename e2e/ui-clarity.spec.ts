@@ -31,7 +31,9 @@ test('landing has controlled headline, concise copy and spaced footer contacts',
   await expect(page.getByText('Для бизнеса. По-человечески.', { exact: true })).toHaveCount(0);
   const footer = page.locator('.pub-footer');
   const brand = await footer.getByRole('link', { name: 'Mandato — на главную' }).boundingBox();
-  const email = await footer.getByRole('link', { name: 'info@mandato.ru', exact: true }).boundingBox();
+  const email = await footer
+    .getByRole('link', { name: 'info@mandato.ru', exact: true })
+    .boundingBox();
   expect(brand).not.toBeNull();
   expect(email).not.toBeNull();
   expect(email!.y - (brand!.y + brand!.height)).toBeGreaterThanOrEqual(12);
@@ -50,7 +52,6 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   await account(page, info.project.name);
   await page.getByRole('button', { name: 'Позже', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const coach = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
   await expect(coach).toBeVisible();
   await expect(page.locator('.modal-backdrop')).toHaveCount(0);
@@ -68,10 +69,9 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await expect(coach).toHaveCount(0);
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   const audit = page.getByRole('complementary', { name: 'Обучение: Аудит', exact: true });
   await expect(audit).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Аудит дебиторки.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Аудит дебиторки', exact: true })).toBeVisible();
   await expect(audit.getByRole('list')).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath('learning-audit.png'),
@@ -81,7 +81,6 @@ test('learning is contextual nonmodal and supports back without hiding the scree
   for (const section of ['Подключения', 'Управление']) {
     await page.getByRole('button', { name: section, exact: true }).click();
     await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-    await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
     await expect(
       page.getByRole('complementary', { name: `Обучение: ${section}`, exact: true })
     ).toBeVisible();
@@ -173,17 +172,16 @@ test('learning starts on its own section and independent sections retain their p
   await navigate(page, 'Оплаты и сверка');
   await expect(page.getByRole('button', { name: 'Начать обучение', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
-  const work = page.getByRole('complementary', { name: 'Обучение: Работа', exact: true });
-  await expect(work).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Работа по дебиторке', exact: true })
-  ).toBeVisible();
-  await work.getByRole('button', { name: 'Далее', exact: true }).click();
-  await work.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
+  const financeGuide = page.getByRole('complementary', {
+    name: 'Обучение: Оплаты и сверка',
+    exact: true,
+  });
+  await expect(financeGuide).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Оплаты и сверка', exact: true })).toBeVisible();
+  await financeGuide.getByRole('button', { name: 'Далее', exact: true }).click();
+  await financeGuide.getByRole('button', { name: 'Закрыть обучение', exact: true }).click();
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
   await expect(
     page
       .getByRole('complementary', { name: 'Обучение: Аудит' })
@@ -191,8 +189,11 @@ test('learning starts on its own section and independent sections retain their p
   ).toBeVisible();
   await page.getByRole('button', { name: 'Работа', exact: true }).click();
   await page.getByRole('button', { name: 'Как работать в разделе', exact: true }).click();
-  await page.getByRole('button', { name: 'Показать обзор раздела', exact: true }).click();
-  await expect(work.getByRole('heading', { name: 'Загрузите реестр' })).toBeVisible();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Обучение: Работа', exact: true })
+      .getByRole('heading', { name: 'Загрузите реестр' })
+  ).toBeVisible();
 });
 
 test('an invitation opens when its link changes within an existing login page', async ({
@@ -226,12 +227,18 @@ test('an invitation opens when its link changes within an existing login page', 
   ).toBeVisible();
 });
 
-test('a delayed initial audit read cannot erase a newly collected report', async ({ page }, info) => {
+test('a delayed initial audit read cannot erase a newly collected report', async ({
+  page,
+}, info) => {
   await account(page, `audit-race-${info.project.name}`);
   let release!: () => void;
   let captured!: () => void;
-  const held = new Promise<void>((resolve) => { release = resolve; });
-  const ready = new Promise<void>((resolve) => { captured = resolve; });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    captured = resolve;
+  });
   await page.route('**/api/portfolio', async (route) => {
     const response = await route.fetch();
     captured();
@@ -246,7 +253,12 @@ test('a delayed initial audit read cannot erase a newly collected report', async
     const initialRead = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/portfolio');
     release();
     await initialRead;
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    );
     await expect(page.getByLabel('Важность замечаний', { exact: true })).toBeVisible();
   } finally {
     release();

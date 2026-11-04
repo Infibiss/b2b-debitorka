@@ -2,7 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import './workflow.css';
 
-export type LearningSection = 'workflow' | 'audit' | 'connections' | 'management';
+export type LearningSection =
+  | 'workflow'
+  | 'audit'
+  | 'connections'
+  | 'management'
+  | 'registry'
+  | 'finance'
+  | 'messages'
+  | 'yandex'
+  | 'intelligence'
+  | 'legal'
+  | 'agent'
+  | 'settings';
 type Step = { title: string; text: string; target: string };
 const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
   workflow: {
@@ -82,6 +94,166 @@ const lessons: Record<LearningSection, { name: string; steps: Step[] }> = {
         title: 'Запустите нужные дела',
         text: 'Включите агента для выбранного дела в «Работе». При необходимости поставьте дело на паузу.',
         target: 'workflow-policy',
+      },
+    ],
+  },
+  registry: {
+    name: 'Счета',
+    steps: [
+      {
+        title: 'Добавьте счета',
+        text: 'Загрузите реестр или добавьте счёт вручную. Проверьте контрагента, договор, сумму и срок оплаты.',
+        target: 'css:#workspace-main .page-heading .button',
+      },
+      {
+        title: 'Найдите задолженность',
+        text: 'Найдите счёт по номеру, контрагенту или ИНН. Фильтры показывают просрочку, споры и поставленные на паузу счета.',
+        target: 'css:#workspace-main .search-input',
+      },
+      {
+        title: 'Откройте счёт',
+        text: 'В карточке — остаток, документы, переписка и действия по задолженности.',
+        target: 'css:#workspace-main .invoice-number',
+      },
+    ],
+  },
+  finance: {
+    name: 'Оплаты и сверка',
+    steps: [
+      {
+        title: 'Выберите операцию',
+        text: 'Загрузите выписку, разберите поступления или откройте историю выбранного счёта.',
+        target: 'css:#workspace-main .ops-tabs',
+      },
+      {
+        title: 'Сопоставьте оплату',
+        text: 'Проверьте плательщика, назначение и сумму. Распределите поступление по счетам; неоднозначные операции оставьте на разбор.',
+        target: 'css:#workspace-main .ops-card h2',
+      },
+      {
+        title: 'Проверьте остаток',
+        text: 'В истории счёта видны оплаты, корректировки и обещанные даты. Возврат или ошибочную оплату оформляйте отдельной операцией.',
+        target: 'css:#workspace-main .ops-tabs',
+      },
+    ],
+  },
+  messages: {
+    name: 'Переписка',
+    steps: [
+      {
+        title: 'Выберите канал',
+        text: 'Откройте историю писем или подготовьте звонок. Для отправки и звонков требуется подключение соответствующего канала.',
+        target: 'css:#workspace-main .ops-tabs',
+      },
+      {
+        title: 'Откройте историю счёта',
+        text: 'Выберите счёт, чтобы увидеть переписку, договорённости и подтверждённые оплаты.',
+        target: 'css:#workspace-main .case-conversation select',
+      },
+      {
+        title: 'Разберите ответ',
+        text: 'Зафиксируйте входящее сообщение и проверьте предложенный следующий шаг. Если покупатель сообщает об оплате, откройте сверку.',
+        target: 'css:#workspace-main .page-heading .button',
+      },
+    ],
+  },
+  yandex: {
+    name: 'Документы',
+    steps: [
+      {
+        title: 'Выберите работу с документом',
+        text: 'В архиве хранятся договоры и подтверждения. Распознавание извлекает текст из скана.',
+        target: 'css:#workspace-main .ops-tabs',
+      },
+      {
+        title: 'Привяжите документ к счёту',
+        text: 'Выберите счёт, укажите название документа и загрузите файл. Так документ будет доступен из связанного дела.',
+        target: 'css:#workspace-main .documents-add select',
+      },
+      {
+        title: 'Проверьте результат',
+        text: 'Проверьте распознанные реквизиты и текст перед использованием в требовании или юридическом деле.',
+        target: 'css:#workspace-main .documents-archive h2',
+      },
+    ],
+  },
+  intelligence: {
+    name: 'Прогноз и условия',
+    steps: [
+      {
+        title: 'Оцените поступления',
+        text: 'Прогноз помогает увидеть ожидаемые оплаты и качество исходных данных. Обещанные покупателем даты проверяйте отдельно.',
+        target: 'css:#workspace-main .ms-tabs',
+      },
+      {
+        title: 'Задайте допустимые условия',
+        text: 'Руководитель определяет пределы рассрочки, скидок и отсрочки. Они ограничивают предложения агента.',
+        target: 'css:#workspace-main .ms-card h2',
+      },
+      {
+        title: 'Согласуйте предложение',
+        text: 'Проверьте сумму, срок и полномочия. Предложение, согласование и исполнение остаются отдельными действиями.',
+        target: 'css:#workspace-main .ms-card .button',
+      },
+    ],
+  },
+  legal: {
+    name: 'Претензии и суд',
+    steps: [
+      {
+        title: 'Откройте юридическое дело',
+        text: 'Выберите задолженность. Дело объединяет счета по договору, документы и историю общения.',
+        target: 'css:#workspace-main .page-heading h1',
+      },
+      {
+        title: 'Проверьте основания',
+        text: 'Заполните факты по договору и должнику, приложите доказательства и проверьте сроки.',
+        target: 'css:#workspace-main .legal-tabs',
+      },
+      {
+        title: 'Подготовьте следующий документ',
+        text: 'Выполните расчёт, проверьте комплектность и сформируйте документ. Перед отправкой его проверяет ответственный юрист.',
+        target: 'css:#workspace-main .legal-tabs',
+      },
+    ],
+  },
+  agent: {
+    name: 'Разбор ответов',
+    steps: [
+      {
+        title: 'Выберите счёт и ответ',
+        text: 'Укажите счёт и добавьте полученное сообщение покупателя.',
+        target: 'css:#workspace-main select',
+      },
+      {
+        title: 'Проверьте факты',
+        text: 'Сравните извлечённые сумму, дату и условие с исходным ответом. Спорные условия передаются ответственному.',
+        target: 'css:#workspace-main textarea',
+      },
+      {
+        title: 'Продолжите работу по делу',
+        text: 'Зафиксируйте согласованное действие. Сообщение об оплате направляется на сверку, а не закрывает долг автоматически.',
+        target: 'css:#workspace-main .page-heading h1',
+      },
+    ],
+  },
+  settings: {
+    name: 'Настройки',
+    steps: [
+      {
+        title: 'Укажите реквизиты',
+        text: 'Название компании, отправитель и платёжные реквизиты используются при подготовке писем.',
+        target: 'css:#workspace-main .settings-panel h2',
+      },
+      {
+        title: 'Подключите почту',
+        text: 'Оставьте заявку на подключение и проверьте отправителя. До подключения можно готовить и скачивать письма.',
+        target: 'css:#workspace-main .mail-setup h2',
+      },
+      {
+        title: 'Управляйте данными компании',
+        text: 'Здесь можно отправить запрос на удаление рабочего пространства. Сначала потребуется подтвердить полномочия и объём удаления.',
+        target: 'css:#workspace-data-title',
       },
     ],
   },
@@ -303,7 +475,11 @@ export function WorkflowOnboarding({
     let revealFrame = 0;
     function visibleTarget(name: string) {
       return (
-        Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${name}"]`)).find(
+        Array.from(
+          document.querySelectorAll<HTMLElement>(
+            name.startsWith('css:') ? name.slice(4) : `[data-tour="${name}"]`
+          )
+        ).find(
           (element) =>
             element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden'
         ) || null

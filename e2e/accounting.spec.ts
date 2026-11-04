@@ -78,7 +78,7 @@ test('accounting source mapping, discrepancy and approved evidence persist witho
   await expect(page.getByText(/Итоговая строка не является контрагентом/)).toBeVisible();
   const preview = page
     .locator('.ops-preview')
-    .filter({ has: page.getByRole('columnheader', { name: 'СЕЙЧАС В РЕЕСТРЕ', exact: true }) });
+    .filter({ has: page.getByRole('columnheader', { name: 'Сейчас в реестре', exact: true }) });
   const buyer = preview.getByRole('row').filter({ hasText: 'ООО Берёзка' });
   await expect(buyer).toContainText('800 ₽');
   await expect(buyer).toContainText('700 ₽');

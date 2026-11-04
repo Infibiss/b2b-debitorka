@@ -304,7 +304,7 @@ export function PortfolioDesk({
     <section className="portfolio-desk" data-tour="audit-content">
       <div className="page-heading ops-heading">
         <div>
-          <h1>Аудит дебиторки.</h1>
+          <h1>Аудит дебиторки</h1>
           <p>Сверьте суммы, проверьте документы и выберите следующий шаг по каждому долгу.</p>
         </div>
         <div className="portfolio-actions" data-tour="audit-actions">
@@ -413,27 +413,27 @@ export function PortfolioDesk({
           )}
           <div className="portfolio-metrics">
             <article>
-              <span>ОСТАЛОСЬ К ОПЛАТЕ</span>
+              <span>Осталось к оплате</span>
               <strong>{money(report.totals.outstanding)}</strong>
               <small>
-                {report.totals.invoice_count} счетов · {report.totals.counterparty_count}{' '}
-                контрагентов
+                Счетов: {report.totals.invoice_count} · Контрагентов:{' '}
+                {report.totals.counterparty_count}
               </small>
             </article>
             <article>
-              <span>ПРОСРОЧЕНО</span>
+              <span>Просрочено</span>
               <strong>{money(report.totals.overdue)}</strong>
-              <small>{report.totals.urgent_count} счетов требуют срочной проверки</small>
+              <small>Срочная проверка: {report.totals.urgent_count}</small>
             </article>
             <article>
-              <span>НУЖНО СВЕРИТЬ</span>
+              <span>Нужно сверить</span>
               <strong>{report.totals.discrepancies}</strong>
-              <small>расхождений с учётными остатками</small>
+              <small>Расхождения с остатками учёта</small>
             </article>
             <article>
-              <span>НУЖНЫ ДОКУМЕНТЫ</span>
+              <span>Нужны документы</span>
               <strong>{report.totals.missing_documents}</strong>
-              <small>счетов с неполным комплектом</small>
+              <small>Счета с неполным комплектом</small>
             </article>
           </div>
           {report.findings.length > 0 && (
@@ -526,7 +526,7 @@ export function PortfolioDesk({
             <div className="portfolio-detail" key={`${report.id}:${item.invoice_id}`}>
               <div className="ops-card-heading">
                 <div>
-                  <span className="page-date">СЧЁТ № {item.number}</span>
+                  <span className="page-date">Счёт № {item.number}</span>
                   <h2>{item.company}</h2>
                   <p>{item.next_action.detail}</p>
                 </div>

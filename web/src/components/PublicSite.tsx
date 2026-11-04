@@ -99,6 +99,9 @@ function Header() {
         <a className="pub-login" href="/app?mode=login">
           Войти <ArrowUpRight size={16} aria-hidden="true" />
         </a>
+        <a className="pub-nav-demo" href="/demo">
+          Заказать демонстрацию
+        </a>
       </nav>
     </header>
   );
@@ -357,6 +360,20 @@ function Home() {
               <span>{text}</span>
             </div>
           ))}
+        </div>
+      </section>
+      <section className="pub-final-cta" aria-labelledby="pub-final-cta-title">
+        <div>
+          <h2 id="pub-final-cta-title">Начните получать оплату вовремя</h2>
+          <p>
+            Соберите задолженность в одном реестре, определите следующий шаг и держите
+            договорённости с клиентами под контролем.
+          </p>
+        </div>
+        <div className="pub-final-cta-action">
+          <p>14 дней бесплатно</p>
+          <Button href="/start?plan=trial">Попробовать бесплатно</Button>
+          <span>Без карты и автоматического продления</span>
         </div>
       </section>
     </>
@@ -731,9 +748,7 @@ function Access() {
     [error, setError] = useState(''),
     [order, setOrder] = useState<Order | null>(null),
     [complete, setComplete] = useState(false),
-    [cancel, setCancel] = useState(false),
-    [deleting, setDeleting] = useState(false),
-    [deleted, setDeleted] = useState(false);
+    [cancel, setCancel] = useState(false);
   async function load(s: Session) {
     setCsrf(s.csrf_token);
     setSession(s);
@@ -857,28 +872,6 @@ function Access() {
     try {
       setAccount(await post<Account>('/commercial/cancel', { consent: true }));
       setCancel(false);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function requestDeletion(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    const d = new FormData(e.currentTarget);
-    try {
-      const request = await post<NonNullable<Account['deletion_request']>>(
-        '/commercial/deletion-request',
-        {
-          confirmation: d.get('confirmation'),
-          consent: d.get('consent') === 'on',
-        }
-      );
-      setAccount((current) => (current ? { ...current, deletion_request: request } : current));
-      setDeleted(true);
-      setDeleting(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1104,44 +1097,14 @@ function Access() {
                     Отменить подписку или пробный период
                   </button>
                 )}
-                <h3>Данные организации</h3>
-                {deleted || account.deletion_request ? (
-                  <p role="status">
-                    Запрос на удаление зарегистрирован. Мы свяжемся с вами для проверки и уточнения
-                    объёма удаления. Номер запроса: {account.deletion_request?.id}.
-                  </p>
-                ) : deleting ? (
-                  <form onSubmit={requestDeletion}>
-                    <p>
-                      Запрос относится к данным вашей организации. Удаление выполняется после
-                      проверки полномочий и обязательных сроков хранения.
-                    </p>
-                    <label>
-                      Введите УДАЛИТЬ
-                      <input name="confirmation" required pattern="УДАЛИТЬ" />
-                    </label>
-                    <label className="pub-check">
-                      <input name="consent" type="checkbox" required />
-                      <span>Подтверждаю отправку запроса от имени организации.</span>
-                    </label>
-                    <button className="pub-button" disabled={busy}>
-                      Отправить запрос
-                    </button>
-                    <button
-                      type="button"
-                      className="pub-text-button"
-                      onClick={() => setDeleting(false)}
-                    >
-                      Вернуться
-                    </button>
-                  </form>
-                ) : (
-                  <button className="pub-text-button" onClick={() => setDeleting(true)}>
-                    Запросить удаление данных
-                  </button>
-                )}
               </>
             )}
+            <hr />
+            <h3>Данные организации</h3>
+            <p>Запрос на удаление данных можно отправить в настройках рабочего кабинета.</p>
+            <a className="pub-text-link" href="/app?mode=login&section=settings#workspace-data">
+              Управлять данными в настройках <ArrowRight size={18} aria-hidden="true" />
+            </a>
           </>
         ) : complete ||
           (planId === 'trial' && account?.status === 'trial') ||

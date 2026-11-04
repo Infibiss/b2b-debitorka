@@ -31,7 +31,7 @@ test('portfolio audit ties documents, deadlines and payment to immutable reports
   const inv = await response.json();
   await page.goto('/app');
   await page.getByRole('button', { name: 'Аудит', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Аудит дебиторки.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Аудит дебиторки', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Собрать аудит', exact: true }).click();
   const row = page.locator('.portfolio-row').filter({ hasText: 'AUDIT-42' });
   await expect(row).toContainText('Проверить должника');

@@ -11,7 +11,7 @@
 .auth-page .auth-recovery-link {
   display: inline-flex;
   margin-top: 20px;
-  padding: 5px 0;
+  padding: 4px 0;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -22,11 +22,11 @@
   max-width: 420px;
 }
 .auth-page .auth-box h2 {
-  font-size: clamp(28px, 3vw, 36px);
+  font-size: 20px;
   line-height: 1.2;
 }
 .auth-page .auth-box > p {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
   margin-top: 12px;
 }
@@ -39,11 +39,11 @@
 }
 .auth-page .auth-form .field input {
   min-height: 48px;
-  font-size: 15px;
+  font-size: 14px;
 }
 .auth-page .auth-form .button {
   min-height: 48px;
-  font-size: 15px;
+  font-size: 14px;
 }
 .auth-page .auth-aside > div {
   margin-block: auto;
@@ -61,11 +61,11 @@
   padding-block: 40px;
 }
 .auth-page .recovery-result {
-  padding: 18px;
-  background: #edf4ee;
-  border: 1px solid #cbdcce;
+  padding: 20px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  color: #214d35;
+  color: var(--ink);
 }
 .auth-page .recovery-signin {
   width: 100%;
@@ -74,14 +74,14 @@
 .support-contact > a {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: #365846;
+  gap: 8px;
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 .support-contact > p {
-  color: #647166;
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 .workspace .settings-form {
   width: 100%;
@@ -89,10 +89,10 @@
 }
 .workspace .settings-panel {
   width: 100%;
-  padding: 28px;
-  background: #fff;
-  border-color: #dde2d8;
-  border-radius: 14px;
+  padding: 24px;
+  background: var(--surface);
+  border-color: var(--line);
+  border-radius: 12px;
   margin-bottom: 24px;
 }
 .workspace .settings-panel .form-grid {
@@ -103,30 +103,30 @@
 }
 .workspace .settings-intro h2 {
   font-size: 20px;
-  color: #253e31;
+  color: var(--ink);
 }
 .workspace .settings-intro p {
   font-size: 14px;
   line-height: 1.6;
-  color: #657267;
+  color: var(--text-secondary);
 }
 .workspace .settings-panel .field {
   font-size: 14px;
-  color: #384c3f;
+  color: var(--ink);
 }
 .workspace .settings-panel .field input,
 .workspace .settings-panel .field textarea {
-  font-size: 15px;
-  color: #233a2b;
-  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--ink);
+  padding: 12px 16px;
   min-width: 0;
-  border-color: #d5dcd1;
-  background: #fff;
+  border-color: var(--line);
+  background: var(--surface);
 }
 .workspace .settings-panel .form-note {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
-  color: #657267;
+  color: var(--text-secondary);
 }
 .workspace .settings-save {
   display: flex;
@@ -135,21 +135,21 @@
   margin: 24px 0 32px;
 }
 .workspace .settings-save > span {
-  font-size: 13px;
-  color: #657267;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 .workspace .mail-setup {
-  padding: 28px;
-  border: 1px solid #dde2d8;
-  background: #fff;
-  border-radius: 14px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
 }
 .mail-setup .mail-setup-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 20px;
 }
 .mail-setup .mail-setup-heading h2 {
@@ -157,30 +157,32 @@
   font-size: 20px;
 }
 .mail-setup .mail-setup-badge {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: 7px;
-  font-size: 13px;
+  font-size: 12px;
 }
 .mail-setup .is-warning,
 .workspace .mail-connection.is-warning {
-  background: #fff6df;
-  color: #73531e;
-  border-color: #ead7a6;
+  --notice-line: var(--warning-line);
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  border-color: var(--warning-line);
 }
 .workspace .mail-connection.is-warning strong,
 .workspace .mail-connection.is-warning p {
-  color: #73531e;
+  color: var(--warning-ink);
 }
 .mail-setup .is-success {
-  background: #edf4ee;
-  color: #285637;
-  border-color: #cbdcce;
+  --notice-line: var(--success-line);
+  background: var(--success-bg);
+  color: var(--success-ink);
+  border-color: var(--success-line);
 }
 .mail-setup .mail-setup-status {
-  padding: 16px 18px;
-  border: 1px solid;
+  padding: 16px 20px;
+  border: 1px solid var(--notice-line, var(--line));
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--type-control);
   line-height: 1.65;
 }
 .mail-setup .ops-form {
@@ -188,23 +190,23 @@
   row-gap: 20px;
 }
 .mail-setup .mail-setup-request {
-  padding: 18px 0;
+  padding: 20px 0;
   font-size: 14px;
   line-height: 1.7;
 }
 .mail-setup .mail-setup-request p {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .mail-setup .mail-status-refresh,
 .mail-setup .mail-return-link {
   display: inline-flex;
-  margin-top: 18px;
-  padding: 6px 0;
+  margin-top: 20px;
+  padding: 8px 0;
   background: transparent;
   border: 0;
-  color: #365846;
+  color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--type-control);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -231,9 +233,9 @@
     max-width: 440px;
   }
   .auth-page .auth-box h2 {
-    font-size: 28px;
+    font-size: 20px;
   }
   .auth-page .auth-back {
-    font-size: 13px;
+    font-size: 14px;
   }
 }

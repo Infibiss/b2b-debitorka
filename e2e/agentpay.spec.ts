@@ -70,7 +70,9 @@ test('public website is readable, interactive, and offers a real signup', async 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('h1')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Попробовать бесплатно', exact: true })).toBeVisible();
+  await expect(
+    page.locator('.pub-hero').getByRole('link', { name: 'Попробовать бесплатно', exact: true })
+  ).toBeVisible();
   const lastStep = page.getByRole('tab', { name: /Подтверждать оплату/ });
   await lastStep.click();
   await expect(lastStep).toHaveAttribute('aria-selected', 'true');
@@ -83,7 +85,10 @@ test('public website is readable, interactive, and offers a real signup', async 
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('link', { name: 'Попробовать бесплатно', exact: true }).click();
+  await page
+    .locator('.pub-hero')
+    .getByRole('link', { name: 'Попробовать бесплатно', exact: true })
+    .click();
   await expect(page.getByLabel('Компания', { exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 });

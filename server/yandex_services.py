@@ -24,8 +24,10 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from langgraph.graph import END, START, StateGraph
 from pydantic import Field, StrictBool
 
-from . import agent_policy, integration_providers as transport
+from . import agent_policy, finance, integration_providers as transport
 from .models import Input
+from .business_time import business_today
+from .voice_calls import CallRequest, get_voice_call_adapter
 
 MAX_FILE = 1_000_000
 MAX_TEXT = 30_000
@@ -210,6 +212,12 @@ class TextInput(Input):
     text:str=Field(min_length=1,max_length=1000)
     invoice_id:str=Field(min_length=1,max_length=100)
     request_id:str=Field(min_length=1,max_length=100,pattern=r'^[A-Za-z0-9_-]+$')
+
+
+class CallInput(Input):
+    invoice_id:str=Field(min_length=1,max_length=100)
+    phone:str=Field(min_length=8,max_length=40)
+    contact_authorized:StrictBool=False
 
 
 def _invoice(connection,tenant,invoice_id):
@@ -419,6 +427,53 @@ def create_router(ctx):
                     state='permission_required' if last['error_code'] in ('permission','authentication') else last['status']
                 result[kind]={'configured':configured,'status':state,'checked_at':last['created_at'] if last else None,'required_roles':roles,'message':'Нужны ключ, привязка организации, включение сервиса и права Яндекса' if not configured else 'Права проверяются фактическим запросом; успешное подключение не подтверждено' if state=='not_checked' else 'Проверьте роли и область API-ключа в Yandex Cloud' if state=='permission_required' else 'Последний результат сохранён','daily_user_limit':USER_DAILY_LIMIT,'daily_tenant_limit':TENANT_DAILY_LIMIT}
         return result
+
+    @router.get('/voice/readiness')
+    def call_readiness(user=Depends(ctx.get_user)):
+        return {'speech_configured':_configured(user['tenant_id'],'voice'),
+                'telephony':get_voice_call_adapter().readiness(user['tenant_id']).public()}
+
+    @router.post('/voice/calls/prepare')
+    def prepare_call(data:CallInput,user=Depends(ctx.get_user)):
+        # This is a read-only preparation, never a dispatch or browser dialogue.
+        # A checked box does not override the organization's contact policy.
+        phone=re.sub(r'[\s()\-]','',data.phone)
+        if not re.fullmatch(r'\+[1-9][0-9]{7,14}',phone):
+            raise HTTPException(422,'Укажите телефон в международном формате, например +7 999 123-45-67')
+        with ctx.database(ctx.config) as connection:
+            invoice=_invoice(connection,user['tenant_id'],data.invoice_id)
+            if not data.contact_authorized:
+                raise HTTPException(409,'Подтвердите полномочия на контакт и принадлежность номера контрагенту')
+            if invoice['status'] in ('disputed','paused'):
+                raise HTTPException(409,'Контакт приостановлен: сначала разрешите спор или снимите паузу')
+            # Match the canonical financial contract used by invoice views.
+            # Missing adjustment totals must never be interpreted as zero.
+            if any(type(invoice.get(key)) is not int for key in ('amount','adjustment_amount','paid_amount')):
+                raise HTTPException(409,'Не подтверждены актуальные финансовые данные счёта')
+            if finance.balance(invoice)<=0:
+                raise HTTPException(409,'Счёт оплачен: звонок об оплате не требуется')
+            if not invoice.get('counterparty_id'):
+                raise HTTPException(409,'Не подтверждены разрешения контрагента на контакт')
+            counterparty=connection.execute('SELECT hold,contact_allowed,mandate_expires_on FROM finance_counterparties WHERE id=? AND tenant_id=?',(invoice['counterparty_id'],user['tenant_id'])).fetchone()
+            if not counterparty or counterparty['hold'] or not counterparty['contact_allowed']:
+                raise HTTPException(409,'Контакт по контрагенту приостановлен или не разрешён')
+            if counterparty['mandate_expires_on'] and counterparty['mandate_expires_on']<str(business_today()):
+                raise HTTPException(409,'Срок разрешения на контакт истёк')
+        request=CallRequest(user['tenant_id'],user['id'],data.invoice_id,phone,data.contact_authorized)
+        readiness=get_voice_call_adapter().readiness(request.tenant_id)
+        # Reuse the existing bounded conversation workflow. The opening stays
+        # behind its identity gate and performs no STT, model or TTS request.
+        dialogue=DIALOGUE_GRAPH.invoke({'transcript':'','invoice':invoice,'history':[],
+            'identity_confirmed':False,'opening':True,'previous':{},'deadline':time.monotonic()+1})
+        # Preparing stays non-dispatching even after a real adapter is installed.
+        return {'status':'prepared' if readiness.ready else 'connection_required',
+                'call_started':False,'invoice_id':request.invoice_id,'phone':request.phone,
+                'checks':{'number_format_valid':True,'contact_allowed':True,'balance_open':True},
+                'telephony':readiness.public(),'speech_configured':_configured(user['tenant_id'],'voice'),
+                'next_action':'review_dispatch' if readiness.ready else 'configure_telephony',
+                'opening':dialogue['reply'],'dialogue_state':dialogue['dialogue_state'],
+                'graph_nodes':dialogue['graph_nodes'],
+                'ledger_effect':'none'}
 
     @router.get('/documents')
     def documents(user=Depends(ctx.get_user)):

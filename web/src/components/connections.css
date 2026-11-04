@@ -1,37 +1,37 @@
 .connections-desk .connections-catalogue {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .connections-desk .connections-catalogue button {
   display: grid;
   align-content: start;
   gap: 8px;
   min-width: 0;
-  padding: 18px 16px;
+  padding: 20px 16px;
   text-align: left;
   font: inherit;
-  color: #53634a;
-  background: #fafbf6;
-  border: 1px solid #dce3d1;
+  color: var(--ink);
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
 }
 .connections-desk .connections-catalogue button[aria-pressed='true'] {
-  border-color: #567548;
-  box-shadow: inset 0 0 0 1px #567548;
-  background: #edf3e5;
+  border-color: var(--line);
+  box-shadow: inset 0 0 0 1px var(--green);
+  background: var(--selection-bg);
 }
 .connections-desk .connections-catalogue button strong {
-  color: #294c35;
-  font-size: 17px;
+  color: var(--ink);
+  font-size: 16px;
 }
 .connections-desk .connections-catalogue button span {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .connections-desk .connections-catalogue button small {
-  font-size: 11px;
+  font-size: 12px;
 }
 .connections-desk .connections-detail {
   display: grid;
@@ -46,16 +46,16 @@
 }
 .connections-desk .connections-disclosure {
   min-width: 0;
-  border: 1px solid #dce3d1;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fafbf6;
+  background: var(--surface);
 }
 .connections-desk .connections-disclosure > summary {
   cursor: pointer;
   padding: 16px 20px;
-  color: #36593d;
-  font-size: 13px;
-  font-weight: 650;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.5;
 }
 .connections-desk .connections-disclosure > .ms-card,
@@ -68,8 +68,8 @@
 }
 .connections-desk .connections-catalogue button:focus-visible,
 .connections-desk .connections-disclosure > summary:focus-visible {
-  outline: 2px solid #36593d;
-  outline-offset: 3px;
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 .connections-desk .connections-catalogue button:disabled {
   cursor: wait;
@@ -79,13 +79,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
-  margin-top: 14px;
-  color: #68775e;
-  font-size: 12px;
+  margin-top: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
   line-height: 1.7;
 }
 .connections-desk .connections-manual a {
-  color: #36593d;
+  color: var(--ink);
   text-underline-offset: 3px;
 }
 .connections-desk .connections-detail > .ms-card > h2 {
@@ -102,10 +102,10 @@
     gap: 8px;
   }
   .connections-desk .connections-catalogue button {
-    padding: 14px 12px;
+    padding: 16px 12px;
   }
   .connections-desk .connections-disclosure > summary {
-    padding: 14px 16px;
+    padding: 16px 16px;
   }
   .connections-desk .connections-disclosure > .ms-card,
   .connections-desk .connections-disclosure > .connection-access,

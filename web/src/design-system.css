@@ -1,17 +1,18 @@
-/* Shared semantic tokens and controls. See docs/design-system.md. */
+/* Mandato workspace contract. Components own layout; these tokens own hierarchy. */
 :root {
   --surface: #ffffff;
-  --surface-subtle: #f7f8f4;
-  --text-secondary: #59675e;
-  --success-bg: #edf5e9;
-  --success-ink: #315b39;
-  --success-line: #cbdcc3;
-  --warning-bg: #fff7e5;
+  --surface-subtle: #f2f4f2;
+  --text-secondary: #56615a;
+  --selection-bg: #e9efeb;
+  --success-bg: #edf5ef;
+  --success-ink: #315d3e;
+  --success-line: #cbdcce;
+  --warning-bg: #fff8e9;
   --warning-ink: #79551b;
-  --warning-line: #e8d29c;
-  --danger-bg: #fff0ed;
-  --danger-ink: #9c3f32;
-  --danger-line: #e6c0b8;
+  --warning-line: #e8d7af;
+  --danger-bg: #fff1ee;
+  --danger-ink: #963e32;
+  --danger-line: #e6c5bf;
   --warning-border: var(--warning-line);
   --warning-text: var(--warning-ink);
   --success-border: var(--success-line);
@@ -20,129 +21,285 @@
   --danger-text: var(--danger-ink);
   --radius-control: 8px;
   --radius-panel: 12px;
+  --type-body: 16px;
+  --type-control: 14px;
+  --type-caption: 12px;
+  --type-panel-title: 20px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-/* A single inset arrow leaves room for the selected label at every width. */
-select:not([multiple]):not([size]) {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%2359675e' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 18px;
-  padding-right: 42px;
-  border-radius: var(--radius-control);
-  min-height: 42px;
-  max-width: 100%;
-  text-overflow: ellipsis;
+.workspace {
+  --paper: #f6f7f6;
+  --ink: #202923;
+  --muted: #68746c;
+  --line: #dce2dd;
+  --border: var(--line);
+  --green: #183d31;
+  --green-dark: var(--green);
+  --green-light: var(--selection-bg);
+  --wf-line: var(--line);
+  --wf-muted: var(--text-secondary);
+  --wf-green: var(--green);
+  color: var(--ink);
+  font-size: var(--type-body);
+  font-weight: 400;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
-.workspace select:not([multiple]):not([size]) {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%2359675e' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 18px;
-  padding-right: 42px;
-}
-input[type='file'] {
-  width: 100%;
-  max-width: 100%;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-input[type='file']::file-selector-button {
-  border: 1px solid #b6c4b7;
-  border-radius: 6px;
-  background: #f0f4ed;
-  color: var(--green);
-  padding: 9px 14px;
-  margin-right: 14px;
-  font: inherit;
+.workspace :is(h1, h2, h3, h4, strong, b) {
   font-weight: 600;
-  cursor: pointer;
 }
-.workspace .ms-warning,
-.workspace .mail-connection.is-warning {
+.workspace :is(.page-heading h1, .wf-heading h1, .ops-heading h1) {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+}
+.workspace :is(.page-heading p, .wf-heading p) {
+  font-size: var(--type-control);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.workspace
+  :is(
+    .panel,
+    .ops-card,
+    .wf-panel,
+    .ms-card,
+    .settings-panel,
+    .mail-setup,
+    .yx-card,
+    .connection-access,
+    .modal
+  ) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+.workspace
+  :is(
+    .ops-card,
+    .wf-panel,
+    .ms-card,
+    .settings-panel,
+    .mail-setup,
+    .yx-card,
+    .connection-access,
+    .modal
+  ) {
+  padding: 24px;
+}
+.workspace
+  :is(
+    .panel-heading h2,
+    .ops-card h2,
+    .wf-panel-title h2,
+    .ms-card h2,
+    .settings-intro h2,
+    .mail-setup-heading h2,
+    .yx-card h2,
+    .connection-access h2
+  ) {
+  color: var(--ink);
+  font-size: var(--type-panel-title);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.workspace :is(.button, .button.small) {
+  min-height: 40px;
+  padding: 8px 16px;
+  gap: 8px;
+  border-radius: var(--radius-control);
+  font-size: var(--type-control);
+  font-weight: 500;
+  line-height: 1.5;
+}
+.workspace .button:hover {
+  transform: none;
+}
+.workspace .button-dark {
+  background: var(--green);
+  color: #fff;
+}
+.workspace .button-dark:hover {
+  background: #24513f;
+}
+.workspace :is(.button-outline, .button-lime) {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.workspace :is(.button-outline, .button-lime):hover {
+  background: var(--surface-subtle);
+}
+.workspace :is(.field, .form-note, .ops-muted, .ms-note, .wf-source-note) {
+  color: var(--text-secondary);
+  font-size: var(--type-control);
+  line-height: 1.6;
+}
+.workspace :is(.field input, .field textarea, .field select, .form-input) {
+  border-color: var(--line);
+  border-radius: var(--radius-control);
+  background-color: var(--surface);
+  color: var(--ink);
+  min-height: 44px;
+  padding: 12px;
+  font-size: var(--type-control);
+}
+.workspace :is(.field input, .field textarea, .field select):focus {
+  border-color: var(--green);
+}
+.workspace :is(.form-grid, .ms-fields, .legal-field-grid) {
+  gap: 20px;
+}
+.workspace .wf-management-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace .wf-management :is(.wf-switch strong, .wf-channel strong, .wf-member strong) {
+  font-size: var(--type-body);
+}
+.workspace
+  .wf-management
+  :is(
+    p,
+    label,
+    legend,
+    .wf-role,
+    .wf-member,
+    .wf-muted,
+    .wf-text-button,
+    .wf-pending,
+    .wf-invite-link,
+    .wf-weekdays span
+  ) {
+  font-size: var(--type-control);
+}
+.workspace :is(.wf-metric, .metric, .metric-featured) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.workspace :is(.wf-metric strong, .metric > strong) {
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.workspace :is(.wf-metric-top, .metric > div > span) {
+  color: var(--text-secondary);
+  font-size: var(--type-control);
+  font-weight: 400;
+}
+.workspace :is(.ms-forecast-grid article, .ms-proposal) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.workspace :is(.ms-neutral, .ms-partner-token, .ms-registry-coverage, .ops-badge) {
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  border-color: var(--line);
+}
+.workspace :is(.pill, .ms-status, .legal-status, .mail-setup-badge) {
+  font-size: var(--type-caption);
+  font-weight: 500;
+}
+.workspace :is(.ms-status, .ca-configured) {
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+}
+.workspace
+  :is(
+    .ms-success,
+    .ms-status-completed,
+    .ms-status-executed,
+    .legal-status-approved,
+    .legal-stage-closed,
+    .pill.green
+  ) {
+  color: var(--success-ink);
+  background: var(--success-bg);
+  border-color: var(--success-line);
+}
+.workspace
+  :is(
+    .ms-warning,
+    .mail-connection.is-warning,
+    .ms-status-unconfigured,
+    .ms-status-not_checked,
+    .ms-status-stale,
+    .ms-status-expired,
+    .ms-status-handoff,
+    .legal-status-draft,
+    .legal-status-stale,
+    .legal-stage-order_cancelled,
+    .pill.orange
+  ) {
   color: var(--warning-ink);
   background: var(--warning-bg);
   border-color: var(--warning-line);
 }
-.workspace .ms-error,
-.workspace .ms-errors,
-.workspace .form-error {
+.workspace
+  :is(
+    .ms-error,
+    .ms-errors,
+    .form-error,
+    .ms-status-unavailable,
+    .ms-status-failed,
+    .legal-status-changes_requested,
+    .pill.red
+  ) {
   color: var(--danger-ink);
   background: var(--danger-bg);
   border-color: var(--danger-line);
 }
-.workspace .ms-status-unconfigured,
-.workspace .ms-status-not_checked,
-.workspace .ms-status-stale,
-.workspace .ms-status-expired {
-  color: var(--warning-ink);
+.workspace .wf-channel {
   background: var(--warning-bg);
+  border-color: var(--warning-line);
+  color: var(--warning-ink);
 }
-.workspace .ms-status-unavailable,
-.workspace .ms-status-failed {
-  color: var(--danger-ink);
-  background: var(--danger-bg);
+.workspace .wf-channel :is(strong, p) {
+  color: var(--warning-ink);
+}
+.workspace .wf-channel-ok {
+  background: var(--success-bg);
+  border-color: var(--success-line);
+  color: var(--success-ink);
+}
+.workspace .wf-channel-ok :is(strong, p) {
+  color: var(--success-ink);
+}
+.workspace :is(.operations-actions, .ms-actions) {
+  gap: 12px;
 }
 .workspace .portfolio-dot.review {
   background: #ad7c2c;
 }
-.legal-case-next {
-  padding: 18px 20px;
-  margin: 16px 0;
-  border: 1px solid var(--warning-line);
-  border-radius: var(--radius-panel);
-  background: var(--warning-bg);
-  color: var(--warning-ink);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
+.workspace .lucide {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.5;
 }
-.legal-case-next p {
-  flex: 1 1 220px;
-  font-size: 14px;
-  line-height: 1.6;
+.workspace :is(.workspace-operations, .icon-button, .pill) .lucide {
+  width: 16px;
+  height: 16px;
 }
-.workspace .ops-badge {
-  background: #eef0eb;
-  color: var(--text-secondary);
+.workspace :focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
-.workspace .legal-status-approved,
-.workspace .legal-stage-closed {
-  background: var(--success-bg);
-  color: var(--success-ink);
+/* Search and file controls expose one ring on their visible wrapper. */
+.workspace :is(.wf-search, .search-input):focus-within {
+  border-color: var(--green);
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
-.workspace .legal-status-draft,
-.workspace .legal-status-stale,
-.workspace .legal-stage-order_cancelled {
-  background: var(--warning-bg);
-  color: var(--warning-ink);
+.workspace :is(.wf-search, .search-input) input:focus-visible,
+.workspace :is(.file-picker-input, .documents-upload input, .yx-upload input):focus-visible {
+  outline: none;
+  box-shadow: none;
 }
-.workspace .legal-status-changes_requested {
-  background: var(--danger-bg);
-  color: var(--danger-ink);
-}
-.workspace .pill.green {
-  background: var(--success-bg);
-  color: var(--success-ink);
-}
-.workspace .pill.orange {
-  background: var(--warning-bg);
-  color: var(--warning-ink);
-}
-.workspace .pill.red {
-  background: var(--danger-bg);
-  color: var(--danger-ink);
-}
-.workspace .operations-actions,
-.workspace .ms-actions {
-  gap: 12px;
+.workspace :is(.wf-search, .search-input) input {
+  font-size: var(--type-control);
 }
 .workspace summary {
   list-style: none;
@@ -159,134 +316,95 @@ input[type='file']::file-selector-button {
 }
 .workspace details > summary:not(:has(svg))::after {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg);
-  flex: 0 0 7px;
+  flex: 0 0 8px;
   margin: -4px 4px 0 auto;
 }
 .workspace details[open] > summary:not(:has(svg))::after {
   transform: rotate(225deg);
   margin-top: 4px;
 }
-@media (max-width: 600px) {
-  .form-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .field {
-    min-width: 0;
-  }
+/* A single inset arrow leaves room for the selected label at every width. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%2356615a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 44px;
+  border-radius: var(--radius-control);
+  min-height: 44px;
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
-
-/* Workspace typography: body 16, supporting text/controls 14, captions 12. */
-:root {
-  --type-body: 16px;
-  --type-control: 14px;
-  --type-caption: 12px;
-  --type-panel-title: 20px;
+.workspace select:not([multiple]):not([size]) {
+  padding-right: 44px;
 }
-.workspace .wf-management-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-.workspace .wf-management {
-  font-size: var(--type-body);
-}
-.workspace
-  .wf-management
-  :is(
-    p,
-    label,
-    small,
-    legend,
-    .wf-role,
-    .wf-member,
-    .wf-muted,
-    .wf-text-button,
-    .wf-pending,
-    .wf-invite-link
-  ) {
-  font-size: var(--type-control);
-  line-height: 1.65;
-  color: var(--text-secondary);
-}
-.workspace .wf-management :is(.wf-panel-title h2, .wf-mailbox-panel h2) {
-  font-size: var(--type-panel-title);
-}
-.workspace .wf-management :is(.wf-switch strong, .wf-channel strong, .wf-member strong) {
-  font-size: var(--type-body);
-}
-.workspace .wf-management :is(input, select, textarea, button, .wf-weekdays span) {
-  font-size: var(--type-control);
-}
-.workspace .wf-management .wf-panel {
+input[type='file'] {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
   background: var(--surface);
-  padding: 28px;
-}
-.workspace .mandato-services :is(.ms-card, .ms-forecast-grid article, .ms-proposal) {
-  background: var(--surface);
-  border: 1px solid #dce3d5;
-}
-.workspace .mandato-services .ms-neutral {
-  background: var(--surface-subtle);
   color: var(--text-secondary);
+  font-size: 14px;
 }
-.workspace .mandato-services .ms-status {
+input[type='file']::file-selector-button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
   background: var(--surface-subtle);
-  color: var(--text-secondary);
+  color: var(--ink);
+  padding: 8px 12px;
+  margin-right: 12px;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
 }
-.workspace .mandato-services :is(.ms-status-completed, .ms-status-executed) {
-  background: var(--success-bg);
-  color: var(--success-ink);
-}
-.workspace
-  .mandato-services
-  :is(.ms-status-unavailable, .ms-status-handoff, .ms-status-stale, .ms-status-expired) {
+.legal-case-next {
+  padding: 16px 20px;
+  margin: 16px 0;
+  border: 1px solid var(--warning-line);
+  border-radius: var(--radius-panel);
   background: var(--warning-bg);
   color: var(--warning-ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
 }
-.workspace .mandato-services .ms-success {
-  background: var(--success-bg);
-  color: var(--success-ink);
-}
-.workspace .wf-management .wf-channel {
-  background: var(--warning-bg);
-  border-color: var(--warning-line);
-}
-.workspace .wf-management .wf-channel :is(strong, p) {
-  color: var(--warning-ink);
-}
-.workspace .wf-management .wf-channel-ok {
-  background: var(--success-bg);
-  border-color: var(--success-line);
-}
-.workspace .wf-management .wf-channel-ok :is(strong, p) {
-  color: var(--success-ink);
+.legal-case-next p {
+  flex: 1 1 220px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 .workspace-command-header .workspace-section-help {
   display: inline-flex;
+  justify-self: start;
+  width: fit-content;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 9px 12px;
-  border: 1px solid #dce3d5;
+  padding: 8px 12px;
+  min-height: 40px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
+  color: var(--text-secondary);
   background: var(--surface);
   font-size: var(--type-control);
   white-space: nowrap;
   margin: 0;
 }
-.workspace-section-help::before {
-  content: '?';
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font-size: 12px;
+.workspace-section-help::before,
+.workspace-section-help::after {
+  content: none;
 }
-@media (min-width: 1150px) {
+@media (min-width: 1200px) {
   .workspace .workspace-command-header {
     grid-template-columns: auto minmax(0, 1fr) auto;
     min-height: 72px;
@@ -296,12 +414,12 @@ input[type='file']::file-selector-button {
   .workspace-command-header .workspace-operations {
     justify-content: center;
     flex-wrap: nowrap;
-    gap: 5px;
+    gap: 4px;
   }
   .workspace-command-header .workspace-operations button {
-    padding: 9px 8px;
-    font-size: 12px;
-    gap: 5px;
+    padding: 8px;
+    font-size: 14px;
+    gap: 4px;
     white-space: nowrap;
   }
   .workspace-command-header .workspace-header-actions {
@@ -310,20 +428,23 @@ input[type='file']::file-selector-button {
     gap: 8px;
     white-space: nowrap;
   }
-  .workspace-command-header .server-status {
-    font-size: 12px;
-  }
 }
-@media (max-width: 1149px) and (min-width: 701px) {
+@media (min-width: 701px) and (max-width: 1199px) {
   .workspace .workspace-command-header {
     grid-template-columns: 1fr auto;
-    gap: 10px;
-    padding: 12px 20px;
+    gap: 12px;
+    padding: 12px 24px;
   }
   .workspace-command-header .workspace-operations {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-content: center;
+    gap: 4px;
+  }
+  .workspace-command-header .workspace-operations button {
+    font-size: 14px;
+    padding: 8px;
+    gap: 4px;
   }
   .workspace-command-header .workspace-header-actions {
     grid-column: 2;
@@ -331,24 +452,42 @@ input[type='file']::file-selector-button {
   }
 }
 @media (max-width: 700px) {
-  .workspace .wf-management .wf-panel {
+  .workspace :is(.page-heading h1, .wf-heading h1, .ops-heading h1) {
+    font-size: 28px;
+  }
+  .workspace
+    :is(
+      .ops-card,
+      .wf-panel,
+      .ms-card,
+      .settings-panel,
+      .mail-setup,
+      .yx-card,
+      .connection-access,
+      .modal
+    ) {
     padding: 20px;
   }
 }
-@media (min-width: 1150px) and (max-width: 1399px) {
+@media (max-width: 1399px) {
   .workspace-command-header .workspace-section-help {
     font-size: 0;
     width: 40px;
     height: 40px;
-    padding: 10px;
+    padding: 8px;
     gap: 0;
   }
+}
+@media (min-width: 1200px) and (max-width: 1399px) {
   .workspace-command-header .server-status {
     display: none;
   }
 }
-.workspace .mandato-services :is(.ms-partner-token, .ms-registry-coverage) {
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-  border-color: #dce3d5;
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .field {
+    min-width: 0;
+  }
 }

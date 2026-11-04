@@ -23,6 +23,7 @@ import {
   Scale,
   ClipboardCheck,
   PlugZap,
+  CircleHelp,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
@@ -57,6 +58,8 @@ import { navigate, useRouteField, WorkContext } from '../navigation';
 import { clearFormDrafts, hasFormDrafts, useFormDraft } from './useFormDraft';
 import { DocumentsDesk } from './DocumentsDesk';
 import { MailSetup } from './MailSetup';
+import WorkspaceDataSettings from './WorkspaceDataSettings';
+import { YandexDesk } from './YandexDesk';
 type Tab =
   | 'workflow'
   | 'management'
@@ -102,7 +105,6 @@ export function Workspace() {
   const [contextIds, setContextIds] = useState<string[]>([]);
   const [returnCase, setReturnCase] = useState('');
   const [operationsOpen, setOperationsOpen] = useState(false);
-  const [helpSection, setHelpSection] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [intent] = useRouteField<string>('intent', '');
   const [session, setSession] = useState<Session | null>(null),
@@ -120,7 +122,6 @@ export function Workspace() {
     if (!session || !intent) return;
     if (intent === 'import') setModal('import');
     if (intent === 'service') {
-      setHelpSection('service');
       setHelpOpen(true);
     }
     navigate({ intent: null }, true);
@@ -312,11 +313,10 @@ export function Workspace() {
             <button
               className="section-help workspace-section-help"
               aria-label="Как работать в разделе"
-              onClick={() => {
-                setHelpSection('');
-                setHelpOpen(true);
-              }}
+              title="Помощь по разделу"
+              onClick={() => setTourReplay((value) => value + 1)}
             >
+              <CircleHelp size={18} aria-hidden="true" />
               Помощь по разделу
             </button>
             <button
@@ -368,7 +368,7 @@ export function Workspace() {
               replayToken={tourReplay}
               generalReplayToken={generalTourReplay}
               onSectionChange={setTab}
-              section={parentSection(tab)}
+              section={tab}
               contextKey={tab}
             />
             {tab === 'management' && (
@@ -512,6 +512,7 @@ export function Workspace() {
                 onOpen={setSelected}
                 smtp={settings?.smtp_configured || false}
                 onReply={() => setTab('agent')}
+                notify={notify}
               />
             ) : settings ? (
               <SettingsPanel
@@ -530,19 +531,7 @@ export function Workspace() {
             )}
           </main>
         </div>
-        {helpOpen && (
-          <ContextHelp
-            section={helpSection || tab}
-            onOverview={() => {
-              setHelpOpen(false);
-              setTab(parentSection(tab));
-              setTourReplay((v) => v + 1);
-            }}
-            invoices={invoices}
-            notify={notify}
-            onClose={() => setHelpOpen(false)}
-          />
-        )}
+        {helpOpen && <ContextHelp onClose={() => setHelpOpen(false)} />}
         {modal === 'create' && <CreateInvoice onClose={() => setModal(null)} onDone={done} />}{' '}
         {modal === 'import' && <ImportInvoices onClose={() => setModal(null)} onDone={done} />}{' '}
         {selected && (
@@ -722,11 +711,11 @@ export function InvoiceTable({
       <table className="invoice-table">
         <thead>
           <tr>
-            <th>КОНТРАГЕНТ / СЧЁТ</th>
-            <th>ОСТАТОК</th>
-            <th>СРОК ОПЛАТЫ</th>
-            <th>СТАТУС</th>
-            <th>ПРИОРИТЕТ</th>
+            <th>Контрагент / счёт</th>
+            <th>Остаток</th>
+            <th>Срок оплаты</th>
+            <th>Статус</th>
+            <th>Приоритет</th>
             <th />
           </tr>
         </thead>
@@ -793,12 +782,15 @@ function Correspondence({
   onOpen,
   smtp,
   onReply,
+  notify,
 }: {
   invoices: Invoice[];
   onOpen: (id: string) => void;
   smtp: boolean;
   onReply: () => void;
+  notify: (text: string, error?: boolean) => void;
 }) {
+  const [mode, setMode] = useRouteField<'history' | 'calls'>('messagesTab', 'history');
   const active = invoices.filter(
     (i) => i.balance > 0 && i.status !== 'paused' && i.status !== 'disputed'
   );
@@ -806,69 +798,97 @@ function Correspondence({
     <>
       <div className="page-heading">
         <div>
-          <h1>Переписка с покупателями</h1>
-          <p>Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.</p>
-        </div>
-        <button className="button button-dark" onClick={onReply}>
-          Разобрать ответ
-          <ArrowRight size={15} />
-        </button>
-      </div>
-      <div className={`mail-connection ${smtp ? 'connected' : 'is-warning'}`}>
-        <Mail size={21} />
-        <div>
-          <strong>{smtp ? 'Почта подключена' : 'Почта не подключена'}</strong>
+          <h1>{mode === 'calls' ? 'Звонки покупателям' : 'Переписка с покупателями'}</h1>
           <p>
-            {smtp
-              ? 'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
-              : 'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'}
+            {mode === 'calls'
+              ? 'Свяжитесь с представителем контрагента по выбранному счёту.'
+              : 'Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.'}
           </p>
         </div>
-        {smtp ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
-      </div>
-      <CaseConversation invoices={invoices} onOpen={onOpen} />
-      <section className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Кому написать</h2>
-            <p>Открытые счета без споров и пауз</p>
-          </div>
-          <span className="count-badge">{active.length}</span>
-        </div>
-        {active.length ? (
-          <div className="correspondence-list">
-            {active.map((i) => (
-              <button key={i.id} onClick={() => onOpen(i.id)}>
-                <div className="company-avatar">
-                  <Mail size={17} />
-                </div>
-                <span>
-                  <strong>{i.company}</strong>
-                  <small>
-                    {i.number} · {i.email || 'Email не указан'}
-                  </small>
-                </span>
-                <b>{money(i.balance)}</b>
-                <span className="letter-action">
-                  Открыть счёт
-                  <ArrowUpRight size={15} />
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <span className="empty-icon">
-              <Mail size={25} />
-            </span>
-            <h3>Письма начинаются со счёта</h3>
-            <p>
-              Добавьте задолженность в реестр. В карточке можно подготовить письмо, выбрать тон и
-              согласовать отправку.
-            </p>
-          </div>
+        {mode !== 'calls' && (
+          <button className="button button-dark" onClick={onReply}>
+            Разобрать ответ
+            <ArrowRight size={15} />
+          </button>
         )}
-      </section>
+      </div>
+      <div className="ops-tabs" aria-label="Общение с контрагентами">
+        <button type="button" aria-pressed={mode !== 'calls'} onClick={() => setMode('history')}>
+          История и письма
+        </button>
+        <button type="button" aria-pressed={mode === 'calls'} onClick={() => setMode('calls')}>
+          Звонки
+        </button>
+      </div>
+      {mode === 'calls' ? (
+        <YandexDesk mode="voice" invoices={invoices} notify={notify} embedded />
+      ) : (
+        <>
+          <div className={`mail-connection ${smtp ? 'connected' : 'is-warning'}`}>
+            <Mail size={21} />
+            <div>
+              <strong>{smtp ? 'Почта подключена' : 'Почта не подключена'}</strong>
+              <p>
+                {smtp
+                  ? 'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
+                  : 'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'}
+              </p>
+            </div>
+            {smtp ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+            {!smtp && (
+              <button
+                className="button button-outline"
+                onClick={() => navigate({ section: 'settings' })}
+              >
+                Подключить почту
+              </button>
+            )}
+          </div>
+          <CaseConversation invoices={invoices} onOpen={onOpen} />
+          <section className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Кому написать</h2>
+                <p>Открытые счета без споров и пауз</p>
+              </div>
+              <span className="count-badge">{active.length}</span>
+            </div>
+            {active.length ? (
+              <div className="correspondence-list">
+                {active.map((i) => (
+                  <button key={i.id} onClick={() => onOpen(i.id)}>
+                    <div className="company-avatar">
+                      <Mail size={17} />
+                    </div>
+                    <span>
+                      <strong>{i.company}</strong>
+                      <small>
+                        {i.number} · {i.email || 'Email не указан'}
+                      </small>
+                    </span>
+                    <b>{money(i.balance)}</b>
+                    <span className="letter-action">
+                      Открыть счёт
+                      <ArrowUpRight size={15} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <span className="empty-icon">
+                  <Mail size={25} />
+                </span>
+                <h3>Письма начинаются со счёта</h3>
+                <p>
+                  Добавьте задолженность в реестр. В карточке можно подготовить письмо, выбрать тон
+                  и согласовать отправку.
+                </p>
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </>
   );
 }
@@ -905,7 +925,7 @@ function SettingsPanel({
       <div className="page-heading">
         <div>
           <h1>Настройки</h1>
-          <p>Компания, отправитель писем и подключение почты.</p>
+          <p>Реквизиты, почта и данные организации.</p>
         </div>
       </div>
       <form ref={draft.ref} className="settings-form" onSubmit={save}>
@@ -990,10 +1010,6 @@ function SettingsPanel({
           </p>
         )}
         <div className="settings-save">
-          <span>
-            <ShieldCheck size={14} />
-            Изменения применяются к новым письмам
-          </span>
           <button type="submit" className="button button-dark" disabled={busy}>
             {busy ? 'Сохраняем…' : 'Сохранить настройки'}
             <Check size={17} />
@@ -1001,6 +1017,7 @@ function SettingsPanel({
         </div>
       </form>
       <MailSetup />
+      <WorkspaceDataSettings />
     </>
   );
 }
