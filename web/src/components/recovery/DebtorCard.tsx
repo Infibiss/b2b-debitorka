@@ -2,14 +2,16 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ArrowLeft, Check, Download } from 'lucide-react';
 import { api, dateText, money, patch, post, today, toKopeks } from '../../api';
 import { t } from '../../i18n';
+import { ConversationPanel, EvidencePanel } from './DebtorExtras';
 import { stageNames } from './RecoveryHome';
 import type { DebtorDetail, FinancingOffer, Meta, Notify } from './types';
 
-type Tab = 'overview' | 'invoices' | 'documents' | 'financing' | 'history';
+type Tab = 'overview' | 'invoices' | 'documents' | 'conversation' | 'financing' | 'history';
 const tabs: [Tab, string][] = [
   ['overview', t('Обзор')],
   ['invoices', t('Счета')],
   ['documents', t('Документы')],
+  ['conversation', t('Переписка')],
   ['financing', t('Финансирование')],
   ['history', t('История')],
 ];
@@ -270,7 +272,8 @@ export function DebtorCard({
   isManager,
   onBack,
   onChanged,
-  onEvidence,
+  onOpenInvoice,
+  onReply,
   notify,
 }: {
   id: string;
@@ -278,7 +281,8 @@ export function DebtorCard({
   isManager: boolean;
   onBack: () => void;
   onChanged: () => void;
-  onEvidence: (invoiceId: string) => void;
+  onOpenInvoice: (invoiceId: string) => void;
+  onReply: (invoiceId: string) => void;
   notify: Notify;
 }) {
   const [debtor, setDebtor] = useState<DebtorDetail | null>(null);
@@ -483,21 +487,19 @@ export function DebtorCard({
                 <th>{t('Срок оплаты')}</th>
                 <th className="rc-num">{t('Сумма')}</th>
                 <th className="rc-num">{t('Остаток')}</th>
-                <th>{t('Документы')}</th>
               </tr>
             </thead>
             <tbody>
               {debtor.invoices.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.number}</td>
+                  <td>
+                    <button className="wf-text-button" onClick={() => onOpenInvoice(item.id)}>
+                      {item.number}
+                    </button>
+                  </td>
                   <td>{dateText(item.due_on)}</td>
                   <td className="rc-num">{money(item.amount)}</td>
                   <td className="rc-num">{money(item.balance)}</td>
-                  <td>
-                    <button className="wf-text-button" onClick={() => onEvidence(item.id)}>
-                      {t('Добавить документы')}
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -505,8 +507,22 @@ export function DebtorCard({
         </div>
       )}
 
+      {tab === 'conversation' && (
+        <ConversationPanel
+          debtor={debtor}
+          notify={notify}
+          onWrite={onOpenInvoice}
+          onReply={onReply}
+        />
+      )}
+
+      {tab === 'documents' && (
+        <EvidencePanel debtor={debtor} notify={notify} onSaved={() => void load()} />
+      )}
+
       {tab === 'documents' && (
         <div className="rc-card">
+          <h2>{t('Претензии и заявления')}</h2>
           {kinds.length > 0 && (
             <div className="rc-action-list">
               {kinds.map(([kind, item]) => (

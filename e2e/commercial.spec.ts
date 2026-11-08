@@ -6,7 +6,7 @@ async function signup(page: Page, suffix: string) {
     .getByLabel('Рабочая почта', { exact: true })
     .fill(`commercial-${suffix}-${Date.now()}@example.ru`);
   await page.getByLabel('Пароль', { exact: true }).fill('Mandato-commercial-2026!');
-  await page.getByRole('checkbox').check();
+  for (const box of await page.getByRole('checkbox').all()) await box.check();
   await page.getByRole('button', { name: 'Создать аккаунт и продолжить' }).click();
 }
 test('demo and custom forms persist an acknowledged request without purchasing', async ({
@@ -16,7 +16,7 @@ test('demo and custom forms persist an acknowledged request without purchasing',
     await page.goto(kind === 'custom' ? '/demo?kind=custom' : '/demo');
     await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
     await page.getByLabel('Рабочая почта', { exact: true }).fill('demo@mandato.invalid');
-    await page.getByRole('checkbox').check();
+    for (const box of await page.getByRole('checkbox').all()) await box.check();
     await page.getByRole('button', { name: 'Отправить заявку' }).click();
     await expect(page.getByRole('heading', { name: 'Заявка принята' })).toBeVisible();
     await expect(page.getByText('Номер заявки:', { exact: false })).toBeVisible();
@@ -32,13 +32,13 @@ test('free trial survives signup and reload and leads into the workspace', async
   await page.goto('/start?plan=trial');
   await signup(page, info.project.name);
   await expect(page.getByRole('heading', { name: '14 дней бесплатно', exact: true })).toBeVisible();
-  await page.getByRole('checkbox').check();
+  for (const box of await page.getByRole('checkbox').all()) await box.check();
   await page.getByRole('button', { name: 'Начать бесплатный период', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Можно начинать работу' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Можно начинать работу' })).toBeVisible();
   await page.getByRole('link', { name: 'Перейти в кабинет' }).click();
-  await expect(page.getByRole('button', { name: 'Работа', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
 });
 test('all paid tiers retain a pending order, explicitly bypass payment and support account cancellation', async ({
   page,
@@ -47,7 +47,7 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     await page.goto(`/start?plan=${plan}`);
     if (i === 0) await signup(page, `paid-${info.project.name}`);
     await expect(page.getByRole('heading', { name: /Подключить «/ })).toBeVisible();
-    await page.getByRole('checkbox').check();
+    for (const box of await page.getByRole('checkbox').all()) await box.check();
     await page.getByRole('button', { name: 'Продолжить оформление' }).click();
     await expect(page.getByRole('heading', { name: 'Подтвердите подключение' })).toBeVisible();
     const order = new URL(page.url()).searchParams.get('order');
@@ -58,7 +58,7 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     await page.getByRole('button', { name: 'Подключить и получить счёт' }).click();
     await expect(page.getByRole('heading', { name: 'Можно начинать работу' })).toBeVisible();
     await page.goto('/account');
-    await expect(page.getByText('Открыт без оплаты', { exact: true })).toBeVisible();
+    await expect(page.getByText('Подключён', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Отменить подписку или пробный период' }).click();
     await page.getByRole('button', { name: 'Подтвердить отмену' }).click();
     await expect(page.getByText('Отменён', { exact: true })).toBeVisible();
@@ -67,7 +67,7 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     timeout: 1500,
   });
   await page.getByRole('link', { name: 'Управлять данными в настройках' }).click();
-  await expect(page).toHaveURL('/app?mode=login&section=settings#workspace-data');
+  await expect(page).toHaveURL('/app?mode=login&section=settings&settingsTab=mail#workspace-data');
   const data = page.getByRole('region', { name: 'Данные организации' });
   await expect(data).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
@@ -86,15 +86,15 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     page.getByRole('region', { name: 'Данные организации' }).getByRole('status')
   ).toContainText('Номер запроса:');
   await expect(page.getByRole('button', { name: 'Запросить удаление данных' })).toHaveCount(0);
-  await navigate(page, 'Счета');
-  await expect(page.getByRole('heading', { name: 'Счета', exact: true })).toBeVisible();
+  await navigate(page, 'Должники');
+  await expect(page.getByRole('heading', { name: 'Должники', exact: true })).toBeVisible();
 });
 
 test('data request page leads to workspace settings', async ({ page }) => {
   await page.goto('/data-request');
   await expect(page.getByRole('link', { name: 'Открыть настройки данных' })).toHaveAttribute(
     'href',
-    '/app?mode=login&section=settings#workspace-data'
+    '/app?mode=login&section=settings&settingsTab=mail#workspace-data'
   );
   await page.getByRole('link', { name: 'Открыть настройки данных' }).click();
   await expect(page.getByRole('heading', { name: 'Войти в Mandato', exact: true })).toBeVisible();
@@ -130,7 +130,7 @@ test('accountant sees data settings without permission to request deletion', asy
     data: { email, password: 'Mandato-commercial-2026!' },
   });
   expect(login.status()).toBe(200);
-  await page.goto('/app?mode=login&section=settings#workspace-data');
+  await page.goto('/app?mode=login&section=settings&settingsTab=mail#workspace-data');
   const data = page.getByRole('region', { name: 'Данные организации' });
   await expect(data).toContainText('только администратор организации');
   await expect(data.getByRole('button', { name: 'Запросить удаление данных' })).toHaveCount(0);

@@ -6,13 +6,14 @@ import pytest
 from tests.test_api import client
 from server.database import database
 
-CURRENT_VERSION = '2026-11-04'
+CURRENT_VERSION = '2026-11-08'
 
 
 def payload(**changes):
     return {'name': 'Анна', 'company': 'Компания', 'email': 'acceptance@example.ru',
             'password': 'Correct-horse-24!', 'terms_accepted': True,
-            'terms_version': CURRENT_VERSION} | changes
+            'terms_version': CURRENT_VERSION, 'personal_data_consent': True,
+            'consent_version': CURRENT_VERSION} | changes
 
 
 def test_explicit_registration_acceptance_is_durable_scoped_and_never_overwritten(client):
@@ -25,6 +26,9 @@ def test_explicit_registration_acceptance_is_durable_scoped_and_never_overwritte
         actual_tenant = c.execute('SELECT tenant_id FROM users WHERE id=?', (user['id'],)).fetchone()[0]
     assert row['tenant_id'] == actual_tenant
     assert row['terms_version'] == CURRENT_VERSION
+    with database(client.app.state.config) as c:
+        consent = dict(c.execute('SELECT * FROM personal_data_consents WHERE user_id=?', (user['id'],)).fetchone())
+    assert consent['document_version'] == CURRENT_VERSION and consent['tenant_id'] == actual_tenant
     assert before <= datetime.fromisoformat(row['accepted_at']) <= datetime.now(timezone.utc)
     assert client.post('/api/auth/register', json=payload()).status_code == 409
     assert client.post('/api/auth/login', json={'email': payload()['email'], 'password': payload()['password']}).status_code == 200
@@ -35,7 +39,7 @@ def test_explicit_registration_acceptance_is_durable_scoped_and_never_overwritte
 
 @pytest.mark.parametrize('fields', [{}, {'terms_accepted': None, 'terms_version': None}])
 def test_legacy_registration_without_explicit_acceptance_does_not_invent_consent(client, fields):
-    body = {key: value for key, value in payload().items() if key not in ('terms_accepted', 'terms_version')} | fields
+    body = {key: value for key, value in payload().items() if key not in ('terms_accepted', 'terms_version', 'personal_data_consent', 'consent_version')} | fields
     response = client.post('/api/auth/register', json=body)
     assert response.status_code == 201, response.text
     with database(client.app.state.config) as c:
@@ -71,3 +75,9 @@ def test_acceptance_and_registration_rollback_together_on_session_failure(client
         after = {table: c.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
                  for table in before}
     assert after == before
+
+
+@pytest.mark.parametrize('fields', [{'personal_data_consent': None}, {'personal_data_consent': False},
+                                    {'personal_data_consent': 1}, {'consent_version': None}])
+def test_terms_alone_never_create_an_account_without_personal_data_consent(client, fields):
+    assert client.post('/api/auth/register', json=payload(**fields)).status_code == 422

@@ -482,6 +482,12 @@ def run_automation(config):
     return moved
 
 
+def promised_amount(debtor):
+    """Money promised on invoices, or the whole balance when the debtor as a whole promised to pay."""
+    by_invoice = sum(item.get('promised_amount') or 0 for item in debtor['_invoices'] if item['balance'] > 0)
+    return max(by_invoice, debtor['balance'] if debtor['status'] == 'promise' else 0)
+
+
 def create_router(ctx):
     router = APIRouter(prefix='/api/recovery', tags=['recovery'])
 
@@ -517,7 +523,7 @@ def create_router(ctx):
         return dict(onboarding=setup, stages=report_rows(debtors), tasks=[public(item) for item in tasks[:10]], task_count=len(tasks),
                     deadlines=sorted(closing, key=lambda item: item['days_left'])[:10],
                     totals=dict(debtors=len(open_debtors), balance=sum(item['balance'] for item in open_debtors), overdue=sum(item['overdue_amount'] for item in open_debtors),
-                                promised=sum(item['balance'] for item in open_debtors if item['status'] == 'promise')))
+                                promised=sum(promised_amount(item) for item in open_debtors)))
 
     @router.get('/debtors')
     def debtors(user=Depends(ctx.get_user)):

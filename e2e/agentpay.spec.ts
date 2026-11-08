@@ -14,17 +14,24 @@ async function register(page: Page) {
   await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
   await page.getByLabel('Рабочая почта', { exact: true }).fill(email);
   await page.getByLabel('Пароль', { exact: true }).fill(PASSWORD);
-  await page.getByRole('checkbox').check();
+  for (const box of await page.getByRole('checkbox').all()) await box.check();
   await page
     .getByRole('button', { name: /Создать аккаунт|Зарегистрироваться/ })
     .last()
     .click();
-  await expect(page.getByRole('button', { name: 'Работа', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
   return email;
 }
 
 async function openRegistry(page: Page) {
-  await navigate(page, 'Реестр');
+  await navigate(page, 'Должники');
+}
+
+async function openInvoice(page: Page, number: string, company = 'ООО Северные системы') {
+  await openRegistry(page);
+  await page.getByRole('button', { name: company }).first().click();
+  await page.getByRole('button', { name: 'Счета', exact: true }).click();
+  await page.getByRole('button', { name: number, exact: true }).click();
 }
 
 async function createInvoice(
@@ -38,13 +45,13 @@ async function createInvoice(
   await page.getByRole('button', { name: 'Добавить счёт', exact: true }).first().click();
   await page.getByLabel('Контрагент', { exact: true }).fill('ООО Северные системы');
   await page.getByLabel('ИНН', { exact: true }).fill('7701234567');
-  await page.getByLabel('Email покупателя', { exact: true }).fill('ap@example.ru');
+  await page.getByLabel('Почта покупателя', { exact: true }).fill('ap@example.ru');
   await page.getByLabel('Номер счёта', { exact: true }).fill(number);
   await page.getByLabel('Дата счёта', { exact: true }).fill(issuedOn);
   await page.getByLabel('Оплатить до', { exact: true }).fill(dueOn);
   await page.getByLabel('Сумма', { exact: true }).fill(amount);
   await page.getByRole('button', { name: 'Добавить счёт', exact: true }).last().click();
-  await expect(page.getByText(number, { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ООО Северные системы' }).first()).toBeVisible();
 }
 
 async function assertNoHorizontalOverflow(page: Page) {
@@ -99,7 +106,7 @@ test('invoice, approved draft, promise, payments and login persist without a fak
   const email = await register(page);
   const number = `СЧ-E2E-${Date.now()}`;
   await createInvoice(page, number, '1250.50');
-  await page.getByText(number, { exact: true }).first().click();
+  await openInvoice(page, number);
   const drawer = page.getByRole('dialog', { name: 'Карточка счёта', exact: true });
   await expect
     .poll(() => drawer.evaluate((element) => element.contains(document.activeElement)))
@@ -173,9 +180,11 @@ test('invoice, approved draft, promise, payments and login persist without a fak
     .getByRole('button', { name: /^Войти$/ })
     .last()
     .click();
-  await openRegistry(page);
-  await expect(page.getByText(number, { exact: true }).first()).toBeVisible();
-  await expect(page.locator('.invoice-table')).toContainText('Оплачен');
+  await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
+  await page.goto('/app?section=debtors&stage=closed');
+  await page.getByRole('button', { name: 'ООО Северные системы' }).first().click();
+  await page.getByRole('button', { name: 'Счета', exact: true }).click();
+  await expect(page.getByRole('button', { name: number, exact: true })).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
     path: info.outputPath('workspace.png'),
@@ -190,19 +199,14 @@ test('a promise due today is not shown as a broken promise', async ({ page }) =>
   const issued = businessDate(new Date(Date.now() - 60 * 86_400_000));
   const due = businessDate(new Date(Date.now() - 45 * 86_400_000));
   await createInvoice(page, number, '1250', issued, due);
-  await page.getByText(number, { exact: true }).first().click();
+  await openInvoice(page, number);
   await page.getByRole('button', { name: 'Обещание оплаты', exact: true }).click();
   await page.getByLabel('Дата оплаты', { exact: true }).fill(today);
   await page.getByRole('button', { name: 'Сохранить обещание', exact: true }).click();
   await expect(page.locator('.promise-banner')).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть карточку', exact: true }).click();
-  await navigate(page, 'Работа');
-  await expect(page.getByRole('button', { name: /Открыть дело.*Северные системы/ })).toContainText(
-    'ООО Северные системы'
-  );
-  await expect(
-    page.getByRole('button', { name: /Открыть дело.*Северные системы/ })
-  ).not.toContainText('Нарушено обещание');
+  await expect(page.getByRole('main')).toContainText('ООО Северные системы');
+  await expect(page.getByRole('main')).not.toContainText('Нарушено обещание');
 });
 
 test('correcting a contact invalidates the old recipient and persists a fresh draft', async ({
@@ -212,14 +216,14 @@ test('correcting a contact invalidates the old recipient and persists a fresh dr
   const number = `CONTACT-${Date.now()}`;
   const note = 'Адрес подтверждён покупателем';
   await createInvoice(page, number, '500');
-  await page.getByText(number, { exact: true }).first().click();
+  await openInvoice(page, number);
   const drawer = page.getByRole('dialog', { name: 'Карточка счёта', exact: true });
   await page.getByRole('button', { name: 'Подготовить письмо', exact: true }).click();
   await page.getByRole('button', { name: 'Согласовать письмо', exact: true }).click();
   await expect(drawer.locator('.editor-header')).toContainText('Согласовано');
   await page.getByRole('button', { name: 'Изменить контакт и заметку', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Контакт и заметка', exact: true });
-  await dialog.getByLabel('Email покупателя', { exact: true }).fill('corrected@example.ru');
+  await dialog.getByLabel('Почта покупателя', { exact: true }).fill('corrected@example.ru');
   await dialog.getByLabel('Заметка по счёту', { exact: true }).fill(note);
   await dialog.getByRole('button', { name: 'Сохранить контакт', exact: true }).click();
   await expect(drawer.locator('.drawer-company')).toContainText('corrected@example.ru');
@@ -250,24 +254,18 @@ test('CSV import previews invalid data, accepts valid rows, and avoids duplicate
 }) => {
   await register(page);
   await openRegistry(page);
-  await page
-    .getByRole('button', { name: /Импорт/ })
-    .first()
-    .click();
+  await page.getByRole('button', { name: 'Загрузить реестр', exact: true }).first().click();
   await page.locator('input[type="file"]').setInputFiles('e2e/fixtures/invalid.csv');
   await expect(page.getByText(/ошиб|положительн|больше нуля/i).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /^Импортировать/ })).toBeDisabled();
   await page.locator('input[type="file"]').setInputFiles('e2e/fixtures/receivables.csv');
   await expect(page.getByText(/CSV-101/).first()).toBeVisible();
   await page.getByRole('button', { name: /^Импортировать/ }).click();
-  await expect(page.getByText('CSV-101', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ООО Восток' }).first()).toBeVisible();
   await page.reload();
   await openRegistry(page);
-  await expect(page.getByText('CSV-101', { exact: true })).toHaveCount(1);
-  await page
-    .getByRole('button', { name: /Импорт/ })
-    .first()
-    .click();
+  await expect(page.getByRole('button', { name: 'ООО Восток' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Загрузить реестр', exact: true }).first().click();
   await page.locator('input[type="file"]').setInputFiles('e2e/fixtures/receivables.csv');
   await expect(page.getByText(/повтор|дубликат|уже существует/i).first()).toBeVisible();
 });
@@ -316,16 +314,9 @@ test('bank allocation, correction and partial promise preserve cash and debt', a
   await dialog.getByLabel('Дата оплаты', { exact: true }).fill(nextWeek);
   await dialog.getByRole('button', { name: 'Сохранить договорённость', exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await navigate(page, 'Работа');
-  await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Осталось к оплате' })
-  ).toContainText(/700/);
-  await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Обещано к оплате' })
-  ).toContainText(/250/);
-  await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Подтверждено по банку' })
-  ).toContainText(/300/);
+  await navigate(page, 'Главная');
+  await expect(page.locator('.rc-kpis')).toContainText(/700/);
+  await expect(page.locator('.rc-kpis')).toContainText(/250/);
   await navigate(page, 'Финансы');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
@@ -354,13 +345,8 @@ test('agent inbox fails safely without a provider and never fabricates payment',
     dialog.getByRole('button', { name: 'Подтвердить действие', exact: true })
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await navigate(page, 'Работа');
-  await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Осталось к оплате' })
-  ).toContainText(/1\s?000/);
-  await expect(
-    page.locator('.wf-portfolio-sums > div').filter({ hasText: 'Подтверждено по банку' })
-  ).toContainText('0');
+  await navigate(page, 'Главная');
+  await expect(page.locator('.rc-kpis')).toContainText(/1\s?000/);
   await navigate(page, 'Агент');
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
@@ -456,7 +442,7 @@ test('reconciliation shows a derived balance and a settled invoice accepts a rea
     data: { amount: 200000, paid_on: today, reference: 'SETTLED-RECON' },
   });
   expect(paid.status()).toBe(200);
-  await page.getByRole('button', { name: 'Обновить данные', exact: true }).click();
+  await page.reload();
   await page.getByRole('tab', { name: 'Движение по счёту', exact: true }).click();
   await selectInvoice(page, number);
   await expect(

@@ -207,3 +207,21 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.public-legal-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.public-legal-facts div {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  gap: 16px;
+}
+.public-legal-facts dt {
+  opacity: 0.65;
+}
+.public-legal-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

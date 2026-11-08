@@ -55,15 +55,24 @@ class Register(Login):
     company: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=10, max_length=256)
     terms_accepted: Literal[True] | None = None
-    terms_version: Literal['2026-11-04'] | None = None
+    terms_version: Literal['2026-11-08'] | None = None
+    personal_data_consent: Literal[True] | None = None
+    consent_version: Literal['2026-11-08'] | None = None
 
-    @field_validator('terms_accepted', mode='before')
+    @field_validator('terms_accepted', 'personal_data_consent', mode='before')
     @classmethod
     def explicit_terms_acceptance(cls, value):
         # Literal[True] alone also accepts integer 1. Consent must be JSON true.
         if value is not None and value is not True:
             raise ValueError('Согласие с условиями должно быть явно подтверждено')
         return value
+
+    @model_validator(mode='after')
+    def consent_accompanies_terms(self):
+        # The web form always sends both. Terms alone would mean an account without the 152-FZ consent.
+        if self.terms_accepted is True and (self.personal_data_consent is not True or not self.consent_version):
+            raise ValueError('Нужно отдельное согласие на обработку персональных данных')
+        return self
 
     @model_validator(mode='after')
     def terms_pair(self):

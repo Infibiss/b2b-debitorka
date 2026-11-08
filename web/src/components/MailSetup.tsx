@@ -1,4 +1,4 @@
-import { navigate, useWorkContext } from '../navigation';
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { api, post } from '../api';
 import { OperationForm, DeskError, value } from './OperationsUI';
@@ -17,7 +17,6 @@ type Setup = {
   };
 };
 export function MailSetup({ onLoaded }: { onLoaded?: () => void }) {
-  const { invoiceId, caseId } = useWorkContext();
   const [setup, setSetup] = useState<Setup | null>(null),
     [error, setError] = useState('');
   const load = () =>
@@ -30,65 +29,72 @@ export function MailSetup({ onLoaded }: { onLoaded?: () => void }) {
   return (
     <section className="ops-card mail-setup">
       <div className="mail-setup-heading">
-        <h2>Подключение почты</h2>
+        <h2>{t('Подключение почты')}</h2>
         {setup && (
           <span
             className={`mail-setup-badge ${setup.connected && setup.request?.verified_at ? 'is-success' : 'is-warning'}`}
           >
             {setup.connected
               ? setup.request?.verified_at
-                ? 'Подключена'
-                : 'Нужна проверка'
-              : 'Не подключена'}
+                ? t('Подключена')
+                : t('Нужна проверка')
+              : t('Не подключена')}
           </span>
         )}
       </div>
       <DeskError>{error}</DeskError>
       {!setup ? (
-        <p>Проверяем подключение…</p>
+        <p>{t('Проверяем подключение…')}</p>
       ) : setup.connected ? (
         <p
           className={`mail-setup-status ${setup.request?.verified_at ? 'is-success' : 'is-warning'}`}
           role="status"
         >
           {setup.request?.verified_at
-            ? 'Контрольное письмо доставлено. Можно включать отправку по вашим правилам.'
-            : 'Настройки сохранены. Администратору нужно проверить доставку письма.'}
+            ? t('Контрольное письмо доставлено. Можно включать отправку по вашим правилам.')
+            : t('Настройки сохранены. Администратору нужно проверить доставку письма.')}
         </p>
       ) : (
         <>
           <p className="mail-setup-status is-warning">
-            Письма пока можно готовить и скачивать. Чтобы отправлять их из Mandato, оставьте заявку
-            на подключение.
+            {t(
+              'Письма пока можно готовить и скачивать. Чтобы отправлять их из Mandato, оставьте заявку на подключение.'
+            )}
           </p>
           {setup.request && (
             <div className="mail-setup-request" role="status">
               <strong>
-                Заявка № {setup.request.id.slice(0, 8)} ·{' '}
+                {t('Заявка №')} {setup.request.id.slice(0, 8)} ·{' '}
                 {(
                   {
-                    pending: 'Ожидает администратора',
-                    in_progress: 'В работе',
-                    completed: 'Обработана',
+                    pending: t('Ожидает администратора'),
+                    in_progress: t('В работе'),
+                    completed: t('Обработана'),
                   } as Record<string, string>
                 )[setup.request.status] || setup.request.status}
               </strong>
-              <p>Адрес: {setup.request.email}</p>
-              {setup.request.owner && <p>Ответственный: {setup.request.owner}</p>}
+              <p>
+                {t('Адрес:')} {setup.request.email}
+              </p>
+              {setup.request.owner && (
+                <p>
+                  {t('Ответственный:')} {setup.request.owner}
+                </p>
+              )}
               {setup.request.note && <p>{setup.request.note}</p>}
             </div>
           )}
           {setup.can_request ? (
             <OperationForm
               draftKey="mail-setup"
-              label={setup.request ? 'Обновить заявку' : 'Оставить заявку на подключение'}
+              label={setup.request ? t('Обновить заявку') : t('Оставить заявку на подключение')}
               submit={async (data) => {
                 setSetup(await post<Setup>('/mail/setup', { email: value(data, 'email') }));
               }}
               onDone={() => {}}
             >
               <label className="field full-width">
-                Почта для отправки писем покупателям
+                {t('Почта для отправки писем покупателям')}
                 <input
                   type="email"
                   name="email"
@@ -98,22 +104,12 @@ export function MailSetup({ onLoaded }: { onLoaded?: () => void }) {
               </label>
             </OperationForm>
           ) : (
-            <p>Попросите руководителя оставить заявку в этом разделе.</p>
+            <p>{t('Попросите руководителя оставить заявку в этом разделе.')}</p>
           )}
           <button className="mail-status-refresh" onClick={() => void load()}>
-            Проверить статус подключения
+            {t('Проверить статус подключения')}
           </button>
         </>
-      )}
-      {caseId && (
-        <button
-          className="mail-return-link"
-          onClick={() =>
-            navigate({ section: 'workflow', case: caseId, context: invoiceId || null })
-          }
-        >
-          Вернуться к делу
-        </button>
       )}
       <SupportContact />
     </section>

@@ -498,6 +498,11 @@ html {
   font-size: 14px;
   text-decoration: underline;
 }
+.pub-legal-line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pub-muted, #6b6a64);
+}
 .pub-footer nav {
   display: flex;
   flex-wrap: wrap;

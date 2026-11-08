@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Upload, ShieldCheck, ArrowUpRight, Wallet, RotateCcw } from 'lucide-react';
@@ -98,7 +99,6 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
     [ledger, setLedger] = useState<Ledger | null>(null),
     [ledgerError, setLedgerError] = useState('');
   const [partyRoute] = useRouteField<string>('party', '');
-  const [returnTo] = useRouteField<string>('returnTo', '');
   useEffect(() => {
     if (partyRoute && parties.length) {
       const party = parties.find((p) => p.id === partyRoute);
@@ -149,38 +149,30 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
     void reload();
     void loadLedger(selected);
     onChanged();
-    notify('Изменения сохранены');
+    notify(t('Изменения сохранены'));
   };
   return (
     <>
-      {returnTo === 'intelligence' && (
-        <button
-          className="button button-outline"
-          onClick={() => navigate({ section: 'intelligence', party: null, returnTo: null })}
-        >
-          Вернуться к предложению
-        </button>
-      )}
       <DeskHeading
-        eyebrow="УЧЁТ ОПЛАТ"
-        title="Оплаты и сверка"
+        eyebrow={t('УЧЁТ ОПЛАТ')}
+        title={t('Оплаты и сверка')}
         action={
           <button className="button button-dark" onClick={() => setModal({ type: 'bank' })}>
             <Plus size={16} />
-            Добавить поступление
+            {t('Добавить поступление')}
           </button>
         }
       >
-        Сопоставьте поступления со счетами и проверьте, сколько осталось к оплате.
+        {t('Сопоставьте поступления со счетами и проверьте, сколько осталось к оплате.')}
       </DeskHeading>
-      <div className="ops-tabs" role="tablist" aria-label="Финансовые операции">
+      <div className="ops-tabs" role="tablist" aria-label={t('Финансовые операции')}>
         {(
           [
-            ['bank', 'Поступления'],
-            ['import', 'Сверка реестра'],
-            ['accounting', 'ОСВ и акты'],
-            ['parties', 'Контрагенты'],
-            ['ledger', 'Движение по счёту'],
+            ['bank', t('Поступления')],
+            ['import', t('Сверка реестра')],
+            ['accounting', t('ОСВ и акты')],
+            ['parties', t('Контрагенты')],
+            ['ledger', t('Движение по счёту')],
           ] as const
         ).map(([id, label]) => (
           <button role="tab" aria-selected={tab === id} key={id} onClick={() => setTab(id)}>
@@ -193,8 +185,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
         <section className="ops-card">
           <div className="ops-card-heading">
             <div>
-              <h2>Банковские поступления</h2>
-              <p>Выберите поступление и укажите, какие счета оно оплачивает.</p>
+              <h2>{t('Банковские поступления')}</h2>
+              <p>{t('Выберите поступление и укажите, какие счета оно оплачивает.')}</p>
             </div>
             <Wallet size={22} />
           </div>
@@ -204,10 +196,10 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                 <table className="invoice-table ops-table">
                   <thead>
                     <tr>
-                      <th scope="col">Платёж / покупатель</th>
-                      <th scope="col">Сумма</th>
-                      <th scope="col">Распределено</th>
-                      <th scope="col">Доступно</th>
+                      <th scope="col">{t('Платёж / покупатель')}</th>
+                      <th scope="col">{t('Сумма')}</th>
+                      <th scope="col">{t('Распределено')}</th>
+                      <th scope="col">{t('Доступно')}</th>
                       <th />
                     </tr>
                   </thead>
@@ -229,7 +221,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                             disabled={p.available_amount <= 0}
                             onClick={() => setModal({ type: 'allocate', payment: p })}
                           >
-                            Распределить
+                            {t('Распределить')}
                             <ArrowUpRight size={13} />
                           </button>
                         </td>
@@ -249,15 +241,15 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                     </div>
                     <div className="ops-bank-totals">
                       <div>
-                        <span>Поступление</span>
+                        <span>{t('Поступление')}</span>
                         <strong>{money(p.amount)}</strong>
                       </div>
                       <div>
-                        <span>Распределено</span>
+                        <span>{t('Распределено')}</span>
                         <strong>{money(p.allocated_amount)}</strong>
                       </div>
                       <div>
-                        <span>Доступно</span>
+                        <span>{t('Доступно')}</span>
                         <strong>{money(p.available_amount)}</strong>
                       </div>
                     </div>
@@ -266,7 +258,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                       disabled={p.available_amount <= 0}
                       onClick={() => setModal({ type: 'allocate', payment: p })}
                     >
-                      Распределить
+                      {t('Распределить')}
                       <ArrowUpRight size={13} />
                     </button>
                   </article>
@@ -274,8 +266,10 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
               </div>
             </>
           ) : (
-            <EmptyCard title="Поступлений пока нет">
-              Добавьте подтверждённую операцию из банковской выписки и распределите её по счетам.
+            <EmptyCard title={t('Поступлений пока нет')}>
+              {t(
+                'Добавьте подтверждённую операцию из банковской выписки и распределите её по счетам.'
+              )}
             </EmptyCard>
           )}
         </section>
@@ -285,7 +279,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           onDone={() => {
             onChanged();
             void reload();
-            notify('Реестр сверен');
+            notify(t('Реестр сверен'));
           }}
         />
       )}
@@ -293,7 +287,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
         <AccountingDesk
           onSaved={() => {
             void reload();
-            notify('Сверка сохранена');
+            notify(t('Сверка сохранена'));
           }}
         />
       )}
@@ -301,8 +295,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
         <section className="ops-card">
           <div className="ops-card-heading">
             <div>
-              <h2>Контрагенты и правила работы</h2>
-              <p>Разрешения и пауза в переписке действуют на все счета контрагента.</p>
+              <h2>{t('Контрагенты и правила работы')}</h2>
+              <p>{t('Разрешения и пауза в переписке действуют на все счета контрагента.')}</p>
             </div>
             <ShieldCheck size={23} />
           </div>
@@ -312,32 +306,32 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                 <article className="ops-party" key={p.id}>
                   <div>
                     <h3>{p.name}</h3>
-                    <span>{p.inn ? `ИНН ${p.inn}` : 'ИНН не указан'}</span>
+                    <span>{p.inn ? t('ИНН {0}', [p.inn]) : t('ИНН не указан')}</span>
                   </div>
                   <span
                     className={`pill ${p.hold || !p.contact_allowed ? 'status-paused' : 'status-open'}`}
                   >
-                    {p.hold || !p.contact_allowed ? 'Контакт приостановлен' : 'В работе'}
+                    {p.hold || !p.contact_allowed ? t('Контакт приостановлен') : t('В работе')}
                   </span>
                   {p.hold_reason && <p>{p.hold_reason}</p>}
                   <p>
                     {p.agent_promises_allowed
-                      ? 'Mandato может принимать обещания оплаты в пределах ваших правил.'
-                      : 'Договорённости подтверждает сотрудник.'}
+                      ? t('Mandato может принимать обещания оплаты в пределах ваших правил.')
+                      : t('Договорённости подтверждает сотрудник.')}
                   </p>
                   <button
                     className="button button-outline button-small"
                     onClick={() => setModal({ type: 'mandate', party: p })}
                   >
-                    Правила работы
+                    {t('Правила работы')}
                     <ArrowUpRight size={13} />
                   </button>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyCard title="Здесь будут ваши покупатели">
-              Добавьте счёт — его контрагент появится здесь.
+            <EmptyCard title={t('Здесь будут ваши покупатели')}>
+              {t('Добавьте счёт — его контрагент появится здесь.')}
             </EmptyCard>
           )}
         </section>
@@ -346,8 +340,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
         <section className="ops-card">
           <div className="ops-card-heading">
             <div>
-              <h2>История изменения остатка</h2>
-              <p>Выберите счёт, чтобы увидеть оплаты, корректировки и договорённости.</p>
+              <h2>{t('История изменения остатка')}</h2>
+              <p>{t('Выберите счёт, чтобы увидеть оплаты, корректировки и договорённости.')}</p>
             </div>
           </div>
           <InvoiceSelect invoices={invoices} value={selected} onChange={setSelected} />
@@ -355,24 +349,24 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
             <>
               <div className="ops-ledger-summary">
                 <div>
-                  <span>Осталось к оплате</span>
+                  <span>{t('Осталось к оплате')}</span>
                   <strong>{money(ledger.invoice.balance)}</strong>
                 </div>
                 <button
                   className="button button-outline"
                   onClick={() => setModal({ type: 'adjust', invoice: ledger.invoice })}
                 >
-                  Изменить требование
+                  {t('Изменить требование')}
                 </button>
                 <button
                   className="button button-dark"
                   disabled={!ledger.invoice.balance}
                   onClick={() => setModal({ type: 'promise', invoice: ledger.invoice })}
                 >
-                  Договорённость
+                  {t('Договорённость')}
                 </button>
               </div>
-              <h3>Платежи</h3>
+              <h3>{t('Платежи')}</h3>
               {ledger.payments.length ? (
                 ledger.payments.map((p) => (
                   <div className="ops-ledger-row" key={p.id}>
@@ -380,14 +374,14 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                       <strong>{p.display_reference || p.reference}</strong>
                       <small>
                         {dateText(p.paid_on)} ·{' '}
-                        {p.bank_payment_id ? 'По банковской выписке' : 'Ручная запись'}
-                        {p.reversed_amount ? ` · отменено ${money(p.reversed_amount)}` : ''}
+                        {p.bank_payment_id ? t('По банковской выписке') : t('Ручная запись')}
+                        {p.reversed_amount ? t(' · отменено {0}', [money(p.reversed_amount)]) : ''}
                       </small>
                     </div>
                     <strong>{money(p.amount)}</strong>
                     <button
                       className="icon-button"
-                      aria-label={`Исправить платёж ${p.display_reference || p.reference}`}
+                      aria-label={t('Исправить платёж {0}', [p.display_reference || p.reference])}
                       onClick={() => setModal({ type: 'reverse', payment: p })}
                     >
                       <RotateCcw size={16} />
@@ -395,9 +389,9 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                   </div>
                 ))
               ) : (
-                <p className="ops-muted">По этому счёту ещё нет отдельных платежей.</p>
+                <p className="ops-muted">{t('По этому счёту ещё нет отдельных платежей.')}</p>
               )}
-              <h3>Корректировки</h3>
+              <h3>{t('Корректировки')}</h3>
               {ledger.adjustments.map((a) => (
                 <div className="ops-ledger-row" key={a.id}>
                   <span>{a.reason}</span>
@@ -407,14 +401,14 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                   </strong>
                 </div>
               ))}
-              <h3>Договорённости</h3>
+              <h3>{t('Договорённости')}</h3>
               {ledger.promises.map((p) => (
                 <div className="ops-promise" key={p.id}>
                   <div className="ops-ledger-row">
                     <span>
-                      До {dateText(p.due_on)}
+                      {t('До')} {dateText(p.due_on)}
                       {p.status
-                        ? ` · ${p.status === 'active' ? 'В работе' : p.status === 'cancelled' ? 'Заменена новой договорённостью' : 'Исполнена'}`
+                        ? ` · ${p.status === 'active' ? t('В работе') : p.status === 'cancelled' ? t('Заменена новой договорённостью') : t('Исполнена')}`
                         : ''}
                     </span>
                     <strong>{money(p.amount)}</strong>
@@ -425,10 +419,10 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
                       <strong>{money(item.amount)}</strong>
                       <small>
                         {item.fulfilled_amount >= item.amount
-                          ? 'Исполнен'
+                          ? t('Исполнен')
                           : item.fulfilled_amount
-                            ? `Осталось ${money(item.amount - item.fulfilled_amount)}`
-                            : 'Ожидается'}
+                            ? t('Осталось {0}', [money(item.amount - item.fulfilled_amount)])
+                            : t('Ожидается')}
                       </small>
                     </div>
                   ))}
@@ -469,12 +463,12 @@ function FinanceModal({
   const [distinctReceipt, setDistinctReceipt] = useState(false);
   const [installments, setInstallments] = useState<{ date: string; amount: string }[]>([]);
   const names = {
-    bank: 'Подтверждённое поступление',
-    allocate: 'Распределение поступления',
-    mandate: 'Правила работы с покупателем',
-    adjust: 'Изменение требования',
-    promise: 'Договорённость об оплате',
-    reverse: 'Исправление платежа',
+    bank: t('Подтверждённое поступление'),
+    allocate: t('Распределение поступления'),
+    mandate: t('Правила работы с покупателем'),
+    adjust: t('Изменение требования'),
+    promise: t('Договорённость об оплате'),
+    reverse: t('Исправление платежа'),
   };
   return (
     <Dialog title={names[modal.type]} onClose={onClose} wide>
@@ -482,12 +476,12 @@ function FinanceModal({
         onDone={onDone}
         label={
           modal.type === 'bank'
-            ? 'Сохранить поступление'
+            ? t('Сохранить поступление')
             : modal.type === 'allocate'
-              ? 'Распределить сумму'
+              ? t('Распределить сумму')
               : modal.type === 'promise'
-                ? 'Сохранить договорённость'
-                : 'Сохранить изменения'
+                ? t('Сохранить договорённость')
+                : t('Сохранить изменения')
         }
         submit={async (data) => {
           if (modal.type === 'bank')
@@ -551,46 +545,48 @@ function FinanceModal({
         {modal.type === 'bank' && (
           <>
             <label className="field">
-              ID операции в выписке
+              {t('ID операции в выписке')}
               <input name="external_id" required maxLength={200} />
             </label>
             <label className="field">
-              Номер платежа
+              {t('Номер платежа')}
               <input name="reference" required maxLength={200} />
             </label>
             <label className="field">
-              Сумма поступления, ₽<input name="amount" inputMode="decimal" required />
+              {t('Сумма поступления, ₽')}
+              <input name="amount" inputMode="decimal" required />
             </label>
             <label className="field">
-              Дата поступления
+              {t('Дата поступления')}
               <input name="paid_on" type="date" defaultValue={today()} max={today()} required />
             </label>
             <label className="field">
-              Плательщик
+              {t('Плательщик')}
               <input name="payer_name" maxLength={200} />
             </label>
             <label className="field">
-              ИНН плательщика
+              {t('ИНН плательщика')}
               <input name="payer_inn" inputMode="numeric" pattern="[0-9]{10}|[0-9]{12}|^$" />
             </label>
             <label className="field full-width">
-              Основание проверки
+              {t('Основание проверки')}
               <textarea
                 name="evidence"
                 required
-                placeholder="Выписка банка, дата и номер строки"
+                placeholder={t('Выписка банка, дата и номер строки')}
                 maxLength={2000}
               />
             </label>
             <label className="consent full-width">
               <input type="checkbox" name="confirmed" required />
-              <span>Сверил поступление с банковской выпиской</span>
+              <span>{t('Сверил поступление с банковской выпиской')}</span>
             </label>
             <details className="full-width">
-              <summary>В выписке есть другое похожее поступление</summary>
+              <summary>{t('В выписке есть другое похожее поступление')}</summary>
               <p>
-                Сначала проверьте номер и дату документа. Повторную загрузку одного платежа
-                подтверждать нельзя.
+                {t(
+                  'Сначала проверьте номер и дату документа. Повторную загрузку одного платежа подтверждать нельзя.'
+                )}
               </p>
               <label className="consent">
                 <input
@@ -599,17 +595,17 @@ function FinanceModal({
                   checked={distinctReceipt}
                   onChange={(e) => setDistinctReceipt(e.target.checked)}
                 />
-                <span>Подтверждаю, что это разные платежные документы</span>
+                <span>{t('Подтверждаю, что это разные платежные документы')}</span>
               </label>
               {distinctReceipt && (
                 <label className="field">
-                  Основание различия платежей
+                  {t('Основание различия платежей')}
                   <textarea
                     name="distinct_reason"
                     required
                     minLength={10}
                     maxLength={3000}
-                    placeholder="Укажите оба документа и результат сверки с выпиской"
+                    placeholder={t('Укажите оба документа и результат сверки с выпиской')}
                   />
                 </label>
               )}
@@ -620,11 +616,14 @@ function FinanceModal({
           <>
             <div className="ops-context full-width">
               <strong>{modal.payment.reference}</strong>
-              <span>Доступно {money(modal.payment.available_amount)}</span>
+              <span>
+                {t('Доступно')} {money(modal.payment.available_amount)}
+              </span>
             </div>
             <InvoiceSelect invoices={invoices.filter((i) => i.balance > 0)} />
             <label className="field full-width">
-              Сумма распределения, ₽<input name="amount" inputMode="decimal" required />
+              {t('Сумма распределения, ₽')}
+              <input name="amount" inputMode="decimal" required />
             </label>
           </>
         )}
@@ -640,14 +639,14 @@ function FinanceModal({
                 type="checkbox"
                 defaultChecked={modal.party.contact_allowed}
               />
-              <span>Разрешить контакт по счетам покупателя</span>
+              <span>{t('Разрешить контакт по счетам покупателя')}</span>
             </label>
             <label className="consent full-width">
               <input name="hold" type="checkbox" defaultChecked={modal.party.hold} />
-              <span>Приостановить контакт по всем счетам</span>
+              <span>{t('Приостановить контакт по всем счетам')}</span>
             </label>
             <label className="field full-width">
-              Причина приостановки
+              {t('Причина приостановки')}
               <input name="hold_reason" defaultValue={modal.party.hold_reason} maxLength={2000} />
             </label>
             <label className="consent full-width">
@@ -656,10 +655,10 @@ function FinanceModal({
                 type="checkbox"
                 defaultChecked={modal.party.agent_promises_allowed}
               />
-              <span>Разрешить Mandato принимать обещания оплаты в заданных пределах</span>
+              <span>{t('Разрешить Mandato принимать обещания оплаты в заданных пределах')}</span>
             </label>
             <label className="field">
-              Максимум дней отсрочки
+              {t('Максимум дней отсрочки')}
               <input
                 name="max_promise_days"
                 type="number"
@@ -670,7 +669,7 @@ function FinanceModal({
               />
             </label>
             <label className="field">
-              Максимум платежей в графике
+              {t('Максимум платежей в графике')}
               <input
                 name="max_installments"
                 type="number"
@@ -681,7 +680,7 @@ function FinanceModal({
               />
             </label>
             <label className="field full-width">
-              Разрешение действует до
+              {t('Разрешение действует до')}
               <input
                 name="mandate_expires_on"
                 type="date"
@@ -694,22 +693,25 @@ function FinanceModal({
           <>
             <div className="ops-context full-width">
               <strong>{modal.invoice.number}</strong>
-              <span>Остаток {money(modal.invoice.balance)}</span>
+              <span>
+                {t('Остаток')} {money(modal.invoice.balance)}
+              </span>
             </div>
             <label className="field">
-              Основание
+              {t('Основание')}
               <select name="kind" defaultValue={modal.invoice.balance === 0 ? 'debit' : 'return'}>
-                <option value="return">Возврат товара</option>
-                <option value="offset">Зачёт встречного требования</option>
-                <option value="credit">Уменьшение требования</option>
-                <option value="debit">Дополнительное начисление</option>
+                <option value="return">{t('Возврат товара')}</option>
+                <option value="offset">{t('Зачёт встречного требования')}</option>
+                <option value="credit">{t('Уменьшение требования')}</option>
+                <option value="debit">{t('Дополнительное начисление')}</option>
               </select>
             </label>
             <label className="field">
-              Сумма изменения, ₽<input name="amount" inputMode="decimal" required />
+              {t('Сумма изменения, ₽')}
+              <input name="amount" inputMode="decimal" required />
             </label>
             <label className="field">
-              Дата основания
+              {t('Дата основания')}
               <input
                 name="effective_on"
                 type="date"
@@ -719,7 +721,7 @@ function FinanceModal({
               />
             </label>
             <label className="field full-width">
-              Документ и причина
+              {t('Документ и причина')}
               <textarea name="reason" required maxLength={2000} />
             </label>
           </>
@@ -728,20 +730,23 @@ function FinanceModal({
           <>
             <div className="ops-context full-width">
               <strong>{modal.payment.display_reference || modal.payment.reference}</strong>
-              <span>Исходная сумма {money(modal.payment.amount)}</span>
+              <span>
+                {t('Исходная сумма')} {money(modal.payment.amount)}
+              </span>
             </div>
             <label className="field">
-              Операция
+              {t('Операция')}
               <select name="kind">
-                <option value="correction">Исправление ошибочного разнесения</option>
-                <option value="refund">Возврат денег покупателю</option>
+                <option value="correction">{t('Исправление ошибочного разнесения')}</option>
+                <option value="refund">{t('Возврат денег покупателю')}</option>
               </select>
             </label>
             <label className="field">
-              Сумма отмены, ₽<input name="amount" inputMode="decimal" required />
+              {t('Сумма отмены, ₽')}
+              <input name="amount" inputMode="decimal" required />
             </label>
             <label className="field full-width">
-              Основание и причина
+              {t('Основание и причина')}
               <textarea name="reason" required maxLength={2000} />
             </label>
           </>
@@ -750,15 +755,18 @@ function FinanceModal({
           <>
             <div className="ops-context full-width">
               <strong>{modal.invoice.number}</strong>
-              <span>Остаток {money(modal.invoice.balance)}</span>
+              <span>
+                {t('Остаток')} {money(modal.invoice.balance)}
+              </span>
             </div>
             {!installments.length && (
               <>
                 <label className="field">
-                  Обещанная сумма, ₽<input name="amount" inputMode="decimal" required />
+                  {t('Обещанная сумма, ₽')}
+                  <input name="amount" inputMode="decimal" required />
                 </label>
                 <label className="field">
-                  Дата оплаты
+                  {t('Дата оплаты')}
                   <input name="date" type="date" min={today()} defaultValue={today()} required />
                 </label>
               </>
@@ -766,7 +774,7 @@ function FinanceModal({
             {installments.map((item, index) => (
               <div className="ops-installment full-width" key={index}>
                 <label className="field">
-                  Дата платежа {index + 1}
+                  {t('Дата платежа')} {index + 1}
                   <input
                     type="date"
                     min={today()}
@@ -780,7 +788,7 @@ function FinanceModal({
                   />
                 </label>
                 <label className="field">
-                  Сумма, ₽
+                  {t('Сумма, ₽')}
                   <input
                     inputMode="decimal"
                     required
@@ -795,7 +803,7 @@ function FinanceModal({
                 <button
                   className="icon-button"
                   type="button"
-                  aria-label={`Убрать платёж ${index + 1}`}
+                  aria-label={t('Убрать платёж {0}', [index + 1])}
                   onClick={() => setInstallments((items) => items.filter((_, i) => i !== index))}
                 >
                   ×
@@ -809,7 +817,9 @@ function FinanceModal({
               onClick={() => setInstallments((items) => [...items, { date: today(), amount: '' }])}
             >
               <Plus size={14} />
-              {installments.length ? 'Добавить платёж в график' : 'Разбить на несколько платежей'}
+              {installments.length
+                ? t('Добавить платёж в график')
+                : t('Разбить на несколько платежей')}
             </button>
           </>
         )}
@@ -839,21 +849,23 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
     <section className="ops-card">
       <div className="ops-card-heading">
         <div>
-          <h2>Сверка с учётной системой</h2>
-          <p>Проверьте начальные оплаты и изменения существующих счетов перед сохранением.</p>
+          <h2>{t('Сверка с учётной системой')}</h2>
+          <p>
+            {t('Проверьте начальные оплаты и изменения существующих счетов перед сохранением.')}
+          </p>
         </div>
         <Upload size={22} />
       </div>
       <fieldset disabled={busy} className="ops-input-group">
         <label className="field">
-          Выгрузка CSV
+          {t('Выгрузка CSV')}
           <FileInput
             accept=".csv,.txt"
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               if (file.size > 1500000) {
-                setError('Файл слишком большой. Разделите выгрузку на несколько частей.');
+                setError(t('Файл слишком большой. Разделите выгрузку на несколько частей.'));
                 return;
               }
               const request = ++fileRequest.current;
@@ -873,7 +885,7 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
           />
         </label>
         <label className="field">
-          Данные реестра
+          {t('Данные реестра')}
           <textarea
             className="ops-csv"
             value={content}
@@ -883,7 +895,7 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
               setPreview(null);
             }}
             rows={7}
-            placeholder="контрагент;инн;номер;дата;срок;сумма;оплачено;остаток"
+            placeholder={t('контрагент;инн;номер;дата;срок;сумма;оплачено;остаток')}
           />
         </label>
         <button
@@ -891,7 +903,7 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
           disabled={busy || !content.trim()}
           onClick={() => void check()}
         >
-          {busy ? 'Проверяем…' : 'Проверить изменения'}
+          {busy ? t('Проверяем…') : t('Проверить изменения')}
           <ArrowUpRight size={15} />
         </button>
         <DeskError>{error}</DeskError>
@@ -899,17 +911,17 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
           <div className="ops-preview">
             {preview.errors.map((e, index) => (
               <p className="form-error" key={index}>
-                Строка {e.row}: {e.message}
+                {t('Строка')} {e.row}: {e.message}
               </p>
             ))}
             <div className="table-scroll">
               <table className="invoice-table ops-table">
                 <thead>
                   <tr>
-                    <th scope="col">Счёт</th>
-                    <th scope="col">Изменение</th>
-                    <th scope="col">Прежний остаток</th>
-                    <th scope="col">Новый остаток</th>
+                    <th scope="col">{t('Счёт')}</th>
+                    <th scope="col">{t('Изменение')}</th>
+                    <th scope="col">{t('Прежний остаток')}</th>
+                    <th scope="col">{t('Новый остаток')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -922,10 +934,10 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
                       <td>
                         {
                           {
-                            create: 'Новый счёт',
-                            update: 'Обновление',
-                            skip: 'Без изменений',
-                            conflict: 'Нужна проверка',
+                            create: t('Новый счёт'),
+                            update: t('Обновление'),
+                            skip: t('Без изменений'),
+                            conflict: t('Нужна проверка'),
                           }[c.action]
                         }
                         {c.reason && <small>{c.reason}</small>}
@@ -944,7 +956,7 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
             </div>
             {!preview.errors.length && !preview.changes.some((c) => c.action === 'conflict') && (
               <OperationForm
-                label="Подтвердить сверку"
+                label={t('Подтвердить сверку')}
                 onDone={() => {
                   setPreview(null);
                   setContent('');
@@ -962,17 +974,17 @@ function Reconciliation({ onDone }: { onDone: () => void }) {
                 }}
               >
                 <label className="field full-width">
-                  Основание сверки
+                  {t('Основание сверки')}
                   <input
                     name="reason"
                     required
-                    placeholder="Выгрузка на дату, согласование бухгалтера"
+                    placeholder={t('Выгрузка на дату, согласование бухгалтера')}
                     maxLength={2000}
                   />
                 </label>
                 <label className="consent full-width">
                   <input type="checkbox" required />
-                  <span>Проверил суммы, оплаты и изменения реестра</span>
+                  <span>{t('Проверил суммы, оплаты и изменения реестра')}</span>
                 </label>
               </OperationForm>
             )}
@@ -992,15 +1004,15 @@ function previewBalance(item: Record<string, unknown> | undefined) {
 
 function ChangeDetails({ change }: { change: Change }) {
   const fields = [
-    ['company', 'Контрагент'],
-    ['inn', 'ИНН'],
-    ['email', 'Почта покупателя'],
-    ['number', 'Номер счёта'],
-    ['issued_on', 'Дата счёта'],
-    ['due_on', 'Срок оплаты'],
-    ['amount', 'Сумма счёта'],
-    ['paid_amount', 'Оплачено'],
-    ['notes', 'Примечание'],
+    ['company', t('Контрагент')],
+    ['inn', t('ИНН')],
+    ['email', t('Почта покупателя')],
+    ['number', t('Номер счёта')],
+    ['issued_on', t('Дата счёта')],
+    ['due_on', t('Срок оплаты')],
+    ['amount', t('Сумма счёта')],
+    ['paid_amount', t('Оплачено')],
+    ['notes', t('Примечание')],
   ] as const;
   const changed = fields.filter(
     ([key]) => String(change.before?.[key] ?? '') !== String(change.after?.[key] ?? '')
@@ -1010,10 +1022,10 @@ function ChangeDetails({ change }: { change: Change }) {
       ? money(item)
       : typeof item === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item)
         ? item.split('-').reverse().join('.')
-        : String(item || 'Не указано');
+        : String(item || t('Не указано'));
   return changed.length ? (
     <details className="ops-change-details">
-      <summary>Что изменится</summary>
+      <summary>{t('Что изменится')}</summary>
       {changed.map(([key, label]) => (
         <div key={key}>
           <strong>{label}</strong>

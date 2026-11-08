@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   X,
@@ -32,11 +33,11 @@ import {
 import { Dialog } from './Dialog';
 import { useDialogFocus } from './useDialogFocus';
 export const statusNames: Record<Invoice['status'], string> = {
-  open: 'В работе',
-  promised: 'Обещание',
-  disputed: 'Спор',
-  paid: 'Оплачен',
-  paused: 'На паузе',
+  open: t('В работе'),
+  promised: t('Обещание'),
+  disputed: t('Спор'),
+  paid: t('Оплачен'),
+  paused: t('На паузе'),
 };
 export const statusColors: Record<Invoice['status'], string> = {
   open: 'gray',
@@ -96,10 +97,10 @@ export function DebtDrawer({
       onChange();
       notify(
         value === 'disputed'
-          ? 'Работа по спорному счёту приостановлена'
+          ? t('Работа по спорному счёту приостановлена')
           : value === 'paused'
-            ? 'Счёт поставлен на паузу'
-            : 'Счёт возвращён в работу'
+            ? t('Счёт поставлен на паузу')
+            : t('Счёт возвращён в работу')
       );
     } catch (e) {
       notify((e as Error).message, true);
@@ -121,14 +122,14 @@ export function DebtDrawer({
         className="debt-drawer"
         role="dialog"
         aria-modal="true"
-        aria-label="Карточка счёта"
+        aria-label={t('Карточка счёта')}
       >
         <div className="drawer-top">
           <span>
             <FileText size={16} />
-            Карточка счёта
+            {t('Карточка счёта')}
           </span>
-          <button className="icon-button" onClick={onClose} aria-label="Закрыть карточку">
+          <button className="icon-button" onClick={onClose} aria-label={t('Закрыть карточку')}>
             <X size={20} />
           </button>
         </div>
@@ -136,13 +137,13 @@ export function DebtDrawer({
           <div className="empty-state">
             <p className="form-error">{error}</p>
             <button onClick={() => void load()} className="button button-dark">
-              Повторить
+              {t('Повторить')}
             </button>
           </div>
         ) : !detail || !inv ? (
           <div className="loading">
             <div className="spinner" />
-            Открываем счёт…
+            {t('Открываем счёт…')}
           </div>
         ) : (
           <>
@@ -155,44 +156,46 @@ export function DebtDrawer({
               </div>
               <h2>{inv.company}</h2>
               <p className="drawer-company">
-                {inv.inn ? `ИНН ${inv.inn}` : 'Реквизиты не указаны'}{' '}
+                {inv.inn ? t('ИНН {0}', [inv.inn]) : t('Реквизиты не указаны')}{' '}
                 {inv.email && <>· {inv.email}</>}
               </p>
               <button className="drawer-contact-edit" onClick={() => setAction('contact')}>
-                Изменить контакт и заметку
+                {t('Изменить контакт и заметку')}
                 <Pencil size={12} />
               </button>
               {inv.notes && <div className="invoice-notes">{inv.notes}</div>}
               <div className="drawer-balance">
-                <span>Осталось к оплате</span>
+                <span>{t('Осталось к оплате')}</span>
                 <strong>{money(inv.balance)}</strong>
                 <div>
-                  <span>Сумма счёта {money(inv.amount)}</span>
+                  <span>
+                    {t('Сумма счёта')} {money(inv.amount)}
+                  </span>
                   {inv.paid_amount > 0 && (
                     <span className="paid-amount">
                       <Check size={12} />
-                      {money(inv.paid_amount)} оплачено
+                      {money(inv.paid_amount)} {t('оплачено')}
                     </span>
                   )}
                 </div>
               </div>
               <div className="invoice-facts">
                 <div>
-                  <span>Дата счёта</span>
+                  <span>{t('Дата счёта')}</span>
                   <strong>{dateText(inv.issued_on)}</strong>
                 </div>
                 <div>
-                  <span>Оплатить до</span>
+                  <span>{t('Оплатить до')}</span>
                   <strong>{dateText(inv.due_on)}</strong>
                 </div>
                 <div>
-                  <span>{inv.days_overdue > 0 ? 'Просрочка' : 'Срок'}</span>
+                  <span>{inv.days_overdue > 0 ? t('Просрочка') : t('Срок')}</span>
                   <strong className={inv.days_overdue > 0 && inv.balance > 0 ? 'overdue' : ''}>
                     {inv.balance === 0
-                      ? 'Закрыт'
+                      ? t('Закрыт')
                       : inv.days_overdue > 0
-                        ? `${inv.days_overdue} дн.`
-                        : 'Не наступил'}
+                        ? t('{0} дн.', [inv.days_overdue])
+                        : t('Не наступил')}
                   </strong>
                 </div>
               </div>
@@ -200,14 +203,18 @@ export function DebtDrawer({
                 <div className="promise-banner">
                   <Clock3 size={17} />
                   <div>
-                    <strong>Обещание оплаты · {dateText(inv.promise_date)}</strong>
-                    <span>Ожидаем {money(inv.balance)} по договорённости</span>
+                    <strong>
+                      {t('Обещание оплаты ·')} {dateText(inv.promise_date)}
+                    </strong>
+                    <span>
+                      {t('Ожидаем')} {money(inv.balance)} {t('по договорённости')}
+                    </span>
                   </div>
                 </div>
               )}
               {inv.priority_reasons.length > 0 && inv.balance > 0 && (
                 <div className="priority-reasons">
-                  <span>Почему в приоритете</span>
+                  <span>{t('Почему в приоритете')}</span>
                   {inv.priority_reasons.map((r) => (
                     <p key={r}>
                       <i />
@@ -222,7 +229,7 @@ export function DebtDrawer({
                   onClick={() => void draft()}
                   disabled={busy || !canContact}
                 >
-                  Подготовить письмо
+                  {t('Подготовить письмо')}
                   <Mail size={16} />
                 </button>
                 <button
@@ -230,7 +237,7 @@ export function DebtDrawer({
                   onClick={() => setAction('payment')}
                   disabled={inv.balance === 0}
                 >
-                  Внести оплату
+                  {t('Внести оплату')}
                   <Plus size={16} />
                 </button>
                 <button
@@ -238,17 +245,17 @@ export function DebtDrawer({
                   onClick={() => setAction('promise')}
                   disabled={!canContact}
                 >
-                  Обещание оплаты
+                  {t('Обещание оплаты')}
                   <Clock3 size={15} />
                 </button>
                 <div className="tone-select">
                   <select
-                    aria-label="Тон письма"
+                    aria-label={t('Тон письма')}
                     value={tone}
                     onChange={(e) => setTone(e.target.value)}
                   >
-                    <option value="soft">Мягкое напоминание</option>
-                    <option value="firm">Деловое напоминание</option>
+                    <option value="soft">{t('Мягкое напоминание')}</option>
+                    <option value="firm">{t('Деловое напоминание')}</option>
                   </select>
                   <ChevronDown size={13} />
                 </div>
@@ -256,11 +263,11 @@ export function DebtDrawer({
               {!canContact && inv.balance > 0 && (
                 <p className="drawer-notice">
                   <Pause size={14} />
-                  Подготовка писем приостановлена до возврата счёта в работу.
+                  {t('Подготовка писем приостановлена до возврата счёта в работу.')}
                 </p>
               )}
               <div className="drawer-section-title">
-                <h3>Переписка</h3>
+                <h3>{t('Переписка')}</h3>
                 <span>{detail.messages.length}</span>
               </div>
               {selectedMsg && (
@@ -277,7 +284,9 @@ export function DebtDrawer({
               )}
               <div className="message-list">
                 {detail.messages.length === 0 ? (
-                  <p className="quiet-empty">Здесь появятся подготовленные письма покупателю.</p>
+                  <p className="quiet-empty">
+                    {t('Здесь появятся подготовленные письма покупателю.')}
+                  </p>
                 ) : (
                   detail.messages
                     .filter((m) => m.id !== selectedMsg?.id)
@@ -291,17 +300,18 @@ export function DebtDrawer({
                         <span>
                           <strong>{msg.subject}</strong>
                           <small>
-                            {dateText(msg.created_at)} · {msg.recipient || 'Получатель не указан'}
+                            {dateText(msg.created_at)} ·{' '}
+                            {msg.recipient || t('Получатель не указан')}
                           </small>
                         </span>
                         <span className={`pill ${msg.status === 'sent' ? 'green' : 'gray'}`}>
                           {msg.status === 'sent'
-                            ? 'Отправлено'
+                            ? t('Отправлено')
                             : msg.status === 'approved'
-                              ? 'Согласовано'
+                              ? t('Согласовано')
                               : msg.status === 'failed'
-                                ? 'Ошибка'
-                                : 'Черновик'}
+                                ? t('Ошибка')
+                                : t('Черновик')}
                         </span>
                         <ArrowUpRight size={14} />
                       </button>
@@ -309,7 +319,7 @@ export function DebtDrawer({
                 )}
               </div>
               <div className="drawer-section-title">
-                <h3>История работы</h3>
+                <h3>{t('История работы')}</h3>
                 <span>{detail.events.length}</span>
               </div>
               <div className="event-list">
@@ -337,17 +347,17 @@ export function DebtDrawer({
                   {inv.status === 'paused' || inv.status === 'disputed' ? (
                     <button onClick={() => void status('open')} disabled={busy}>
                       <Play size={14} />
-                      Вернуть в работу
+                      {t('Вернуть в работу')}
                     </button>
                   ) : (
                     <>
                       <button onClick={() => void status('paused')} disabled={busy}>
                         <Pause size={14} />
-                        Поставить на паузу
+                        {t('Поставить на паузу')}
                       </button>
                       <button onClick={() => void status('disputed')} disabled={busy}>
                         <AlertCircle size={14} />
-                        Отметить спор
+                        {t('Отметить спор')}
                       </button>
                     </>
                   )}
@@ -365,7 +375,7 @@ export function DebtDrawer({
               setSelectedMsg(null);
               await load();
               onChange();
-              notify('Контакт и заметка сохранены');
+              notify(t('Контакт и заметка сохранены'));
             }}
           />
         )}
@@ -379,7 +389,9 @@ export function DebtDrawer({
               setSelectedMsg(null);
               await load();
               onChange();
-              notify(action === 'payment' ? 'Поступление записано' : 'Обещание оплаты сохранено');
+              notify(
+                action === 'payment' ? t('Поступление записано') : t('Обещание оплаты сохранено')
+              );
             }}
           />
         )}
@@ -407,7 +419,7 @@ function MessageEditor({
       if (dirty) await patch(`/messages/${message.id}`, { subject, body });
       const m = await post<Message>(`/messages/${message.id}/approve`);
       await onChange(m);
-      notify('Письмо согласовано');
+      notify(t('Письмо согласовано'));
     } catch (e) {
       notify((e as Error).message, true);
     } finally {
@@ -419,7 +431,7 @@ function MessageEditor({
     try {
       const m = await post<Message>(`/messages/${message.id}/send`);
       await onChange(m);
-      notify('Письмо принято почтовым сервером');
+      notify(t('Письмо принято почтовым сервером'));
     } catch (e) {
       notify((e as Error).message, true);
       try {
@@ -446,22 +458,22 @@ function MessageEditor({
     <section className="message-editor">
       <div className="editor-header">
         <Mail size={15} />
-        <span>{sent ? 'Отправленное письмо' : 'Письмо покупателю'}</span>
+        <span>{sent ? t('Отправленное письмо') : t('Письмо покупателю')}</span>
         <span className={`pill ${message.status === 'approved' ? 'green' : 'gray'}`}>
           {sent
-            ? 'Отправлено'
+            ? t('Отправлено')
             : message.status === 'approved' && !dirty
-              ? 'Согласовано'
-              : 'Черновик'}
+              ? t('Согласовано')
+              : t('Черновик')}
         </span>
       </div>
       <p className="editor-to">
-        Кому: <strong>{message.recipient || 'Укажите email в счёте'}</strong>
+        {t('Кому:')} <strong>{message.recipient || t('Укажите email в счёте')}</strong>
       </p>
       <label className="field">
-        Тема
+        {t('Тема')}
         <input
-          aria-label="Тема письма"
+          aria-label={t('Тема письма')}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           readOnly={sent}
@@ -469,9 +481,9 @@ function MessageEditor({
         />
       </label>
       <label className="field">
-        Текст письма
+        {t('Текст письма')}
         <textarea
-          aria-label="Текст письма"
+          aria-label={t('Текст письма')}
           rows={9}
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -482,8 +494,8 @@ function MessageEditor({
       <p className="editor-source">
         <ShieldCheck size={12} />
         {message.source === 'yandex'
-          ? 'Текст подготовлен с ИИ. Суммы подставлены из счёта.'
-          : 'Суммы и сроки подставлены из счёта. Проверьте текст.'}
+          ? t('Текст подготовлен с ИИ. Суммы подставлены из счёта.')
+          : t('Суммы и сроки подставлены из счёта. Проверьте текст.')}
       </p>
       <div className="editor-actions">
         {!sent && (message.status !== 'approved' || dirty) ? (
@@ -492,25 +504,27 @@ function MessageEditor({
             disabled={busy || !subject.trim() || !body.trim()}
             onClick={() => void approve()}
           >
-            Согласовать письмо
+            {t('Согласовать письмо')}
             <CheckCheck size={16} />
           </button>
         ) : !sent ? (
           <button className="button button-dark" disabled={busy} onClick={() => void send()}>
-            Отправить письмо
+            {t('Отправить письмо')}
             <Send size={15} />
           </button>
         ) : null}
         <button
           className="icon-button"
-          aria-label="Скачать письмо"
-          title="Скачать письмо"
+          aria-label={t('Скачать письмо')}
+          title={t('Скачать письмо')}
           onClick={download}
         >
           <Download size={17} />
         </button>
       </div>
-      <p className="editor-safety">Отправка доступна после подключения почты администратором.</p>
+      <p className="editor-safety">
+        {t('Отправка доступна после подключения почты администратором.')}
+      </p>
     </section>
   );
 }
@@ -547,17 +561,20 @@ function PaymentPromise({
     }
   }
   return (
-    <Dialog title={kind === 'payment' ? 'Поступление денег' : 'Обещание оплаты'} onClose={onClose}>
+    <Dialog
+      title={kind === 'payment' ? t('Поступление денег') : t('Обещание оплаты')}
+      onClose={onClose}
+    >
       <p className="dialog-intro">
         {invoice.company} · {invoice.number}
         <br />
-        Остаток: <strong>{money(invoice.balance)}</strong>
+        {t('Остаток:')} <strong>{money(invoice.balance)}</strong>
       </p>
       <form className="form-grid" onSubmit={submit}>
         {kind === 'payment' ? (
           <>
             <label className="field full-width">
-              Сумма оплаты
+              {t('Сумма оплаты')}
               <input
                 required
                 inputMode="decimal"
@@ -567,25 +584,27 @@ function PaymentPromise({
               />
             </label>
             <label className="field">
-              Дата поступления
+              {t('Дата поступления')}
               <input required type="date" name="paid_on" defaultValue={today()} max={today()} />
             </label>
             <label className="field">
-              Номер платежа
-              <input required name="reference" placeholder="ПП-284" maxLength={100} />
+              {t('Номер платежа')}
+              <input required name="reference" placeholder={t('ПП-284')} maxLength={100} />
             </label>
             <p className="form-note full-width">
-              Укажите номер из выписки. Повторный платёж с тем же номером не будет учтён дважды.
+              {t(
+                'Укажите номер из выписки. Повторный платёж с тем же номером не будет учтён дважды.'
+              )}
             </p>
           </>
         ) : (
           <>
             <label className="field full-width">
-              Дата оплаты
+              {t('Дата оплаты')}
               <input required type="date" name="date" min={today()} defaultValue={today()} />
             </label>
             <p className="form-note full-width">
-              Сохраним договорённость и покажем, когда наступит обещанная дата.
+              {t('Сохраним договорённость и покажем, когда наступит обещанная дата.')}
             </p>
           </>
         )}
@@ -596,10 +615,10 @@ function PaymentPromise({
         )}
         <div className="dialog-actions full-width">
           <button className="button button-outline" type="button" onClick={onClose}>
-            Отмена
+            {t('Отмена')}
           </button>
           <button className="button button-dark" disabled={busy} type="submit">
-            {kind === 'payment' ? 'Записать оплату' : 'Сохранить обещание'}
+            {kind === 'payment' ? t('Записать оплату') : t('Сохранить обещание')}
             <Check size={16} />
           </button>
         </div>
@@ -634,27 +653,27 @@ function ContactForm({
     }
   }
   return (
-    <Dialog title="Контакт и заметка" onClose={onClose}>
+    <Dialog title={t('Контакт и заметка')} onClose={onClose}>
       <p className="dialog-intro">
         {invoice.company} · {invoice.number}
       </p>
       <form onSubmit={submit} className="form-grid">
         <label className="field full-width">
-          Email покупателя
+          {t('Почта покупателя')}
           <input type="email" name="email" defaultValue={invoice.email} maxLength={254} />
         </label>
         <label className="field full-width">
-          Заметка по счёту
+          {t('Заметка по счёту')}
           <textarea
             name="notes"
             rows={5}
             maxLength={5000}
             defaultValue={invoice.notes}
-            placeholder="Контекст договорённости, нужные документы или следующий шаг"
+            placeholder={t('Контекст договорённости, нужные документы или следующий шаг')}
           />
         </label>
         <p className="form-note full-width">
-          Изменения сохранятся в истории. После смены адреса подготовьте письмо заново.
+          {t('Изменения сохранятся в истории. После смены адреса подготовьте письмо заново.')}
         </p>
         {error && (
           <p className="form-error full-width" role="alert">
@@ -663,10 +682,10 @@ function ContactForm({
         )}
         <div className="dialog-actions full-width">
           <button className="button button-outline" type="button" onClick={onClose}>
-            Отмена
+            {t('Отмена')}
           </button>
           <button className="button button-dark" type="submit" disabled={busy}>
-            Сохранить контакт
+            {t('Сохранить контакт')}
             <Check size={16} />
           </button>
         </div>

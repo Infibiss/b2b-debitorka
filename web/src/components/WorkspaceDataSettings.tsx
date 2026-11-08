@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, post } from '../api';
 import './workspace-data-settings.css';
@@ -91,10 +92,11 @@ export default function WorkspaceDataSettings({ layoutReady = true }: { layoutRe
       aria-labelledby="workspace-data-title"
     >
       <div className="workspace-data-heading">
-        <h2 id="workspace-data-title">Данные организации</h2>
+        <h2 id="workspace-data-title">{t('Данные организации')}</h2>
         <p>
-          Запрос на удаление данных рабочего пространства проверяем вручную. Перед удалением
-          подтвердим полномочия и обязательные сроки хранения.
+          {t(
+            'Запрос на удаление данных рабочего пространства проверяем вручную. Перед удалением подтвердим полномочия и обязательные сроки хранения.'
+          )}
         </p>
       </div>
       {error && (
@@ -103,35 +105,40 @@ export default function WorkspaceDataSettings({ layoutReady = true }: { layoutRe
         </p>
       )}
       {loading ? (
-        <p role="status">Загружаем сведения о данных организации…</p>
+        <p role="status">{t('Загружаем сведения о данных организации…')}</p>
       ) : !account ? (
         <button
           type="button"
           className="workspace-data-secondary"
           onClick={() => setLoadAttempt((value) => value + 1)}
         >
-          Повторить загрузку
+          {t('Повторить загрузку')}
         </button>
       ) : account.deletion_request ? (
         <div className="workspace-data-status" role="status">
-          <p>Запрос на удаление зарегистрирован. Свяжемся с вами для уточнения объёма удаления.</p>
           <p>
-            Номер запроса: <strong>{account.deletion_request.id}</strong>
+            {t(
+              'Запрос на удаление зарегистрирован. Свяжемся с вами для уточнения объёма удаления.'
+            )}
+          </p>
+          <p>
+            {t('Номер запроса:')} <strong>{account.deletion_request.id}</strong>
           </p>
         </div>
       ) : !account.can_manage ? (
         <p>
-          Отправить запрос на удаление может только администратор организации. Обратитесь к нему для
-          управления данными рабочего пространства.
+          {t(
+            'Отправить запрос на удаление может только администратор организации. Обратитесь к нему для управления данными рабочего пространства.'
+          )}
         </p>
       ) : confirming ? (
         <form
           className="workspace-data-form"
           onSubmit={requestDeletion}
-          aria-label="Запрос на удаление данных"
+          aria-label={t('Запрос на удаление данных')}
         >
           <label className="workspace-data-field" htmlFor="workspace-data-confirmation">
-            Введите УДАЛИТЬ
+            {t('Введите УДАЛИТЬ')}
           </label>
           <input
             id="workspace-data-confirmation"
@@ -153,14 +160,14 @@ export default function WorkspaceDataSettings({ layoutReady = true }: { layoutRe
               required
               disabled={busy}
             />
-            <span>Подтверждаю отправку запроса от имени организации</span>
+            <span>{t('Подтверждаю отправку запроса от имени организации')}</span>
           </label>
           <div className="workspace-data-actions">
             <button
               className="workspace-data-primary"
               disabled={busy || confirmation !== 'УДАЛИТЬ' || !consent}
             >
-              {busy ? 'Отправляем запрос…' : 'Отправить запрос'}
+              {busy ? t('Отправляем запрос…') : t('Отправить запрос')}
             </button>
             <button
               type="button"
@@ -168,7 +175,7 @@ export default function WorkspaceDataSettings({ layoutReady = true }: { layoutRe
               onClick={closeConfirmation}
               disabled={busy}
             >
-              Вернуться
+              {t('Вернуться')}
             </button>
           </div>
         </form>
@@ -178,11 +185,11 @@ export default function WorkspaceDataSettings({ layoutReady = true }: { layoutRe
           className="workspace-data-secondary"
           onClick={() => setConfirming(true)}
         >
-          Запросить удаление данных
+          {t('Запросить удаление данных')}
         </button>
       )}
       <a className="workspace-data-policy" href="/data-request">
-        Как рассматриваются запросы по данным
+        {t('Как рассматриваются запросы по данным')}
       </a>
     </section>
   );

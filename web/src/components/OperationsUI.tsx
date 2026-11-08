@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { AlertCircle, ArrowRight, LoaderCircle } from 'lucide-react';
 import type { Invoice } from '../api';
@@ -34,7 +35,7 @@ export function DeskHeading({
 export function OperationForm({
   submit,
   onDone,
-  label = 'Сохранить',
+  label = t('Сохранить'),
   draftKey = '',
   revision,
   resetOnSave = false,
@@ -97,14 +98,14 @@ export function OperationForm({
             disabled={busy}
             onClick={draft.discard}
           >
-            Отменить изменения
+            {t('Отменить изменения')}
           </button>
         )}
         <button className="button button-dark" disabled={busy} type="submit">
           {busy ? (
             <>
               <LoaderCircle className="spin" size={16} />
-              Сохраняем…
+              {t('Сохраняем…')}
             </>
           ) : (
             <>
@@ -131,7 +132,7 @@ export function InvoiceSelect({
   const { invoiceId } = useWorkContext();
   return (
     <label className="field full-width">
-      Счёт
+      {t('Счёт')}
       <select
         required
         name={name}
@@ -146,7 +147,7 @@ export function InvoiceSelect({
         onChange={(e) => onChange?.(e.target.value)}
       >
         <option value="" disabled>
-          Выберите счёт
+          {t('Выберите счёт')}
         </option>
         {invoices.map((i) => (
           <option key={i.id} value={i.id}>
@@ -161,10 +162,10 @@ export const value = (data: FormData, name: string) => String(data.get(name) ?? 
 export function rubles(raw: string) {
   const clean = raw.replace(/\s/g, '').replace(',', '.');
   if (!/^\d+(?:\.\d{1,2})?$/.test(clean))
-    throw new Error('Укажите сумму в рублях, не более двух знаков после запятой.');
+    throw new Error(t('Укажите сумму в рублях, не более двух знаков после запятой.'));
   const [whole, fraction = ''] = clean.split('.');
   const result = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
-  if (result > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Сумма слишком велика.');
+  if (result > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(t('Сумма слишком велика.'));
   return Number(result);
 }
 export function DeskError({ children }: { children: string }) {

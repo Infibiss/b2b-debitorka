@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { navigate, useRouteField, useWorkContext } from '../navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Check, CircleHelp, Inbox, RefreshCw, ShieldCheck, X } from 'lucide-react';
@@ -39,65 +40,66 @@ type Proposal = {
   outcome?: { message?: string; action?: string; status?: string } | null;
 };
 const statusText: Record<Proposal['status'], string> = {
-  processing: 'Обрабатывается',
-  review_required: 'Ждёт решения',
-  handoff: 'Нужна проверка',
-  executed: 'Подтверждено',
-  rejected: 'Отклонено',
-  stale: 'Данные изменились',
-  superseded: 'Есть новая редакция',
+  processing: t('Обрабатывается'),
+  review_required: t('Ждёт решения'),
+  handoff: t('Нужна проверка'),
+  executed: t('Подтверждено'),
+  rejected: t('Отклонено'),
+  stale: t('Данные изменились'),
+  superseded: t('Есть новая редакция'),
 };
 const intentText = {
-  promise: 'Договорённость об оплате',
-  dispute: 'Возражение покупателя',
-  payment_claim: 'Сообщение об оплате',
-  unknown: 'Обращение покупателя',
+  promise: t('Договорённость об оплате'),
+  dispute: t('Возражение покупателя'),
+  payment_claim: t('Сообщение об оплате'),
+  unknown: t('Обращение покупателя'),
 };
 const reasons: Record<string, string> = {
-  provider_tenant_denied:
-    'Обработка сообщений для вашей организации ещё не подключена. Обратитесь к администратору.',
-  provider_unconfigured: 'Обработка сообщений ещё не подключена. Обратитесь к администратору.',
-  provider_unavailable: 'Не удалось обработать сообщение. Повторите проверку позже.',
-  invalid_schema: 'Не удалось надёжно определить содержание сообщения.',
-  evidence_mismatch: 'Для одного из выводов не найдено подтверждение в тексте.',
-  intent_unverified: 'Намерение покупателя требует проверки.',
-  untrusted_instruction: 'В сообщении есть посторонние инструкции. Проверьте его вручную.',
-  quoted_history: 'В сообщении есть история переписки. Оставьте только новый ответ покупателя.',
-  ambiguous: 'В сообщении несколько возможных трактовок.',
-  ambiguous_facts: 'Указано несколько сумм или дат. Уточните договорённость с покупателем.',
-  unknown_intent: 'Нужен ответ сотрудника.',
-  amount_mismatch: 'Сумма не подтверждается текстом.',
-  amount_required: 'В сообщении нет точной суммы обещанного платежа.',
-  currency_unsupported: 'Нужно проверить валюту платежа.',
-  date_required: 'В сообщении нет точной даты оплаты.',
-  date_mismatch: 'Дата не подтверждается текстом.',
-  date_unverified: 'Дата оплаты требует уточнения.',
-  negated_promise: 'Покупатель не подтвердил обещание оплаты.',
-  negated_claim: 'Покупатель не подтвердил факт оплаты.',
-  mandate_required: 'Для покупателя не разрешено согласование договорённостей агентом.',
-  mandate_expired: 'Срок полномочий по этому покупателю истёк.',
-  counterparty_hold: 'Работа с покупателем приостановлена.',
-  contact_not_allowed: 'Контакт с покупателем запрещён.',
-  invoice_disputed: 'По счёту есть спор.',
-  invoice_paused: 'Работа по счёту приостановлена.',
-  invoice_paid: 'Счёт уже оплачен.',
-  amount_exceeds_balance: 'Обещанная сумма больше текущего остатка.',
-  promise_date_outside_mandate: 'Срок оплаты выходит за пределы разрешённой отсрочки.',
-  approval_expired: 'Срок согласования истёк. Проверьте сообщение заново.',
-  stale_snapshot: 'Остаток или правила работы изменились. Проверьте сообщение заново.',
-  promise_mandate_required: 'Для покупателя не разрешено согласование договорённостей агентом.',
-  contact_not_authorized: 'Контакт с покупателем запрещён.',
-  invoice_not_actionable: 'Счёт оплачен, приостановлен или находится в споре.',
-  invalid_promise_amount: 'Сумма обещания выходит за допустимый остаток.',
-  date_outside_mandate: 'Срок оплаты выходит за пределы разрешённой отсрочки.',
-  provider_busy: 'Сейчас обрабатываются другие сообщения. Повторите проверку немного позже.',
-  provider_timeout: 'Обработка заняла слишком много времени. Повторите проверку.',
-  provider_authentication: 'Нужно проверить подключение обработки сообщений.',
-  provider_permission: 'У подключения недостаточно прав для обработки сообщений.',
-  provider_rate_limit: 'Достигнут лимит обработки сообщений. Повторите проверку позже.',
-  provider_network: 'Обработка сообщений временно недоступна.',
-  provider_http_error: 'Обработка сообщений временно недоступна.',
-  provider_invalid_response: 'Не удалось надёжно разобрать сообщение. Проверьте его вручную.',
+  provider_tenant_denied: t(
+    'Обработка сообщений для вашей организации ещё не подключена. Обратитесь к администратору.'
+  ),
+  provider_unconfigured: t('Обработка сообщений ещё не подключена. Обратитесь к администратору.'),
+  provider_unavailable: t('Не удалось обработать сообщение. Повторите проверку позже.'),
+  invalid_schema: t('Не удалось надёжно определить содержание сообщения.'),
+  evidence_mismatch: t('Для одного из выводов не найдено подтверждение в тексте.'),
+  intent_unverified: t('Намерение покупателя требует проверки.'),
+  untrusted_instruction: t('В сообщении есть посторонние инструкции. Проверьте его вручную.'),
+  quoted_history: t('В сообщении есть история переписки. Оставьте только новый ответ покупателя.'),
+  ambiguous: t('В сообщении несколько возможных трактовок.'),
+  ambiguous_facts: t('Указано несколько сумм или дат. Уточните договорённость с покупателем.'),
+  unknown_intent: t('Нужен ответ сотрудника.'),
+  amount_mismatch: t('Сумма не подтверждается текстом.'),
+  amount_required: t('В сообщении нет точной суммы обещанного платежа.'),
+  currency_unsupported: t('Нужно проверить валюту платежа.'),
+  date_required: t('В сообщении нет точной даты оплаты.'),
+  date_mismatch: t('Дата не подтверждается текстом.'),
+  date_unverified: t('Дата оплаты требует уточнения.'),
+  negated_promise: t('Покупатель не подтвердил обещание оплаты.'),
+  negated_claim: t('Покупатель не подтвердил факт оплаты.'),
+  mandate_required: t('Для покупателя не разрешено согласование договорённостей агентом.'),
+  mandate_expired: t('Срок полномочий по этому покупателю истёк.'),
+  counterparty_hold: t('Работа с покупателем приостановлена.'),
+  contact_not_allowed: t('Контакт с покупателем запрещён.'),
+  invoice_disputed: t('По счёту есть спор.'),
+  invoice_paused: t('Работа по счёту приостановлена.'),
+  invoice_paid: t('Счёт уже оплачен.'),
+  amount_exceeds_balance: t('Обещанная сумма больше текущего остатка.'),
+  promise_date_outside_mandate: t('Срок оплаты выходит за пределы разрешённой отсрочки.'),
+  approval_expired: t('Срок согласования истёк. Проверьте сообщение заново.'),
+  stale_snapshot: t('Остаток или правила работы изменились. Проверьте сообщение заново.'),
+  promise_mandate_required: t('Для покупателя не разрешено согласование договорённостей агентом.'),
+  contact_not_authorized: t('Контакт с покупателем запрещён.'),
+  invoice_not_actionable: t('Счёт оплачен, приостановлен или находится в споре.'),
+  invalid_promise_amount: t('Сумма обещания выходит за допустимый остаток.'),
+  date_outside_mandate: t('Срок оплаты выходит за пределы разрешённой отсрочки.'),
+  provider_busy: t('Сейчас обрабатываются другие сообщения. Повторите проверку немного позже.'),
+  provider_timeout: t('Обработка заняла слишком много времени. Повторите проверку.'),
+  provider_authentication: t('Нужно проверить подключение обработки сообщений.'),
+  provider_permission: t('У подключения недостаточно прав для обработки сообщений.'),
+  provider_rate_limit: t('Достигнут лимит обработки сообщений. Повторите проверку позже.'),
+  provider_network: t('Обработка сообщений временно недоступна.'),
+  provider_http_error: t('Обработка сообщений временно недоступна.'),
+  provider_invalid_response: t('Не удалось надёжно разобрать сообщение. Проверьте его вручную.'),
 };
 
 export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
@@ -150,7 +152,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
       setSelected(result);
       await reload();
       onChanged();
-      notify(decision === 'approve' ? 'Решение подтверждено' : 'Предложение отклонено');
+      notify(decision === 'approve' ? t('Решение подтверждено') : t('Предложение отклонено'));
     } catch (e) {
       setError((e as Error).message);
       await reload();
@@ -166,57 +168,49 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
   return (
     <>
       <DeskHeading
-        eyebrow="ВХОДЯЩИЕ СООБЩЕНИЯ"
-        title="Разбор ответов"
+        eyebrow={t('ВХОДЯЩИЕ СООБЩЕНИЯ')}
+        title={t('Разбор ответов')}
         action={
           <button className="button button-dark" onClick={() => setCompose(true)}>
             <Inbox size={16} />
-            Разобрать сообщение
+            {t('Разобрать сообщение')}
           </button>
         }
       >
-        Добавьте ответ контрагента. Mandato определит, что он просит, и предложит следующий шаг.
+        {t(
+          'Добавьте ответ контрагента. Mandato определит, что он просит, и предложит следующий шаг.'
+        )}
       </DeskHeading>
       <div className="ops-context ops-agent-principle">
         <ShieldCheck size={22} />
         <div>
-          <strong>Контрагент сообщил об оплате?</strong>
+          <strong>{t('Контрагент сообщил об оплате?')}</strong>
           <p>
-            Проверьте поступление по выписке. Долг уменьшится только после подтверждения оплаты.
+            {t(
+              'Проверьте поступление по выписке. Долг уменьшится только после подтверждения оплаты.'
+            )}
           </p>
         </div>
       </div>
       <div className="ops-context" role="status">
         <strong>
           {!provider
-            ? 'Проверяем обработку сообщений…'
+            ? t('Проверяем обработку сообщений…')
             : provider.enabled
-              ? 'Обработка сообщений подключена'
-              : 'Автоматическая обработка недоступна'}
+              ? t('Обработка сообщений подключена')
+              : t('Автоматическая обработка недоступна')}
         </strong>
         <p>
           {provider && !provider.enabled
             ? reasons[provider.reason]
-            : 'Перед подтверждением проверьте извлечённые факты по исходному ответу.'}
+            : t('Перед подтверждением проверьте извлечённые факты по исходному ответу.')}
         </p>
         <div className="wf-actions">
           <button
             className="button button-outline"
-            onClick={() => navigate({ section: 'intelligence' })}
-          >
-            Зарегистрировать условия вручную
-          </button>
-          <button
-            className="button button-outline"
             onClick={() => navigate({ section: 'finance', financeTab: 'ledger' })}
           >
-            Сверить оплату по счёту
-          </button>
-          <button
-            className="button button-outline"
-            onClick={() => navigate({ section: 'messages' })}
-          >
-            Вся история общения
+            {t('Сверить оплату по счёту')}
           </button>
         </div>
       </div>
@@ -224,12 +218,12 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
       <section className="ops-card">
         <div className="ops-card-heading">
           <div>
-            <h2>Ответы и следующие действия</h2>
-            <p>Откройте ответ, чтобы проверить условия и подтвердить действие.</p>
+            <h2>{t('Ответы и следующие действия')}</h2>
+            <p>{t('Откройте ответ, чтобы проверить условия и подтвердить действие.')}</p>
           </div>
           <button
             className="icon-button"
-            aria-label="Обновить решения"
+            aria-label={t('Обновить решения')}
             onClick={() => void reload()}
           >
             <RefreshCw size={17} />
@@ -282,8 +276,8 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               })}
           </div>
         ) : (
-          <EmptyCard title="Ответов пока нет">
-            Нажмите «Разобрать сообщение» и вставьте полученный текст.
+          <EmptyCard title={t('Ответов пока нет')}>
+            {t('Нажмите «Разобрать сообщение» и вставьте полученный текст.')}
           </EmptyCard>
         )}
       </section>
@@ -326,12 +320,12 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
                 navigate({ section: 'finance', financeTab: 'ledger', context: selected.invoice_id })
               }
             >
-              Сверить оплату этого счёта
+              {t('Сверить оплату этого счёта')}
             </button>
           )}
-          <h3>Ответ покупателя</h3>
+          <h3>{t('Ответ покупателя')}</h3>
           <p className="ops-muted">
-            Получено:{' '}
+            {t('Получено:')}{' '}
             <time dateTime={selected.received_at}>
               {new Date(selected.received_at).toLocaleString('ru-RU', {
                 dateStyle: 'medium',
@@ -345,13 +339,13 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
             <div className="ops-result-grid">
               {selected.extraction.amount_kopeks && (
                 <div>
-                  <span>Сумма</span>
+                  <span>{t('Сумма')}</span>
                   <strong>{money(selected.extraction.amount_kopeks)}</strong>
                 </div>
               )}
               {selected.extraction.due_date && (
                 <div>
-                  <span>Срок оплаты</span>
+                  <span>{t('Срок оплаты')}</span>
                   <strong>{dateText(selected.extraction.due_date)}</strong>
                 </div>
               )}
@@ -359,12 +353,12 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
           )}
           {!!selected.extraction.evidence?.length && (
             <>
-              <h3>Что сообщил контрагент</h3>
+              <h3>{t('Что сообщил контрагент')}</h3>
               {selected.extraction.evidence.map((e, i) => (
                 <div className="ops-evidence" key={i}>
                   <span>
-                    {{ intent: 'Намерение', amount: 'Сумма', due_date: 'Дата' }[e.field] ||
-                      'Основание'}
+                    {{ intent: t('Намерение'), amount: t('Сумма'), due_date: t('Дата') }[e.field] ||
+                      t('Основание')}
                   </span>
                   <q>{e.quote}</q>
                 </div>
@@ -376,7 +370,9 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               {selected.reasons.map((r) => (
                 <p key={r}>
                   {reasons[r] ||
-                    'Действие выходит за разрешённые условия. Проверьте счёт и правила работы с покупателем.'}
+                    t(
+                      'Действие выходит за разрешённые условия. Проверьте счёт и правила работы с покупателем.'
+                    )}
                 </p>
               ))}
             </div>
@@ -387,10 +383,10 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               <p>
                 {selected.outcome.message ||
                   (selected.intent === 'promise'
-                    ? 'Договорённость записана. Остаток долга сохранён.'
+                    ? t('Договорённость записана. Остаток долга сохранён.')
                     : selected.intent === 'dispute'
-                      ? 'Спор зафиксирован. Контакты по счёту приостановлены до разрешения.'
-                      : 'Поступление направлено на проверку.')}
+                      ? t('Спор зафиксирован. Контакты по счёту приостановлены до разрешения.')
+                      : t('Поступление направлено на проверку.'))}
               </p>
             </div>
           )}
@@ -398,22 +394,10 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
             <button
               className="button button-outline"
               onClick={() =>
-                navigate({
-                  section: 'intelligence',
-                  context: selected.invoice_id,
-                  sourceAgent: selected.id,
-                })
-              }
-            >
-              Разобрать условия вручную
-            </button>
-            <button
-              className="button button-outline"
-              onClick={() =>
                 navigate({ section: 'finance', financeTab: 'ledger', context: selected.invoice_id })
               }
             >
-              Открыть сверку счёта
+              {t('Открыть сверку счёта')}
             </button>
           </div>
           <DeskError>{error}</DeskError>
@@ -425,7 +409,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
                 onClick={() => void review('reject')}
               >
                 <X size={15} />
-                Отклонить
+                {t('Отклонить')}
               </button>
               <button
                 className="button button-dark"
@@ -434,17 +418,17 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               >
                 <Check size={15} />
                 {busy
-                  ? 'Проверяем…'
+                  ? t('Проверяем…')
                   : selected.intent === 'payment_claim'
-                    ? 'Направить на сверку'
-                    : 'Подтвердить действие'}
+                    ? t('Направить на сверку')
+                    : t('Подтвердить действие')}
               </button>
             </div>
           )}
           {!['executed', 'rejected', 'superseded', 'processing'].includes(selected.status) && (
             <>
               <button className="text-link ops-revise" onClick={() => setRevision((v) => !v)}>
-                Уточнить сообщение
+                {t('Уточнить сообщение')}
                 <ArrowRight size={14} />
               </button>
               {revision && (
@@ -482,10 +466,10 @@ function MessageForm({
     return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   });
   return (
-    <Dialog title="Ответ покупателя" onClose={onClose} wide>
+    <Dialog title={t('Ответ покупателя')} onClose={onClose} wide>
       <OperationForm
         draftKey={`incoming:${invoiceId || 'new'}`}
-        label="Разобрать сообщение"
+        label={t('Разобрать сообщение')}
         onDone={() => undefined}
         submit={async (data) => {
           const p = await post<Proposal>('/agent/ingest', {
@@ -499,7 +483,7 @@ function MessageForm({
       >
         <InvoiceSelect invoices={invoices} />
         <label className="field full-width">
-          Дата и время получения ответа
+          {t('Дата и время получения ответа')}
           <input
             name="received_at"
             type="datetime-local"
@@ -509,18 +493,18 @@ function MessageForm({
           />
         </label>
         <p id="agent-receipt-help" className="ops-muted full-width">
-          Сроки вроде «завтра» считаются от даты получения. Часовой пояс:{' '}
+          {t('Сроки вроде «завтра» считаются от даты получения. Часовой пояс:')}{' '}
           {Intl.DateTimeFormat().resolvedOptions().timeZone}.
         </p>
         <label className="field full-width">
-          Новый ответ покупателя
+          {t('Новый ответ покупателя')}
           <textarea
             name="text"
             required
             minLength={3}
             maxLength={12000}
             rows={7}
-            placeholder="Вставьте текст полученного ответа без истории переписки"
+            placeholder={t('Вставьте текст полученного ответа без истории переписки')}
           />
         </label>
       </OperationForm>
@@ -539,7 +523,7 @@ function MessageRevision({
   return (
     <OperationForm
       draftKey={`incoming-revision:${invoiceId}:${proposal.id}`}
-      label="Проверить новую редакцию"
+      label={t('Проверить новую редакцию')}
       onDone={() => undefined}
       submit={async (data) => {
         onDone(
@@ -551,7 +535,7 @@ function MessageRevision({
       }}
     >
       <label className="field full-width">
-        Уточнённый ответ
+        {t('Уточнённый ответ')}
         <textarea
           name="text"
           defaultValue={proposal.source_text}

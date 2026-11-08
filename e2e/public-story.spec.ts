@@ -18,7 +18,7 @@ test('one invoice moves through documents, promise and actual payment evidence',
 test('subscription comparison adds capabilities with each tier', async ({ page }) => {
   await page.goto('/pricing');
   const table = page.getByRole('table', { name: 'Состав подписки по тарифам' });
-  await expect(table.getByRole('row', { name: /Прогноз поступлений/ })).toContainText('—');
+  await expect(table.getByRole('row', { name: /Юридические дела/ })).toContainText('—');
   await expect(table.getByRole('row', { name: /Подготовка претензии/ })).toContainText('Включено');
-  await expect(table.getByRole('row')).toHaveCount(12);
+  await expect(table.getByRole('row')).toHaveCount(11);
 });

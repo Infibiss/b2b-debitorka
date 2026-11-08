@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRouteField } from '../navigation';
 import { FileInput } from './FileInput';
 import { MailSetup } from './MailSetup';
@@ -21,11 +22,11 @@ import { ConnectionAccess } from './ConnectionAccess';
 
 type SourceChoice = 'one_c' | 'diadoc' | 'bank' | 'registry' | 'email';
 const sourceChoices: { id: SourceChoice; name: string; description: string }[] = [
-  { id: 'one_c', name: '1С', description: 'Счета и задолженность' },
-  { id: 'diadoc', name: 'ЭДО', description: 'Документы Диадока' },
-  { id: 'bank', name: 'Банк', description: 'Выписка и поступления' },
-  { id: 'registry', name: 'Реестры', description: 'Проверка контрагентов' },
-  { id: 'email', name: 'Почта', description: 'Отправка писем' },
+  { id: 'one_c', name: t('1С'), description: t('Счета и задолженность') },
+  { id: 'diadoc', name: t('ЭДО'), description: t('Документы Диадока') },
+  { id: 'bank', name: t('Банк'), description: t('Выписка и поступления') },
+  { id: 'registry', name: t('Реестры'), description: t('Проверка контрагентов') },
+  { id: 'email', name: t('Почта'), description: t('Отправка писем') },
 ];
 
 type Provider = 'one_c' | 'diadoc' | 'tbank' | 'tbank_sandbox' | 'dadata' | 'bank_exchange';
@@ -90,30 +91,30 @@ type RegistryCheck = {
   result: { name?: string; ogrn?: string; state?: string; provider_record_date?: string | null };
 };
 const names: Record<Provider, string> = {
-  one_c: '1С',
-  diadoc: 'Диадок',
-  tbank: 'Т-Банк',
-  tbank_sandbox: 'Т-Банк',
-  dadata: 'Сведения о должнике',
-  bank_exchange: 'Выписка из файла',
+  one_c: t('1С'),
+  diadoc: t('Диадок'),
+  tbank: t('Т-Банк'),
+  tbank_sandbox: t('Т-Банк'),
+  dadata: t('Сведения о должнике'),
+  bank_exchange: t('Выписка из файла'),
 };
 const statuses: Record<string, string> = {
-  unconfigured: 'Не подключено',
-  not_checked: 'Ожидает проверки',
-  available: 'Доступно',
-  completed: 'Данные получены',
-  partial: 'Получена часть выписки',
-  no_match: 'Совпадений нет',
-  stale: 'Нужно обновить',
-  unavailable: 'Источник недоступен',
+  unconfigured: t('Не подключено'),
+  not_checked: t('Ожидает проверки'),
+  available: t('Доступно'),
+  completed: t('Данные получены'),
+  partial: t('Получена часть выписки'),
+  no_match: t('Совпадений нет'),
+  stale: t('Нужно обновить'),
+  unavailable: t('Источник недоступен'),
 };
 const registration: Record<string, string> = {
-  ACTIVE: 'Действует',
-  LIQUIDATING: 'В процессе ликвидации',
-  LIQUIDATED: 'Деятельность прекращена',
-  BANKRUPT: 'Есть отметка о банкротстве',
-  REORGANIZING: 'В процессе реорганизации',
-  UNKNOWN: 'Статус не подтверждён',
+  ACTIVE: t('Действует'),
+  LIQUIDATING: t('В процессе ликвидации'),
+  LIQUIDATED: t('Деятельность прекращена'),
+  BANKRUPT: t('Есть отметка о банкротстве'),
+  REORGANIZING: t('В процессе реорганизации'),
+  UNKNOWN: t('Статус не подтверждён'),
 };
 const periodStart = () => {
   const d = new Date(`${today()}T12:00:00Z`);
@@ -250,7 +251,7 @@ export function ConnectionsDesk({
       stage(result);
       await reload();
       if (result.status === 'completed')
-        notify('Источник прочитан. Проверьте строки перед сохранением.');
+        notify(t('Источник прочитан. Проверьте строки перед сохранением.'));
     });
   }
   async function filePreview(event: FormEvent<HTMLFormElement>) {
@@ -258,13 +259,13 @@ export function ConnectionsDesk({
     const data = new FormData(event.currentTarget);
     const file = data.get('statement') as File;
     await perform('file', async () => {
-      if (!file?.size) throw new Error('Выберите файл выписки.');
+      if (!file?.size) throw new Error(t('Выберите файл выписки.'));
       if (file.size > 1_400_000)
-        throw new Error('Для загрузки за один раз выберите файл до 1,4 МБ.');
+        throw new Error(t('Для загрузки за один раз выберите файл до 1,4 МБ.'));
       const content = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result).split(',')[1]);
-        reader.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+        reader.onerror = () => reject(new Error(t('Не удалось прочитать файл.')));
         reader.readAsDataURL(file);
       });
       const value = await post<Preview>('/integrations/bank/preview', {
@@ -319,7 +320,7 @@ export function ConnectionsDesk({
           bankSource &&
           error instanceof ApiError &&
           error.status === 409 &&
-          error.message.startsWith('Возможный дубль банковского поступления')
+          error.message.startsWith(t('Возможный дубль банковского поступления'))
         ) {
           setDuplicateDetected(true);
           setDistinctConfirmed(false);
@@ -331,7 +332,7 @@ export function ConnectionsDesk({
       changeSelection([]);
       onChanged();
       await reload();
-      notify(`Сохранено: ${result.imported}. Уже учтено: ${result.skipped}.`);
+      notify(t('Сохранено: {0}. Уже учтено: {1}.', [result.imported, result.skipped]));
     });
   }
   async function prepareInvoices() {
@@ -355,7 +356,11 @@ export function ConnectionsDesk({
       onChanged();
       await reload();
       notify(
-        `Счета созданы: ${result.created}. Обновлены: ${result.updated}. Без изменений: ${result.skipped}.`
+        t('Счета созданы: {0}. Обновлены: {1}. Без изменений: {2}.', [
+          result.created,
+          result.updated,
+          result.skipped,
+        ])
       );
     });
   }
@@ -372,18 +377,18 @@ export function ConnectionsDesk({
     if (source === 'email')
       return mailConfigured === null
         ? loading
-          ? 'Проверяем…'
-          : 'Статус недоступен'
+          ? t('Проверяем…')
+          : t('Статус недоступен')
         : mailConfigured
-          ? 'Отправка настроена'
-          : 'Не подключено';
-    if (source === 'bank') return 'Импорт из файла доступен';
+          ? t('Отправка настроена')
+          : t('Не подключено');
+    if (source === 'bank') return t('Импорт из файла доступен');
     const provider = source === 'registry' ? 'dadata' : source;
     const connection = connections.find((item) => item.provider === provider);
-    if (!connection) return loading ? 'Проверяем…' : 'Статус недоступен';
+    if (!connection) return loading ? t('Проверяем…') : t('Статус недоступен');
     return connection.configured
-      ? (statuses[connection.status] ?? 'Статус не подтверждён')
-      : 'Не подключено';
+      ? (statuses[connection.status] ?? t('Статус не подтверждён'))
+      : t('Не подключено');
   }
   function connectionCard(c: Connection) {
     return (
@@ -392,24 +397,32 @@ export function ConnectionsDesk({
           <Database size={20} />
           <h2>{names[c.provider]}</h2>
           <span className={`ms-status ms-status-${c.status}`}>
-            {statuses[c.status] ?? 'Ожидает проверки'}
+            {statuses[c.status] ?? t('Ожидает проверки')}
           </span>
         </div>
         <p>
           {c.provider === 'one_c'
-            ? 'Загрузите данные и выберите строки для сверки с реестром.'
+            ? t('Загрузите данные и выберите строки для сверки с реестром.')
             : c.provider === 'diadoc'
-              ? 'Реквизиты документов ЭДО. Содержимое и электронные подписи здесь не проверяются.'
-              : 'Поступления из выписки. После подтверждения их нужно распределить по счетам в «Финансах».'}
+              ? t(
+                  'Реквизиты документов ЭДО. Содержимое и электронные подписи здесь не проверяются.'
+                )
+              : t(
+                  'Поступления из выписки. После подтверждения их нужно распределить по счетам в «Финансах».'
+                )}
         </p>
         {!c.configured && (
-          <p className="ms-note">Настройте доступ по инструкции для IT-специалиста ниже.</p>
+          <p className="ms-note">{t('Настройте доступ по инструкции для IT-специалиста ниже.')}</p>
         )}
-        {c.checked_at && <small>Последнее чтение: {dateText(c.checked_at)}</small>}
+        {c.checked_at && (
+          <small>
+            {t('Последнее чтение:')} {dateText(c.checked_at)}
+          </small>
+        )}
         {c.provider === 'tbank' && (
           <div className="ms-fields">
             <label className="field">
-              Начало периода
+              {t('Начало периода')}
               <input
                 type="date"
                 min="2023-06-01"
@@ -419,7 +432,7 @@ export function ConnectionsDesk({
               />
             </label>
             <label className="field">
-              Окончание, не включая
+              {t('Окончание, не включая')}
               <input
                 type="date"
                 min={from}
@@ -428,7 +441,7 @@ export function ConnectionsDesk({
                 onChange={(e) => setTo(e.target.value)}
               />
             </label>
-            <p className="ms-note">До 31 дня за одно чтение.</p>
+            <p className="ms-note">{t('До 31 дня за одно чтение.')}</p>
           </div>
         )}
         <button
@@ -439,7 +452,7 @@ export function ConnectionsDesk({
           onClick={() => void read(c.provider)}
         >
           <ArrowDownToLine size={16} />
-          {busy === c.provider ? 'Читаем…' : 'Прочитать данные'}
+          {busy === c.provider ? t('Читаем…') : t('Прочитать данные')}
         </button>
       </section>
     );
@@ -447,22 +460,22 @@ export function ConnectionsDesk({
   return (
     <div className="mandato-services connections-desk">
       <DeskHeading
-        eyebrow="ИСТОЧНИКИ ДАННЫХ"
-        title="Подключения"
+        eyebrow={t('ИСТОЧНИКИ ДАННЫХ')}
+        title={t('Подключения')}
         action={
           <button
             className="button button-outline"
             disabled={!!busy}
             onClick={() => void perform('refresh', reload)}
           >
-            <RefreshCw size={16} /> Обновить статусы
+            <RefreshCw size={16} /> {t('Обновить статусы')}
           </button>
         }
       >
-        Выберите источник, чтобы загрузить данные или настроить доступ.
+        {t('Выберите источник, чтобы загрузить данные или настроить доступ.')}
       </DeskHeading>
       <DeskError>{error}</DeskError>
-      <div className="connections-catalogue" role="group" aria-label="Источники">
+      <div className="connections-catalogue" role="group" aria-label={t('Источники')}>
         {sourceChoices.map((source) => (
           <button
             key={source.id}
@@ -483,7 +496,7 @@ export function ConnectionsDesk({
           </button>
         ))}
       </div>
-      <section className="connections-detail" aria-label={`Источник: ${sourceName}`}>
+      <section className="connections-detail" aria-label={t('Источник: {0}', [sourceName])}>
         {(activeSource === 'one_c' || activeSource === 'diadoc') && (
           <>
             <div className="ms-connections">
@@ -491,7 +504,7 @@ export function ConnectionsDesk({
             </div>
 
             {!loading && !connections.some((item) => item.provider === activeSource) && (
-              <p className="ms-note">Статус источника недоступен. Обновите статусы.</p>
+              <p className="ms-note">{t('Статус источника недоступен. Обновите статусы.')}</p>
             )}
           </>
         )}
@@ -499,52 +512,53 @@ export function ConnectionsDesk({
           <>
             <section className="ms-card">
               <h2>
-                <Upload size={20} /> Выписка из файла
+                <Upload size={20} /> {t('Выписка из файла')}
               </h2>
               <p>
-                Файл 1CClientBankExchange из банка, до 1,4 МБ. На подтверждение доступны входящие
-                платежи на ваш счёт.
+                {t(
+                  'Файл 1CClientBankExchange из банка, до 1,4 МБ. На подтверждение доступны входящие платежи на ваш счёт.'
+                )}
               </p>
               <form className="ms-form" onSubmit={filePreview}>
                 <label className="field">
-                  Собственный расчётный счёт
+                  {t('Собственный расчётный счёт')}
                   <input
                     name="own_account"
                     required
                     pattern="[0-9]{20}"
                     inputMode="numeric"
                     maxLength={20}
-                    placeholder="20 цифр"
+                    placeholder={t('20 цифр')}
                   />
                 </label>
                 <label className="field">
-                  Название источника
+                  {t('Название источника')}
                   <input
                     name="source_ref"
                     required
                     maxLength={200}
-                    placeholder="Банковская выписка за октябрь"
+                    placeholder={t('Банковская выписка за октябрь')}
                   />
                 </label>
                 <label className="field">
-                  Файл банковской выписки
+                  {t('Файл банковской выписки')}
                   <FileInput name="statement" required accept=".txt,text/plain" />
                 </label>
                 <button className="button button-outline" disabled={!!busy}>
                   <Upload size={16} />
-                  {busy === 'file' ? 'Проверяем…' : 'Проверить выписку'}
+                  {busy === 'file' ? t('Проверяем…') : t('Проверить выписку')}
                 </button>
               </form>
             </section>
 
             <details className="connections-disclosure">
-              <summary>Прямое подключение Т-Банка</summary>
+              <summary>{t('Прямое подключение Т-Банка')}</summary>
               <div className="ms-connections">
                 {connections.filter((c) => c.provider === 'tbank').map(connectionCard)}
               </div>
 
               {!loading && !connections.some((item) => item.provider === 'tbank') && (
-                <p className="ms-note">Статус Т-Банка недоступен. Обновите статусы.</p>
+                <p className="ms-note">{t('Статус Т-Банка недоступен. Обновите статусы.')}</p>
               )}
             </details>
           </>
@@ -552,19 +566,19 @@ export function ConnectionsDesk({
         {activeSource === 'registry' && (
           <section className="ms-card">
             <h2>
-              <Search size={20} /> Сведения о должнике
+              <Search size={20} /> {t('Сведения о должнике')}
             </h2>
-            <p>Проверка ЕГРЮЛ/ЕГРИП по ИНН через DaData.</p>
+            <p>{t('Проверка ЕГРЮЛ/ЕГРИП по ИНН через DaData.')}</p>
             <div className="connections-manual">
-              <span>Проверить вручную:</span>
+              <span>{t('Проверить вручную:')}</span>
               <a href="https://kad.arbitr.ru/" target="_blank" rel="noopener noreferrer">
-                Картотека арбитражных дел
+                {t('Картотека арбитражных дел')}
               </a>
               <a href="https://fssp.gov.ru/iss/ip" target="_blank" rel="noopener noreferrer">
-                ФССП
+                {t('ФССП')}
               </a>
               <a href="https://bankrot.fedresurs.ru/" target="_blank" rel="noopener noreferrer">
-                ЕФРСБ
+                {t('ЕФРСБ')}
               </a>
             </div>
             <form
@@ -579,12 +593,12 @@ export function ConnectionsDesk({
               }}
             >
               <label className="field">
-                Контрагент из реестра
+                {t('Контрагент из реестра')}
                 <select
                   value={inn && invoices.some((i) => i.inn === inn) ? inn : ''}
                   onChange={(e) => setInn(e.target.value)}
                 >
-                  <option value="">Указать ИНН вручную</option>
+                  <option value="">{t('Указать ИНН вручную')}</option>
                   {[...new Map(invoices.filter((i) => i.inn).map((i) => [i.inn, i])).values()].map(
                     (i) => (
                       <option key={i.inn} value={i.inn}>
@@ -595,7 +609,7 @@ export function ConnectionsDesk({
                 </select>
               </label>
               <label className="field">
-                Точный ИНН
+                {t('Точный ИНН')}
                 <input
                   required
                   inputMode="numeric"
@@ -610,12 +624,13 @@ export function ConnectionsDesk({
                 disabled={!!busy || !connections.find((c) => c.provider === 'dadata')?.configured}
               >
                 <Search size={16} />
-                {busy === 'registry' ? 'Проверяем…' : 'Проверить должника'}
+                {busy === 'registry' ? t('Проверяем…') : t('Проверить должника')}
               </button>
               {connections.find((c) => c.provider === 'dadata')?.configured === false && (
                 <p className="ms-note">
-                  Проверка пока не подключена. Отсутствие проверки не подтверждает отсутствие
-                  рисков.
+                  {t(
+                    'Проверка пока не подключена. Отсутствие проверки не подтверждает отсутствие рисков.'
+                  )}
                 </p>
               )}
             </form>
@@ -643,20 +658,24 @@ export function ConnectionsDesk({
                 }
               >
                 {registryInns.length > 0 && pendingInns.length === 0
-                  ? 'Свежие результаты по всем ИНН'
-                  : `Проверить должников: ${batchInns.length}`}
+                  ? t('Свежие результаты по всем ИНН')
+                  : t('Проверить должников: {0}', [batchInns.length])}
               </button>
               <p className="ms-note">
                 {registryInns.length === 0
-                  ? 'В реестре пока нет ИНН для пакетной проверки.'
+                  ? t('В реестре пока нет ИНН для пакетной проверки.')
                   : pendingInns.length === 0
-                    ? `Все ${registryInns.length} ИНН проверены за последние 24 часа.`
-                    : `Ожидают проверки: ${pendingInns.length} из ${registryInns.length}. За один раз — до 10 ИНН. Результаты обновляются через 24 часа.`}
+                    ? t('Все {0} ИНН проверены за последние 24 часа.', [registryInns.length])
+                    : t(
+                        'Ожидают проверки: {0} из {1}. За один раз — до 10 ИНН. Результаты обновляются через 24 часа.',
+                        [pendingInns.length, registryInns.length]
+                      )}
               </p>
               {batchResult && (
                 <p className="ms-note">
-                  Результаты по {batchResult.requested_count} ИНН: без кеша{' '}
-                  {batchResult.checked_count}, из свежего кеша {batchResult.cached_count}.
+                  {t('Результаты по')} {batchResult.requested_count} {t('ИНН: без кеша')}{' '}
+                  {batchResult.checked_count}
+                  {t(', из свежего кеша')} {batchResult.cached_count}.
                 </p>
               )}
             </div>
@@ -664,38 +683,42 @@ export function ConnectionsDesk({
               {checks.map((check) => (
                 <article key={check.id} className="ms-list-item">
                   <div>
-                    <strong>{check.result.name || `ИНН ${check.inn}`}</strong>
+                    <strong>{check.result.name || t('ИНН {0}', [check.inn])}</strong>
                     <small>
-                      {check.inn} · Запрошено {accessDate(check.checked_at)} МСК
+                      {check.inn} {t('· Запрошено')} {accessDate(check.checked_at)} {t('МСК')}
                     </small>
                   </div>
                   <span className={`ms-status ms-status-${check.status}`}>
-                    {statuses[check.status] ?? 'Статус не подтверждён'}
+                    {statuses[check.status] ?? t('Статус не подтверждён')}
                   </span>
                   {check.status === 'completed' && (
                     <p>
-                      {registration[check.result.state ?? 'UNKNOWN'] ?? 'Статус не подтверждён'}
-                      {check.result.ogrn && ` · ОГРН ${check.result.ogrn}`}
+                      {registration[check.result.state ?? 'UNKNOWN'] ?? t('Статус не подтверждён')}
+                      {check.result.ogrn && t(' · ОГРН {0}', [check.result.ogrn])}
                     </p>
                   )}
                   {check.status === 'stale' && (
-                    <p>Сведения устарели. Перед решением выполните новую проверку.</p>
+                    <p>{t('Сведения устарели. Перед решением выполните новую проверку.')}</p>
                   )}
                   <small>
                     {check.result.provider_record_date
-                      ? `Дата последнего изменения записи у провайдера: ${new Date(check.result.provider_record_date).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}`
-                      : 'Дата последнего изменения записи у провайдера не указана.'}
+                      ? t('Дата последнего изменения записи у провайдера: {0}', [
+                          new Date(check.result.provider_record_date).toLocaleDateString('ru-RU', {
+                            timeZone: 'Europe/Moscow',
+                          }),
+                        ])
+                      : t('Дата последнего изменения записи у провайдера не указана.')}
                   </small>
                   <ul className="ms-registry-coverage">
                     <li>
-                      ЕГРЮЛ/ЕГРИП:{' '}
+                      {t('ЕГРЮЛ/ЕГРИП:')}{' '}
                       {['completed', 'stale'].includes(check.status)
-                        ? 'снимок провайдера'
-                        : 'совпадение не подтверждено'}
+                        ? t('снимок провайдера')
+                        : t('совпадение не подтверждено')}
                     </li>
-                    <li>Банкротство: не проверено</li>
-                    <li>Судебные дела: не проверено</li>
-                    <li>ФССП: не проверено</li>
+                    <li>{t('Банкротство: не проверено')}</li>
+                    <li>{t('Судебные дела: не проверено')}</li>
+                    <li>{t('ФССП: не проверено')}</li>
                   </ul>
                 </article>
               ))}
@@ -710,19 +733,19 @@ export function ConnectionsDesk({
             open={itOpen}
             onToggle={(event) => setItOpen(event.currentTarget.open)}
           >
-            <summary>Для IT-специалиста</summary>
+            <summary>{t('Для IT-специалиста')}</summary>
             {itOpen && <ConnectionAccess selectedSource={itSource} statuses={connections} />}
           </details>
         )}
         {(previewVisible || sourceRuns.length > 0) && (
           <section className="ms-card ms-preview">
             <div className="ms-card-heading">
-              <h2>Проверка прочитанных данных</h2>
+              <h2>{t('Проверка прочитанных данных')}</h2>
               {sourceRuns.length > 0 && (
                 <label className="field">
-                  История чтений
+                  {t('История чтений')}
                   <select
-                    aria-label="Открыть чтение источника"
+                    aria-label={t('Открыть чтение источника')}
                     value={previewVisible && preview && !preview.file ? preview.id : ''}
                     disabled={!!busy}
                     onChange={(e) => {
@@ -733,12 +756,12 @@ export function ConnectionsDesk({
                         );
                     }}
                   >
-                    <option value="">Выберите источник</option>
+                    <option value="">{t('Выберите источник')}</option>
                     {sourceRuns.map((run) => (
                       <option key={run.id} value={run.id}>
-                        {run.provider ? names[run.provider] : 'Источник'} ·{' '}
+                        {run.provider ? names[run.provider] : t('Источник')} ·{' '}
                         {run.checked_at ? dateText(run.checked_at) : ''} ·{' '}
-                        {statuses[run.status ?? ''] ?? 'Ожидает проверки'}
+                        {statuses[run.status ?? ''] ?? t('Ожидает проверки')}
                       </option>
                     ))}
                   </select>
@@ -747,40 +770,48 @@ export function ConnectionsDesk({
             </div>
             {!previewVisible || !preview ? (
               <p>
-                Прочитайте подключённый источник или загрузите выписку. Здесь появятся строки для
-                сверки.
+                {t(
+                  'Прочитайте подключённый источник или загрузите выписку. Здесь появятся строки для сверки.'
+                )}
               </p>
             ) : (
               <>
                 <p>
                   {preview.provider && names[preview.provider]}
-                  {preview.status && ` · ${statuses[preview.status] ?? 'Статус не подтверждён'}`}
+                  {preview.status && ` · ${statuses[preview.status] ?? t('Статус не подтверждён')}`}
                 </p>
                 {!sandbox && preview.coverage?.complete === false && (
                   <p className="ms-warning">
-                    Источник вернул часть списка. Каждая страница проверяется и подтверждается
-                    отдельно; полнота всего периода пока не подтверждена.
+                    {t(
+                      'Источник вернул часть списка. Каждая страница проверяется и подтверждается отдельно; полнота всего периода пока не подтверждена.'
+                    )}
                   </p>
                 )}
                 {preview.status && !['completed', 'partial'].includes(preview.status) && (
                   <p className="ms-warning">
                     {preview.status === 'no_match'
-                      ? 'Источник не вернул записей. Это не подтверждает отсутствие задолженности или рисков.'
+                      ? t(
+                          'Источник не вернул записей. Это не подтверждает отсутствие задолженности или рисков.'
+                        )
                       : preview.status === 'stale'
-                        ? 'Данные устарели. Прочитайте источник ещё раз перед подтверждением.'
-                        : 'Данные не получены. Проверьте состояние подключения и повторите чтение.'}
+                        ? t('Данные устарели. Прочитайте источник ещё раз перед подтверждением.')
+                        : t(
+                            'Данные не получены. Проверьте состояние подключения и повторите чтение.'
+                          )}
                   </p>
                 )}
                 {preview.provider === 'one_c' && !invoiceSupported && (
                   <p className="ms-note">
-                    В этом чтении доступны только сведения источника. Для счетов нужны отдельные
-                    документы с номером, датой, сроком, суммой и подтверждённым состоянием расчётов.
+                    {t(
+                      'В этом чтении доступны только сведения источника. Для счетов нужны отдельные документы с номером, датой, сроком, суммой и подтверждённым состоянием расчётов.'
+                    )}
                   </p>
                 )}
                 {preview.coverage?.request_cursor && (
                   <p className="ms-note">
-                    Это страница продолжения. Предыдущие страницы доступны в истории чтений; их
-                    строки не объединяются и не подтверждаются автоматически.
+                    {t(
+                      'Это страница продолжения. Предыдущие страницы доступны в истории чтений; их строки не объединяются и не подтверждаются автоматически.'
+                    )}
                   </p>
                 )}
                 {preview.provider === 'tbank' &&
@@ -797,14 +828,14 @@ export function ConnectionsDesk({
                         })
                       }
                     >
-                      Следующая страница выписки
+                      {t('Следующая страница выписки')}
                     </button>
                   )}
                 {!!preview.errors?.length && (
                   <ul className="ms-errors">
                     {preview.errors.map((e, i) => (
                       <li key={i}>
-                        {e.row ? `Строка ${e.row}: ` : ''}
+                        {e.row ? t('Строка {0}: ', [e.row]) : ''}
                         {e.message}
                       </li>
                     ))}
@@ -819,17 +850,17 @@ export function ConnectionsDesk({
                         disabled={!!busy || selectable.length === 0}
                         onChange={(e) => changeSelection(e.target.checked ? selectable : [])}
                       />{' '}
-                      Выбрать все доступные строки
+                      {t('Выбрать все доступные строки')}
                     </label>
                     <div className="ms-table-scroll">
                       <table>
                         <thead>
                           <tr>
-                            <th>Выбор</th>
-                            <th>Документ / контрагент</th>
-                            <th>Дата</th>
-                            <th>Сумма</th>
-                            <th>Проверка</th>
+                            <th>{t('Выбор')}</th>
+                            <th>{t('Документ / контрагент')}</th>
+                            <th>{t('Дата')}</th>
+                            <th>{t('Сумма')}</th>
+                            <th>{t('Проверка')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -837,7 +868,7 @@ export function ConnectionsDesk({
                             <tr key={item.row}>
                               <td>
                                 <input
-                                  aria-label={`Подтвердить строку ${item.row}`}
+                                  aria-label={t('Подтвердить строку {0}', [item.row])}
                                   type="checkbox"
                                   checked={selected.includes(item.row)}
                                   disabled={!!busy || !canSelect(item)}
@@ -856,20 +887,28 @@ export function ConnectionsDesk({
                                     item.payer_name ||
                                     item.title ||
                                     item.document_type ||
-                                    'Документ'}
+                                    t('Документ')}
                                 </strong>
                                 <small>
                                   {item.reference || item.number}
                                   {(item.inn || item.payer_inn) &&
-                                    ` · ИНН ${item.inn || item.payer_inn}`}
+                                    t(' · ИНН {0}', [item.inn || item.payer_inn])}
                                 </small>
                                 {item.purpose && <small>{item.purpose}</small>}
-                                {item.due_on && <small>Срок оплаты: {dateText(item.due_on)}</small>}
+                                {item.due_on && (
+                                  <small>
+                                    {t('Срок оплаты:')} {dateText(item.due_on)}
+                                  </small>
+                                )}
                                 {item.paid_amount != null && (
-                                  <small>Оплачено по источнику: {money(item.paid_amount)}</small>
+                                  <small>
+                                    {t('Оплачено по источнику:')} {money(item.paid_amount)}
+                                  </small>
                                 )}
                                 {item.balance != null && (
-                                  <small>Остаток по источнику: {money(item.balance)}</small>
+                                  <small>
+                                    {t('Остаток по источнику:')} {money(item.balance)}
+                                  </small>
                                 )}
                               </td>
                               <td>
@@ -880,14 +919,14 @@ export function ConnectionsDesk({
                               <td>{item.amount == null ? '—' : money(item.amount)}</td>
                               <td>
                                 {badRows.has(item.row)
-                                  ? 'Нужна сверка'
+                                  ? t('Нужна сверка')
                                   : item.direction === 'outgoing'
-                                    ? 'Исходящий платёж'
+                                    ? t('Исходящий платёж')
                                     : item.direction === 'own_transfer'
-                                      ? 'Собственный перевод'
+                                      ? t('Собственный перевод')
                                       : item.approvable === false
-                                        ? 'Недоступно для учёта'
-                                        : 'К проверке'}
+                                        ? t('Недоступно для учёта')
+                                        : t('К проверке')}
                               </td>
                             </tr>
                           ))}
@@ -896,27 +935,31 @@ export function ConnectionsDesk({
                     </div>
                     {sandbox ? null : preview.approval ? (
                       <p className="ms-success">
-                        <Check size={16} /> Подтверждено: {preview.approval.imported}. Уже учтено:{' '}
-                        {preview.approval.skipped}.
+                        <Check size={16} /> {t('Подтверждено:')} {preview.approval.imported}
+                        {t('. Уже учтено:')} {preview.approval.skipped}.
                       </p>
                     ) : (
                       <div className="ms-form ms-approval">
                         <p className="ms-note">
                           {preview.file || preview.provider === 'tbank'
-                            ? 'Подтверждение добавит банковские поступления без распределения. Остатки счетов изменятся после распределения в «Финансах».'
-                            : 'Подтверждение сохранит сведения с источником. Оно не создаёт счета, не подписывает и не отправляет документы.'}
+                            ? t(
+                                'Подтверждение добавит банковские поступления без распределения. Остатки счетов изменятся после распределения в «Финансах».'
+                              )
+                            : t(
+                                'Подтверждение сохранит сведения с источником. Оно не создаёт счета, не подписывает и не отправляет документы.'
+                              )}
                         </p>
                         {duplicateDetected && (
                           <fieldset className="ms-fieldset">
-                            <legend>Возможное повторное поступление</legend>
+                            <legend>{t('Возможное повторное поступление')}</legend>
                             <p className="ms-note">
-                              Сверьте оригиналы. Подтверждение отдельного поступления допускается
-                              только для одного выбранного документа с другим номером. Одинаковый
-                              номер не разрешает повторный учёт.
+                              {t(
+                                'Сверьте оригиналы. Подтверждение отдельного поступления допускается только для одного выбранного документа с другим номером. Одинаковый номер не разрешает повторный учёт.'
+                              )}
                             </p>
                             {selected.length !== 1 && (
                               <p className="ms-warning">
-                                Выберите один документ и выполните подтверждение заново.
+                                {t('Выберите один документ и выполните подтверждение заново.')}
                               </p>
                             )}
                             <label className="ms-check">
@@ -926,10 +969,10 @@ export function ConnectionsDesk({
                                 checked={distinctConfirmed}
                                 onChange={(event) => setDistinctConfirmed(event.target.checked)}
                               />
-                              Подтверждаю отдельное поступление с другим номером документа
+                              {t('Подтверждаю отдельное поступление с другим номером документа')}
                             </label>
                             <label className="field">
-                              Почему это отдельное поступление
+                              {t('Почему это отдельное поступление')}
                               <textarea
                                 required
                                 minLength={10}
@@ -941,7 +984,7 @@ export function ConnectionsDesk({
                           </fieldset>
                         )}
                         <label className="field">
-                          Основание подтверждения
+                          {t('Основание подтверждения')}
                           <textarea
                             required
                             maxLength={3000}
@@ -963,8 +1006,8 @@ export function ConnectionsDesk({
                         >
                           <Check size={16} />
                           {busy === 'approve'
-                            ? 'Сохраняем…'
-                            : `Подтвердить строки: ${selected.length}`}
+                            ? t('Сохраняем…')
+                            : t('Подтвердить строки: {0}', [selected.length])}
                         </button>
                       </div>
                     )}
@@ -973,9 +1016,9 @@ export function ConnectionsDesk({
                 {invoiceSupported && (
                   <div className="ms-form">
                     <p className="ms-note">
-                      В источнике есть отдельные документы задолженности. Перед изменением реестра
-                      выполните отдельную сверку выбранных строк. Сохранение сведений выше не
-                      изменяет счета.
+                      {t(
+                        'В источнике есть отдельные документы задолженности. Перед изменением реестра выполните отдельную сверку выбранных строк. Сохранение сведений выше не изменяет счета.'
+                      )}
                     </p>
                     <button
                       type="button"
@@ -983,7 +1026,7 @@ export function ConnectionsDesk({
                       disabled={!!busy || !selected.length}
                       onClick={() => void prepareInvoices()}
                     >
-                      Сверить выбранные документы с реестром
+                      {t('Сверить выбранные документы с реестром')}
                     </button>
                   </div>
                 )}
@@ -1001,7 +1044,7 @@ export function ConnectionsDesk({
         )}
       </section>
       <details className="connections-disclosure connections-partner">
-        <summary>Доступ партнёра к сводке</summary>
+        <summary>{t('Доступ партнёра к сводке')}</summary>
         <PartnerAccess notify={notify} />
       </details>
     </div>
@@ -1066,7 +1109,7 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
       setConfirmed(false);
       form.reset();
       await reload();
-      notify('Доступ к сводным показателям создан. Сохраните ключ перед закрытием.');
+      notify(t('Доступ к сводным показателям создан. Сохраните ключ перед закрытием.'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1080,7 +1123,7 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
       await post(`/partner/grants/${grant.id}/revoke`);
       if (issued?.id === grant.id) setIssued(null);
       await reload();
-      notify('Партнёрский доступ отозван.');
+      notify(t('Партнёрский доступ отозван.'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1091,36 +1134,36 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
     if (!issued) return;
     try {
       await navigator.clipboard.writeText(issued.token);
-      notify('Ключ скопирован. Передайте его указанному получателю по защищённому каналу.');
+      notify(t('Ключ скопирован. Передайте его указанному получателю по защищённому каналу.'));
     } catch {
-      setError('Не удалось скопировать ключ. Выделите его и скопируйте вручную.');
+      setError(t('Не удалось скопировать ключ. Выделите его и скопируйте вручную.'));
     }
   }
   return (
     <section className="ms-card">
       <h2>
-        <ShieldCheck size={20} /> Доступ партнёра к сводке
+        <ShieldCheck size={20} /> {t('Доступ партнёра к сводке')}
       </h2>
       <p>
-        Разрешите указанному получателю читать только общие суммы портфеля и состояние аудита. Имена
-        должников, документы и реквизиты счетов в сводку не входят. Доступ ограничен сроком и может
-        быть отозван.
+        {t(
+          'Разрешите указанному получателю читать только общие суммы портфеля и состояние аудита. Имена должников, документы и реквизиты счетов в сводку не входят. Доступ ограничен сроком и может быть отозван.'
+        )}
       </p>
       <DeskError>{error}</DeskError>
       <form className="ms-form" onSubmit={issue}>
         <div className="ms-fields">
           <label className="field">
-            Получатель доступа
+            {t('Получатель доступа')}
             <input
               name="partner_name"
               required
               minLength={2}
               maxLength={200}
-              placeholder="Наименование организации-получателя"
+              placeholder={t('Наименование организации-получателя')}
             />
           </label>
           <label className="field">
-            Срок доступа, минут
+            {t('Срок доступа, минут')}
             <input
               name="expires_in_minutes"
               type="number"
@@ -1132,7 +1175,7 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
           </label>
         </div>
         <label className="field">
-          Цель передачи сводки
+          {t('Цель передачи сводки')}
           <textarea name="purpose" required minLength={10} maxLength={1000} />
         </label>
         <label className="ms-check">
@@ -1141,33 +1184,38 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
             checked={confirmed}
             onChange={(e) => setConfirmed(e.target.checked)}
           />{' '}
-          Разрешаю указанному получателю читать агрегированный отчёт для этой цели и на указанный
-          срок
+          {t(
+            'Разрешаю указанному получателю читать агрегированный отчёт для этой цели и на указанный срок'
+          )}
         </label>
         <button className="button button-outline" disabled={busy || !confirmed || !!issued}>
           <ShieldCheck size={16} />
-          Создать доступ к сводке
+          {t('Создать доступ к сводке')}
         </button>
       </form>
       {issued && (
         <div className="ms-partner-token">
-          <h3>Ключ для {issued.partner_name}</h3>
+          <h3>
+            {t('Ключ для')} {issued.partner_name}
+          </h3>
           <p>
-            Действует до {accessDate(issued.expires_at)} МСК. Ключ показывается один раз. Сохраните
-            его перед закрытием и передайте только указанному получателю.
+            {t('Действует до')} {accessDate(issued.expires_at)}{' '}
+            {t(
+              'МСК. Ключ показывается один раз. Сохраните его перед закрытием и передайте только указанному получателю.'
+            )}
           </p>
           <label className="field">
-            Ключ партнёрского доступа
+            {t('Ключ партнёрского доступа')}
             <input readOnly value={issued.token} autoComplete="off" spellCheck={false} />
           </label>
           <div className="ms-actions">
             <button className="button button-outline" type="button" onClick={() => void copy()}>
               <Copy size={16} />
-              Скопировать ключ
+              {t('Скопировать ключ')}
             </button>
             <button className="button button-outline" type="button" onClick={() => setIssued(null)}>
               <X size={16} />
-              Скрыть ключ
+              {t('Скрыть ключ')}
             </button>
           </div>
         </div>
@@ -1179,10 +1227,12 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
             <article key={grant.id} className="ms-list-item">
               <div>
                 <strong>{grant.partner_name}</strong>
-                <small>До {accessDate(grant.expires_at)} МСК</small>
+                <small>
+                  {t('До')} {accessDate(grant.expires_at)} {t('МСК')}
+                </small>
               </div>
               <span className="ms-status">
-                {grant.revoked_at ? 'Отозван' : active ? 'Действует' : 'Срок истёк'}
+                {grant.revoked_at ? t('Отозван') : active ? t('Действует') : t('Срок истёк')}
               </span>
               <p>{grant.purpose}</p>
               {active && (
@@ -1191,7 +1241,7 @@ function PartnerAccess({ notify }: { notify: DeskProps['notify'] }) {
                   disabled={busy}
                   onClick={() => void revoke(grant)}
                 >
-                  Отозвать доступ
+                  {t('Отозвать доступ')}
                 </button>
               )}
             </article>
@@ -1225,17 +1275,17 @@ type LedgerPreview = {
   result?: { created: number; updated: number; skipped: number };
 };
 const changeNames = {
-  create: 'Новый счёт',
-  update: 'Изменение счёта',
-  skip: 'Без изменений',
-  conflict: 'Конфликт — требуется сверка',
+  create: t('Новый счёт'),
+  update: t('Изменение счёта'),
+  skip: t('Без изменений'),
+  conflict: t('Конфликт — требуется сверка'),
 };
 function LedgerFactsView({ facts }: { facts?: LedgerFacts }) {
-  if (!facts) return <span>Счёта в реестре нет</span>;
+  if (!facts) return <span>{t('Счёта в реестре нет')}</span>;
   return (
     <dl className="ms-ledger-facts">
       <div>
-        <dt>Контрагент</dt>
+        <dt>{t('Контрагент')}</dt>
         <dd>
           {facts.company || '—'}
           {facts.inn && ` · ${facts.inn}`}
@@ -1243,31 +1293,31 @@ function LedgerFactsView({ facts }: { facts?: LedgerFacts }) {
       </div>
       {facts.email && (
         <div>
-          <dt>Почта</dt>
+          <dt>{t('Почта')}</dt>
           <dd>{facts.email}</dd>
         </div>
       )}
       <div>
-        <dt>Номер и дата</dt>
+        <dt>{t('Номер и дата')}</dt>
         <dd>
           {facts.number} · {facts.issued_on ? dateText(facts.issued_on) : '—'}
         </dd>
       </div>
       <div>
-        <dt>Срок оплаты</dt>
+        <dt>{t('Срок оплаты')}</dt>
         <dd>{facts.due_on ? dateText(facts.due_on) : '—'}</dd>
       </div>
       <div>
-        <dt>Полная сумма</dt>
-        <dd>{facts.amount == null ? 'Не указана' : money(facts.amount)}</dd>
+        <dt>{t('Полная сумма')}</dt>
+        <dd>{facts.amount == null ? t('Не указана') : money(facts.amount)}</dd>
       </div>
       <div>
-        <dt>Оплачено</dt>
-        <dd>{facts.paid_amount == null ? 'Не указано' : money(facts.paid_amount)}</dd>
+        <dt>{t('Оплачено')}</dt>
+        <dd>{facts.paid_amount == null ? t('Не указано') : money(facts.paid_amount)}</dd>
       </div>
       {facts.opening_paid_amount != null && (
         <div>
-          <dt>Начальная оплата</dt>
+          <dt>{t('Начальная оплата')}</dt>
           <dd>{money(facts.opening_paid_amount)}</dd>
         </div>
       )}
@@ -1289,16 +1339,17 @@ function LedgerImportReview({
     preview.errors.length > 0 || preview.changes.some((change) => change.action === 'conflict');
   return (
     <section className="ms-card ms-ledger-preview">
-      <h2>Сверка документов с реестром</h2>
+      <h2>{t('Сверка документов с реестром')}</h2>
       <p>
-        Проверьте новые счета и каждое изменение. Начальные оплаты из источника не становятся
-        банковскими поступлениями.
+        {t(
+          'Проверьте новые счета и каждое изменение. Начальные оплаты из источника не становятся банковскими поступлениями.'
+        )}
       </p>
       {preview.errors.length > 0 && (
         <ul className="ms-errors">
           {preview.errors.map((error, index) => (
             <li key={index}>
-              Строка {error.row}: {error.message}
+              {t('Строка')} {error.row}: {error.message}
             </li>
           ))}
         </ul>
@@ -1310,11 +1361,11 @@ function LedgerImportReview({
             {change.reason && <p className="ms-warning">{change.reason}</p>}
             <div className="ms-columns">
               <div>
-                <h4>Сейчас в реестре</h4>
+                <h4>{t('Сейчас в реестре')}</h4>
                 <LedgerFactsView facts={change.before} />
               </div>
               <div>
-                <h4>После подтверждения</h4>
+                <h4>{t('После подтверждения')}</h4>
                 <LedgerFactsView facts={change.after} />
               </div>
             </div>
@@ -1323,8 +1374,9 @@ function LedgerImportReview({
       </div>
       {preview.result ? (
         <p className="ms-success">
-          Создано: {preview.result.created}. Обновлено: {preview.result.updated}. Без изменений:{' '}
-          {preview.result.skipped}.
+          {t('Создано:')} {preview.result.created}
+          {t('. Обновлено:')} {preview.result.updated}
+          {t('. Без изменений:')} {preview.result.skipped}.
         </p>
       ) : (
         <form
@@ -1336,12 +1388,13 @@ function LedgerImportReview({
         >
           {blocked && (
             <p className="ms-warning">
-              Подтверждение недоступно до устранения ошибок и конфликтов. Исправьте источник и
-              выполните новую сверку.
+              {t(
+                'Подтверждение недоступно до устранения ошибок и конфликтов. Исправьте источник и выполните новую сверку.'
+              )}
             </p>
           )}
           <label className="field">
-            Основание изменения реестра
+            {t('Основание изменения реестра')}
             <textarea
               required
               maxLength={1000}
@@ -1355,14 +1408,14 @@ function LedgerImportReview({
               checked={confirmed}
               onChange={(event) => setConfirmed(event.target.checked)}
             />{' '}
-            Проверены новые счета, изменения сумм, сроков и начальных оплат
+            {t('Проверены новые счета, изменения сумм, сроков и начальных оплат')}
           </label>
           <button
             className="button button-dark"
             disabled={busy || blocked || !preview.changes.length || !reason.trim() || !confirmed}
           >
             <Check size={16} />
-            Подтвердить изменения реестра
+            {t('Подтвердить изменения реестра')}
           </button>
         </form>
       )}

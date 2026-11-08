@@ -252,3 +252,10 @@ def test_repayment_tracks_bank_receipts_after_funding(client):
             VALUES('f1',?,?,'factoring','ООО Север',1000,1000,'funded',1000,1500,?,'x','x','x','x')''', (tenant, key, str(business_today() - timedelta(days=5))))
     row = client.get('/api/financing/requests').json()['items'][0]
     assert row['remaining_amount'] == 1500 and row['repaid_amount'] == 0
+
+
+def test_claim_is_issued_without_interest_when_rates_are_unavailable():
+    from server import recovery_templates as templates
+    template = dict(address='', body='Сумма {{principal}}. {{interest_text}}')
+    assert templates.missing_variables(template, {'principal': '100', 'interest_text': ' '}) == []
+    assert templates.missing_variables(template, {'principal': '', 'interest_text': ' '}) == ['principal']

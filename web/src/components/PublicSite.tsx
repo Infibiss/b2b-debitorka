@@ -16,7 +16,7 @@ import {
 import { Brand } from './Brand';
 import { api, post, setCsrf, money, ApiError, type Session } from '../api';
 import catalog from '../../../server/plan_catalog.json';
-import { PublicLegal, type PublicLegalKind } from './PublicLegal';
+import { legalEntityLine, PublicLegal, type PublicLegalKind } from './PublicLegal';
 import './public-site.css';
 import { PublicProcess } from './PublicProcess';
 import { PublicStoryPages } from './PublicStoryPages';
@@ -37,6 +37,7 @@ const legalRoutes: Record<string, string> = {
   '/cookies': 'cookies',
   '/company': 'company',
   '/data-request': 'data-request',
+  '/consent': 'consent',
 };
 const nav = [
   [t('Продукт'), '/product'],
@@ -126,6 +127,7 @@ function Footer() {
       <div>
         <Brand />
         <a href="mailto:info@mandato.ru">info@mandato.ru</a>
+        <small className="pub-legal-line">{legalEntityLine}</small>
       </div>
       <nav aria-label={t('Информация о сервисе')}>
         <a href="/security">{t('Безопасность')}</a>
@@ -391,7 +393,7 @@ function Pricing() {
                   ...plans.map((p) => String(p.user_limit || t('По договору'))),
                 ],
                 [
-                  t('Реестр, аудит и документы'),
+                  t('Реестр должников и документы'),
                   t('Включено'),
                   t('Включено'),
                   t('Включено'),
@@ -418,14 +420,7 @@ function Pricing() {
                   t('Включено'),
                   t('Включено'),
                 ],
-                [t('Прогноз поступлений'), '—', t('Включено'), t('Включено'), t('Включено')],
-                [
-                  t('Скидки, отсрочки и рассрочки'),
-                  '—',
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                ],
+                [t('Договорённости и рассрочки'), '—', t('Включено'), t('Включено'), t('Включено')],
                 [t('Юридические дела и расчёт требований'), '—', '—', t('Включено'), t('Включено')],
                 [
                   t('Подготовка претензии и судебного пакета'),
@@ -580,8 +575,11 @@ function RequestDemo() {
             <label className="pub-check">
               <input name="consent" type="checkbox" required />
               <span>
-                {t('Согласен на обработку данных для ответа на заявку.')}{' '}
-                <a href="/privacy">{t('Политика конфиденциальности')}</a>
+                {t('Даю')}{' '}
+                <a href="/consent" target="_blank" rel="noreferrer">
+                  {t('согласие на обработку персональных данных')}
+                </a>{' '}
+                {t('для ответа на заявку.')}
               </span>
             </label>
             {error && (
@@ -697,7 +695,7 @@ function ContentPage({ kind }: { kind: string }) {
         {
           title: t('Внешние источники подключаются отдельно'),
           text: t(
-            'LLM, распознавание документов, реестры и каналы общения используются в зависимости от настроек вашей организации. Состав обработки описан в политике конфиденциальности.'
+            'Языковые модели, реестры и каналы общения используются в зависимости от настроек вашей организации. Состав обработки описан в политике конфиденциальности.'
           ),
         },
         {
@@ -801,7 +799,9 @@ function Access() {
                 email: d.email,
                 password: d.password,
                 terms_accepted: true,
-                terms_version: '2026-11-04',
+                terms_version: '2026-11-08',
+                personal_data_consent: true,
+                consent_version: '2026-11-08',
               }
         )
       );
@@ -1013,14 +1013,27 @@ function Access() {
               {!login && <span className="pub-caption">{t('Не менее 12 символов')}</span>}
             </label>
             {!login && (
-              <label className="pub-check">
-                <input type="checkbox" name="terms" required />
-                <span>
-                  {t('Принимаю')} <a href="/terms">{t('условия использования')}</a>
-                  {t('. С')} <a href="/privacy">{t('политикой конфиденциальности')}</a>{' '}
-                  {t('ознакомлен.')}
-                </span>
-              </label>
+              <>
+                <label className="pub-check">
+                  <input type="checkbox" name="terms" required />
+                  <span>
+                    {t(
+                      'Мне исполнилось 18 лет, я уполномочен работать от имени компании и принимаю'
+                    )}{' '}
+                    <a href="/terms">{t('условия использования')}</a>.
+                  </span>
+                </label>
+                <label className="pub-check">
+                  <input type="checkbox" name="personal_data" required />
+                  <span>
+                    {t('Даю')}{' '}
+                    <a href="/consent" target="_blank" rel="noreferrer">
+                      {t('согласие на обработку персональных данных')}
+                    </a>
+                    .
+                  </span>
+                </label>
+              </>
             )}
             <button className="pub-button" disabled={busy}>
               {busy
@@ -1121,7 +1134,10 @@ function Access() {
             <hr />
             <h3>{t('Данные организации')}</h3>
             <p>{t('Запрос на удаление данных можно отправить в настройках рабочего кабинета.')}</p>
-            <a className="pub-text-link" href="/app?mode=login&section=settings#workspace-data">
+            <a
+              className="pub-text-link"
+              href="/app?mode=login&section=settings&settingsTab=mail#workspace-data"
+            >
               {t('Управлять данными в настройках')} <ArrowRight size={18} aria-hidden="true" />
             </a>
           </>
@@ -1191,7 +1207,7 @@ function Access() {
             <p>
               {planId === 'trial'
                 ? t(
-                    'Попробуйте реестр, аудит, сверку и работу команды. По окончании срока деньги не спишутся.'
+                    'Попробуйте работу с должниками, сверку и работу команды. По окончании срока деньги не спишутся.'
                   )
                 : t(
                     'На следующем шаге проверите условия подключения. Списаний без подтверждения не будет.'

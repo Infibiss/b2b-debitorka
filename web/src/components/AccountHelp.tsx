@@ -102,7 +102,7 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
                 </>
               ) : (
                 <label className="field">
-                  {t('Email аккаунта')}
+                  {t('Почта аккаунта')}
                   <input name="email" type="email" required autoComplete="email" />
                 </label>
               )}

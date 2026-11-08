@@ -104,9 +104,13 @@ VARIABLES = {
 _TOKEN = re.compile(r'\{\{\s*([a-z_.]+)\s*\}\}')
 
 
+# Interest is left out when official rates are unavailable; the claim must still be issued.
+OPTIONAL_VARIABLES = {'interest_text'}
+
+
 def missing_variables(template, values):
     text = template['address'] + template['body']
-    return sorted({key for key in _TOKEN.findall(text) if not str(values.get(key) or '').strip()})
+    return sorted({key for key in _TOKEN.findall(text) if key not in OPTIONAL_VARIABLES and not str(values.get(key) or '').strip()})
 
 
 def unknown_variables(text):

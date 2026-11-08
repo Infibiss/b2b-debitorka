@@ -7,6 +7,8 @@ import { Brand } from './Brand';
 import { AuthAside } from './AuthAside';
 import { post, type Session } from '../api';
 import { useInvitationToken } from './useInvitationToken';
+
+const legalVersion = '2026-11-08';
 export function Auth({ onSession }: { onSession: (session: Session) => void }) {
   const invitation = useInvitationToken();
   const [resetToken, setResetToken] = useState(
@@ -27,7 +29,14 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
       onSession(
         await post<Session>(`/auth/${mode}`, {
           ...data,
-          ...(mode === 'register' ? { terms_accepted: true, terms_version: '2026-11-04' } : {}),
+          ...(mode === 'register'
+            ? {
+                terms_accepted: true,
+                terms_version: legalVersion,
+                personal_data_consent: true,
+                consent_version: legalVersion,
+              }
+            : {}),
         })
       );
       navigate({ mode: null }, true);
@@ -137,9 +146,21 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               <label className="auth-consent">
                 <input type="checkbox" required />
                 <span>
-                  {t('Я уполномочен работать от имени компании и ознакомился с')}{' '}
+                  {t('Мне исполнилось 18 лет, я уполномочен работать от имени компании и принимаю')}{' '}
                   <a href="/terms" target="_blank" rel="noreferrer">
-                    {t('условиями использования')}
+                    {t('условия использования')}
+                  </a>
+                  .
+                </span>
+              </label>
+            )}
+            {mode === 'register' && (
+              <label className="auth-consent">
+                <input type="checkbox" required />
+                <span>
+                  {t('Даю')}{' '}
+                  <a href="/consent" target="_blank" rel="noreferrer">
+                    {t('согласие на обработку персональных данных')}
                   </a>
                   .
                 </span>
@@ -201,6 +222,8 @@ function InvitationRegistration({
         token,
         name: String(data.get('name')),
         password,
+        personal_data_consent: true,
+        consent_version: legalVersion,
       });
       const session = await post<Session>('/auth/login', { email: result.user.email, password });
       history.replaceState({}, '', '/app');
@@ -237,6 +260,16 @@ function InvitationRegistration({
                 maxLength={256}
                 autoComplete="new-password"
               />
+            </label>
+            <label className="auth-consent">
+              <input type="checkbox" required />
+              <span>
+                {t('Мне исполнилось 18 лет. Даю')}{' '}
+                <a href="/consent" target="_blank" rel="noreferrer">
+                  {t('согласие на обработку персональных данных')}
+                </a>
+                .
+              </span>
             </label>
             <p className="auth-policy-note">
               {t('Присоединяясь, вы работаете в пределах доступа, предоставленного организацией.')}{' '}

@@ -307,6 +307,8 @@ def create_app():
                     # Registration acceptance is append-only and shares the
                     # identity/session transaction. Legacy clients imply none.
                     connection.execute("INSERT INTO registration_acceptances(user_id,tenant_id,terms_version,accepted_at) VALUES(?,?,?,?)", (user_id, tenant_id, data.terms_version, now()))
+                if data.personal_data_consent is True:
+                    connection.execute("INSERT INTO personal_data_consents(user_id,tenant_id,document_version,accepted_at) VALUES(?,?,?,?)", (user_id, tenant_id, data.consent_version, now()))
                 user = {"id": user_id, "name": data.name, "company": data.company, "email": data.email, "tenant_id": tenant_id}
                 return create_session(connection, user, config, 201)
         except sqlite3.IntegrityError:
@@ -655,7 +657,7 @@ def create_app():
         if candidate.is_relative_to(web_dist.resolve()) and candidate.is_file():
             return FileResponse(candidate)
         if (web_dist / "index.html").is_file():
-            public_pages = {"", "product", "solutions", "integrations", "pricing", "security", "demo", "start", "account", "privacy", "terms", "refunds", "cookies", "company", "data-request"}
+            public_pages = {"", "product", "solutions", "integrations", "pricing", "security", "demo", "start", "account", "privacy", "terms", "refunds", "cookies", "company", "data-request", "consent"}
             status = 200 if path.strip("/") in public_pages or path.startswith("app") else 404
             return FileResponse(web_dist / "index.html", status_code=status, headers={"Cache-Control": "no-cache"})
         return JSONResponse({"detail": "Соберите фронтенд: cd web && npm run build"}, 404)

@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS registration_acceptances (
  user_id TEXT PRIMARY KEY REFERENCES users(id), tenant_id TEXT NOT NULL REFERENCES tenants(id),
  terms_version TEXT NOT NULL, accepted_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS personal_data_consents (
+ user_id TEXT PRIMARY KEY REFERENCES users(id), tenant_id TEXT NOT NULL REFERENCES tenants(id),
+ document_version TEXT NOT NULL, accepted_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS commercial_requests (
  id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('demo','custom')),
  name TEXT NOT NULL, email TEXT NOT NULL, company TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',

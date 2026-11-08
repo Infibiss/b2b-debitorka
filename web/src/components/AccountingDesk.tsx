@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { FileInput } from './FileInput';
 import { ArrowRight, FileSpreadsheet } from 'lucide-react';
@@ -28,14 +29,14 @@ type Saved = SourceItem & {
   reason: string;
 };
 const fields = [
-  ['company', 'Контрагент'],
-  ['inn', 'ИНН'],
-  ['opening_debit', 'Начальное сальдо, дебет'],
-  ['opening_credit', 'Начальное сальдо, кредит'],
-  ['debit_turnover', 'Оборот, дебет'],
-  ['credit_turnover', 'Оборот, кредит'],
-  ['ending_debit', 'Конечное сальдо, дебет'],
-  ['ending_credit', 'Конечное сальдо, кредит'],
+  ['company', t('Контрагент')],
+  ['inn', t('ИНН')],
+  ['opening_debit', t('Начальное сальдо, дебет')],
+  ['opening_credit', t('Начальное сальдо, кредит')],
+  ['debit_turnover', t('Оборот, дебет')],
+  ['credit_turnover', t('Оборот, кредит')],
+  ['ending_debit', t('Конечное сальдо, дебет')],
+  ['ending_credit', t('Конечное сальдо, кредит')],
 ] as const;
 const guesses: Record<string, RegExp> = {
   company: /^(контрагент|покупатель|наименование)$/i,
@@ -122,9 +123,11 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
       <section className="ops-card">
         <div className="ops-card-heading">
           <div>
-            <h2>ОСВ 62 и акты сверки</h2>
+            <h2>{t('ОСВ 62 и акты сверки')}</h2>
             <p>
-              Сопоставьте остатки по покупателям с реестром и сохраните расхождения для разбора.
+              {t(
+                'Сопоставьте остатки по покупателям с реестром и сохраните расхождения для разбора.'
+              )}
             </p>
           </div>
           <FileSpreadsheet size={24} />
@@ -132,7 +135,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
         <fieldset disabled={busy} className="ops-input-group">
           <div className="form-grid ops-form">
             <label className="field">
-              Источник
+              {t('Источник')}
               <select
                 value={sourceType}
                 onChange={(e) => {
@@ -140,12 +143,12 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                   setPreview(null);
                 }}
               >
-                <option value="osv62">Оборотно-сальдовая ведомость 62</option>
-                <option value="reconciliation_act">Акт сверки</option>
+                <option value="osv62">{t('Оборотно-сальдовая ведомость 62')}</option>
+                <option value="reconciliation_act">{t('Акт сверки')}</option>
               </select>
             </label>
             <label className="field">
-              Дата остатков
+              {t('Дата остатков')}
               <input
                 type="date"
                 value={asOf}
@@ -158,7 +161,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
               />
             </label>
             <label className="field full-width">
-              Номер или название источника
+              {t('Номер или название источника')}
               <input
                 value={sourceRef}
                 maxLength={300}
@@ -166,12 +169,12 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                   setSourceRef(e.target.value);
                   setPreview(null);
                 }}
-                placeholder="ОСВ 62 за октябрь, выгрузка от бухгалтерии"
+                placeholder={t('ОСВ 62 за октябрь, выгрузка от бухгалтерии')}
                 required
               />
             </label>
             <label className="field full-width">
-              Файл из учётной системы
+              {t('Файл из учётной системы')}
               <FileInput
                 accept=".csv,.txt,.xlsx"
                 onChange={async (e) => {
@@ -180,7 +183,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                   reset();
                   setError('');
                   if (file.size > 1_000_000) {
-                    setError('Файл больше 1 МБ. Разделите выгрузку по покупателям.');
+                    setError(t('Файл больше 1 МБ. Разделите выгрузку по покупателям.'));
                     return;
                   }
                   const request = ++fileRequest.current;
@@ -208,7 +211,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
               />
             </label>
             <label className="field">
-              Строка с названиями столбцов
+              {t('Строка с названиями столбцов')}
               <input
                 type="number"
                 min="1"
@@ -222,21 +225,21 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             </label>
             {format === 'xlsx' && (
               <label className="field">
-                Название листа
+                {t('Название листа')}
                 <input
                   value={sheet}
                   onChange={(e) => {
                     setSheet(e.target.value);
                     reset();
                   }}
-                  placeholder="Первый лист"
+                  placeholder={t('Первый лист')}
                   maxLength={100}
                 />
               </label>
             )}
             {format === 'csv' && (
               <label className="field full-width">
-                Данные источника
+                {t('Данные источника')}
                 <textarea
                   rows={5}
                   className="ops-csv"
@@ -246,7 +249,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                     setContent(e.target.value);
                     reset();
                   }}
-                  placeholder="Контрагент;ИНН;Конечное сальдо дебет;Конечное сальдо кредит"
+                  placeholder={t('Контрагент;ИНН;Конечное сальдо дебет;Конечное сальдо кредит')}
                 />
               </label>
             )}
@@ -257,12 +260,12 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             disabled={busy || !content.trim() || !sourceRef.trim() || !asOf}
             onClick={() => void check(false)}
           >
-            Прочитать столбцы
+            {t('Прочитать столбцы')}
             <ArrowRight size={15} />
           </button>
           {!!columns.length && (
             <div className="ops-preview">
-              <h3>Сопоставление столбцов</h3>
+              <h3>{t('Сопоставление столбцов')}</h3>
               <div className="ops-mapping">
                 {fields.map(([field, label]) => (
                   <label className="field" key={field}>
@@ -274,10 +277,10 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                         setPreview(null);
                       }}
                     >
-                      <option value="">Не используется</option>
+                      <option value="">{t('Не используется')}</option>
                       {columns.map((c) => (
                         <option key={c.key} value={c.key}>
-                          {c.label || 'Без названия'} · {c.key.replace('column_', '')}
+                          {c.label || t('Без названия')} · {c.key.replace('column_', '')}
                         </option>
                       ))}
                     </select>
@@ -291,7 +294,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                 }
                 onClick={() => void check(true)}
               >
-                {busy ? 'Сравниваем…' : 'Сравнить остатки'}
+                {busy ? t('Сравниваем…') : t('Сравнить остатки')}
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -301,13 +304,13 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             <div className="ops-preview">
               <div className="ops-context">
                 <p>
-                  Остатки источника на {dateText(asOf)} сравниваются с текущим реестром. Сверка
-                  сохраняет основание и расхождения.
+                  {t('Остатки источника на')} {dateText(asOf)}{' '}
+                  {t('сравниваются с текущим реестром. Сверка сохраняет основание и расхождения.')}
                 </p>
               </div>
               {preview.errors.map((e, i) => (
                 <p className="form-error" key={i}>
-                  {e.row ? `Строка ${e.row}: ` : ''}
+                  {e.row ? t('Строка {0}: ', [e.row]) : ''}
                   {e.message}
                 </p>
               ))}
@@ -315,11 +318,11 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                 <table className="invoice-table ops-table">
                   <thead>
                     <tr>
-                      <th scope="col">Выбор</th>
-                      <th scope="col">Покупатель</th>
-                      <th scope="col">По источнику</th>
-                      <th scope="col">Сейчас в реестре</th>
-                      <th scope="col">Расхождение</th>
+                      <th scope="col">{t('Выбор')}</th>
+                      <th scope="col">{t('Покупатель')}</th>
+                      <th scope="col">{t('По источнику')}</th>
+                      <th scope="col">{t('Сейчас в реестре')}</th>
+                      <th scope="col">{t('Расхождение')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,7 +331,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                         <td>
                           <input
                             type="checkbox"
-                            aria-label={`Включить строку ${item.row}`}
+                            aria-label={t('Включить строку {0}', [item.row])}
                             disabled={preview.errors.some((e) => e.row === item.row)}
                             checked={selected.includes(item.row)}
                             onChange={(e) =>
@@ -358,7 +361,7 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
               </div>
               {selected.length > 0 && !preview.errors.some((e) => e.row === 0) && (
                 <OperationForm
-                  label="Сохранить сверку"
+                  label={t('Сохранить сверку')}
                   onDone={() => {
                     setPreview(null);
                     void reload();
@@ -377,12 +380,12 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
                   }}
                 >
                   <label className="field full-width">
-                    Основание согласования
+                    {t('Основание согласования')}
                     <input name="reason" required maxLength={3000} />
                   </label>
                   <label className="consent full-width">
                     <input type="checkbox" required />
-                    <span>Проверил выбранные строки и исключил промежуточные итоги</span>
+                    <span>{t('Проверил выбранные строки и исключил промежуточные итоги')}</span>
                   </label>
                 </OperationForm>
               )}
@@ -393,8 +396,8 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
       <section className="ops-card">
         <div className="ops-card-heading">
           <div>
-            <h2>Сохранённые сверки</h2>
-            <p>Источник, дата и результат сравнения остаются в истории.</p>
+            <h2>{t('Сохранённые сверки')}</h2>
+            <p>{t('Источник, дата и результат сравнения остаются в истории.')}</p>
           </div>
         </div>
         {history.length ? (
@@ -402,10 +405,10 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             <table className="invoice-table ops-table">
               <thead>
                 <tr>
-                  <th scope="col">Источник</th>
-                  <th scope="col">Покупатель</th>
-                  <th scope="col">Остаток источника</th>
-                  <th scope="col">Расхождение на момент сверки</th>
+                  <th scope="col">{t('Источник')}</th>
+                  <th scope="col">{t('Покупатель')}</th>
+                  <th scope="col">{t('Остаток источника')}</th>
+                  <th scope="col">{t('Расхождение на момент сверки')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -426,8 +429,8 @@ export function AccountingDesk({ onSaved }: { onSaved: () => void }) {
             </table>
           </div>
         ) : (
-          <EmptyCard title="Сверка начинается с источника">
-            Загрузите ведомость или акт и выберите строки покупателей для сравнения.
+          <EmptyCard title={t('Сверка начинается с источника')}>
+            {t('Загрузите ведомость или акт и выберите строки покупателей для сравнения.')}
           </EmptyCard>
         )}
       </section>

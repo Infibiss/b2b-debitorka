@@ -9,13 +9,15 @@ async function signUp(page: import('@playwright/test').Page) {
   await page.getByLabel('Компания', { exact: true }).fill('ООО Поставка');
   await page.getByLabel('Рабочая почта').fill(email);
   await page.getByLabel('Пароль', { exact: true }).fill(password);
-  await page.getByRole('checkbox').first().check();
+  for (const box of await page.getByRole('checkbox').all()) await box.check();
   await page.locator('form').getByRole('button', { name: 'Создать аккаунт' }).click();
   await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
 }
 
 async function addInvoice(page: import('@playwright/test').Page) {
-  const csrf = await page.evaluate(async () => (await (await fetch('/api/auth/me')).json()).csrf_token);
+  const csrf = await page.evaluate(
+    async () => (await (await fetch('/api/auth/me')).json()).csrf_token
+  );
   const day = (offset: number) =>
     new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
   const response = await page.request.post('/api/invoices', {
@@ -48,11 +50,43 @@ test('new client sees setup steps and moves a debtor to work', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Факторинг' })).toBeVisible();
 });
 
+test('debtor card holds documents, correspondence and invoice actions', async ({ page }) => {
+  await signUp(page);
+  await addInvoice(page);
+  await expect(page.getByText('Инструменты')).toHaveCount(0);
+  await page.goto('/app?section=debtors');
+  await page.getByRole('button', { name: 'ООО Север' }).click();
+  await page.getByRole('button', { name: 'Документы', exact: true }).click();
+  await page.getByLabel('Номер и название').fill('Договор № 12 от 01.02.2026');
+  await page.getByRole('button', { name: 'Добавить документ' }).click();
+  await expect(page.getByText(/Договор № 12 от 01.02.2026/).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Обзор', exact: true }).click();
+  await expect(page.getByText('Готовность к суду: 25%')).toBeVisible();
+  await page.getByRole('button', { name: 'Переписка', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Переписка и события' })).toBeVisible();
+  await page.getByRole('button', { name: 'Написать должнику' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('provider details and a separate consent are published', async ({ page }) => {
+  await page.goto('/company');
+  await expect(page.getByText('326265100166493').first()).toBeVisible();
+  await page.goto('/consent');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Согласие на обработку персональных данных' })
+  ).toBeVisible();
+  await page.goto('/app?mode=register');
+  await expect(page.getByRole('checkbox')).toHaveCount(2);
+  await expect(
+    page.getByRole('link', { name: 'согласие на обработку персональных данных' })
+  ).toHaveAttribute('href', '/consent');
+});
+
 test('the site and workspace switch to English', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Switch to English' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.getByRole('link', { name: 'Pricing' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Try for free' }).first()).toBeVisible();
   await signUpInEnglish(page);
 });
 
@@ -62,7 +96,7 @@ async function signUpInEnglish(page: import('@playwright/test').Page) {
   await page.getByLabel('Company', { exact: true }).fill('Supply LLC');
   await page.getByLabel('Work email').fill(`en-${Date.now()}@example.ru`);
   await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('checkbox').first().check();
+  for (const box of await page.getByRole('checkbox').all()) await box.check();
   await page.locator('form').getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 }

@@ -1,5 +1,4 @@
 import { t } from '../i18n';
-import { CaseConversation } from './CaseConversation';
 import { ContextHelp } from './ContextHelp';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
@@ -7,20 +6,12 @@ import {
   Files,
   Mail,
   Settings as SettingsIcon,
-  ArrowUpRight,
-  Plus,
-  Search,
-  Upload,
-  Download,
-  ArrowRight,
   Check,
-  ShieldCheck,
   RefreshCw,
   X,
   Wallet,
   AlertCircle,
   TrendingUp,
-  Bot,
   Scale,
   ClipboardCheck,
 } from 'lucide-react';
@@ -28,36 +19,27 @@ import { Brand } from './Brand';
 import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
 import { Auth } from './Auth';
 import { useInvitationToken } from './useInvitationToken';
-import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
-import './workflow.css';
-import { CreateInvoice, ImportInvoices, downloadTemplate } from './InvoiceForms';
-import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
+import { InboxStatus, TeamSettings } from './TeamSettings';
+import { CreateInvoice, ImportInvoices } from './InvoiceForms';
+import { DebtDrawer } from './DebtDrawer';
 import { FinanceDesk } from './FinanceDesk';
 import { AgentDesk } from './AgentDesk';
-import LegalDesk from './LegalDesk';
-import { PortfolioDesk } from './PortfolioDesk';
 import { ConnectionsDesk } from './ConnectionsDesk';
-import { IntelligenceDesk } from './IntelligenceDesk';
 import {
   api,
   post,
   patch,
   setCsrf,
-  money,
-  dateText,
   type Session,
   type Invoice,
-  type Overview,
   type Settings,
   ApiError,
 } from '../api';
 import './workspace.css';
 import { navigate, useRouteField, WorkContext } from '../navigation';
 import { clearFormDrafts, hasFormDrafts, useFormDraft } from './useFormDraft';
-import { DocumentsDesk } from './DocumentsDesk';
 import { MailSetup } from './MailSetup';
 import WorkspaceDataSettings from './WorkspaceDataSettings';
-import { YandexDesk } from './YandexDesk';
 import { LanguageSwitch } from './LanguageSwitch';
 import { RecoveryHome } from './recovery/RecoveryHome';
 import { DebtorsDesk } from './recovery/DebtorsDesk';
@@ -79,36 +61,17 @@ type Tab =
   | 'templates'
   | 'reports'
   | 'settings'
-  | 'workflow'
-  | 'management'
-  | 'yandex'
-  | 'audit'
-  | 'connections'
-  | 'intelligence'
-  | 'registry'
-  | 'agent'
-  | 'legal'
-  | 'messages';
+  | 'agent';
 type SettingsTab = 'organization' | 'automation' | 'connections' | 'team' | 'mail';
 const navigation = [
   { id: 'home' as Tab, label: t('Главная'), icon: LayoutDashboard },
   { id: 'debtors' as Tab, label: t('Должники'), icon: Scale },
+  { id: 'agent' as Tab, label: t('Ответы должников'), icon: Mail },
   { id: 'finance' as Tab, label: t('Оплаты'), icon: Wallet },
   { id: 'financing' as Tab, label: t('Финансирование'), icon: TrendingUp },
   { id: 'templates' as Tab, label: t('Шаблоны'), icon: Files },
   { id: 'reports' as Tab, label: t('Отчёты'), icon: ClipboardCheck },
   { id: 'settings' as Tab, label: t('Настройки'), icon: SettingsIcon },
-];
-/** Detailed tools, reachable from the sidebar without crowding daily work. */
-const tools = [
-  { id: 'workflow' as Tab, label: t('Работа'), icon: LayoutDashboard },
-  { id: 'audit' as Tab, label: t('Аудит'), icon: ClipboardCheck },
-  { id: 'registry' as Tab, label: t('Счета'), icon: Files },
-  { id: 'messages' as Tab, label: t('Переписка'), icon: Mail },
-  { id: 'yandex' as Tab, label: t('Документы'), icon: Bot },
-  { id: 'intelligence' as Tab, label: t('Прогноз и условия'), icon: TrendingUp },
-  { id: 'legal' as Tab, label: t('Претензии и суд'), icon: Scale },
-  { id: 'agent' as Tab, label: t('Разбор ответов'), icon: Bot },
 ];
 const settingsTabs: [SettingsTab, string][] = [
   ['organization', t('Компания')],
@@ -120,11 +83,7 @@ const settingsTabs: [SettingsTab, string][] = [
 export function Workspace() {
   const invitation = useInvitationToken();
   const [routeTab, setTab] = useRouteField<Tab>('section', 'home');
-  const tab = [...navigation, ...tools, { id: 'management' }, { id: 'connections' }].some(
-    (item) => item.id === routeTab
-  )
-    ? routeTab
-    : 'home';
+  const tab = navigation.some((item) => item.id === routeTab) ? routeTab : 'home';
   const [debtorId, setDebtorId] = useRouteField<string | null>('debtor', null);
   const [stage] = useRouteField<Stage>('stage', 'pretrial');
   const [settingsTab] = useRouteField<SettingsTab>('settingsTab', 'organization');
@@ -133,15 +92,12 @@ export function Workspace() {
   const [selected, setSelected] = useRouteField<string | null>('invoice', null);
   const [contextInvoice] = useRouteField<string>('context', '');
   const [contextCase] = useRouteField<string>('case', '');
-  const [contextIds, setContextIds] = useState<string[]>([]);
-  const [returnCase, setReturnCase] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [intent] = useRouteField<string>('intent', '');
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
     [loadError, setLoadError] = useState(''),
     [invoices, setInvoices] = useState<Invoice[]>([]),
-    [overview, setOverview] = useState<Overview | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
     [modal, setModal] = useState<'create' | 'import' | null>(null),
     [toast, setToast] = useState<{ text: string; error: boolean } | null>(null),
@@ -183,13 +139,11 @@ export function Workspace() {
     if (!session) return;
     setRefreshing(true);
     try {
-      const [list, summary, config] = await Promise.all([
+      const [list, config] = await Promise.all([
         api<{ items: Invoice[] }>('/invoices'),
-        api<Overview>('/overview'),
         api<Settings>('/settings'),
       ]);
       setInvoices(list.items);
-      setOverview(summary);
       setSettings(config);
       setMeta(await api<Meta>('/recovery/meta'));
       setRefreshKey((value) => value + 1);
@@ -206,24 +160,6 @@ export function Workspace() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
-  useEffect(() => {
-    let alive = true;
-    setContextIds([]);
-    setReturnCase('');
-    if (session && contextInvoice)
-      void api<{ items: { id: string; invoice_ids: string[] }[] }>('/workflow/cases')
-        .then((result) => {
-          const item = result.items.find((c) => c.invoice_ids.includes(contextInvoice));
-          if (alive && item) {
-            setContextIds(item.invoice_ids);
-            setReturnCase(item.id);
-          }
-        })
-        .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [session, contextCase, contextInvoice]);
   async function logout() {
     if (
       hasFormDrafts() &&
@@ -236,7 +172,6 @@ export function Workspace() {
       setSession(null);
       setCsrf('');
       setInvoices([]);
-      setOverview(null);
       navigate({
         section: null,
         mode: 'login',
@@ -324,22 +259,6 @@ export function Workspace() {
               </button>
             ))}
           </nav>
-          <details className="workspace-more">
-            <summary>{t('Инструменты')}</summary>
-            <nav className="workspace-nav" aria-label={t('Инструменты')}>
-              {tools.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={tab === id ? 'active' : ''}
-                  aria-current={tab === id ? 'page' : undefined}
-                >
-                  <Icon size={17} />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </nav>
-          </details>
           <div className="sidebar-bottom">
             <WorkspaceAdvice
               key={session.user.id}
@@ -374,53 +293,6 @@ export function Workspace() {
             </div>
           </header>
           <main id="workspace-main" className="workspace-main" data-tour="workspace">
-            {tab !== 'workflow' &&
-              tab !== 'legal' &&
-              contextInvoice &&
-              invoices.some((i) => i.id === contextInvoice) && (
-                <div className="work-context-bar">
-                  {tab !== 'messages' && (
-                    <label>
-                      {t('Работаем со счётом')}
-                      <select
-                        aria-label={t('Текущая задолженность')}
-                        value={contextInvoice}
-                        onChange={(e) =>
-                          navigate({
-                            context: e.target.value,
-                            case: returnCase || contextCase || null,
-                          })
-                        }
-                      >
-                        {invoices
-                          .filter((i) => !contextIds.length || contextIds.includes(i.id))
-                          .map((i) => (
-                            <option key={i.id} value={i.id}>
-                              {i.company} · {i.number}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
-                  <button
-                    className="wf-text-button"
-                    onClick={() =>
-                      navigate({
-                        section: 'workflow',
-                        case: returnCase || contextCase || `invoice:${contextInvoice}`,
-                      })
-                    }
-                  >
-                    {t('Вернуться к делу')}
-                  </button>
-                  <button
-                    className="wf-text-button"
-                    onClick={() => navigate({ context: null, case: null })}
-                  >
-                    {t('Все задолженности')}
-                  </button>
-                </div>
-              )}
             {loadError && (
               <div className="page-error" role="alert">
                 <AlertCircle size={16} />
@@ -436,7 +308,8 @@ export function Workspace() {
                 isManager={session.user.role !== 'accountant'}
                 onBack={() => setDebtorId(null)}
                 onChanged={() => void refresh()}
-                onEvidence={(id) => navigate({ debtor: null, section: 'audit', auditInvoice: id })}
+                onOpenInvoice={setSelected}
+                onReply={(id) => navigate({ debtor: null, section: 'agent', context: id })}
                 notify={notify}
               />
             ) : tab === 'home' ? (
@@ -482,57 +355,9 @@ export function Workspace() {
                     onNavigate={(next) => setTab(next)}
                   />
                 ) : (
-                  <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
+                  <TeamSettings notify={notify} />
                 )}
               </div>
-            ) : tab === 'workflow' ? (
-              <WorkflowDesk
-                invoices={invoices}
-                totals={overview || undefined}
-                onOpenInvoice={setSelected}
-                onNavigate={(next) => setTab(next as Tab)}
-                onImport={() => setModal('import')}
-                onCreate={() => setModal('create')}
-                notify={notify}
-                refreshKey={refreshing ? 1 : 0}
-              />
-            ) : tab === 'management' ? (
-              <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
-            ) : tab === 'yandex' ? (
-              <DocumentsDesk invoices={invoices} notify={notify} onChanged={() => void refresh()} />
-            ) : tab === 'audit' ? (
-              <PortfolioDesk
-                invoices={invoices}
-                onChanged={() => void refresh()}
-                notify={notify}
-                onOpenInvoice={setSelected}
-                onNavigate={setTab}
-              />
-            ) : tab === 'connections' ? (
-              <div data-tour="connections-content">
-                <ConnectionsDesk
-                  invoices={invoices}
-                  onChanged={() => void refresh()}
-                  notify={notify}
-                  onNavigate={(next) => setTab(next)}
-                />
-              </div>
-            ) : tab === 'intelligence' ? (
-              <IntelligenceDesk
-                key={contextInvoice}
-                invoices={invoices}
-                onChanged={() => void refresh()}
-                notify={notify}
-              />
-            ) : tab === 'registry' ? (
-              <Registry
-                invoices={
-                  contextIds.length ? invoices.filter((i) => contextIds.includes(i.id)) : invoices
-                }
-                onCreate={() => setModal('create')}
-                onImport={() => setModal('import')}
-                onOpen={setSelected}
-              />
             ) : tab === 'finance' ? (
               <FinanceDesk
                 key={contextInvoice}
@@ -547,23 +372,12 @@ export function Workspace() {
                 onChanged={() => void refresh()}
                 notify={notify}
               />
-            ) : tab === 'legal' ? (
-              <LegalDesk invoices={invoices} onChanged={() => void refresh()} notify={notify} />
-            ) : tab === 'messages' ? (
-              <Correspondence
-                invoices={
-                  contextInvoice ? invoices.filter((i) => i.id === contextInvoice) : invoices
-                }
-                onOpen={setSelected}
-                smtp={settings?.smtp_configured || false}
-                onReply={() => setTab('agent')}
-                notify={notify}
-              />
             ) : settings ? (
               <div className="rc-page">
                 <SettingsNav current="mail" />
                 <SettingsPanel
                   settings={settings}
+                  notify={notify}
                   onSave={async (data) => {
                     await patch('/settings', data);
                     await refresh();
@@ -610,360 +424,14 @@ export function Workspace() {
     </WorkContext.Provider>
   );
 }
-function Registry({
-  invoices,
-  onCreate,
-  onImport,
-  onOpen,
-}: {
-  invoices: Invoice[];
-  onCreate: () => void;
-  onImport: () => void;
-  onOpen: (id: string) => void;
-}) {
-  const [search, setSearch] = useState(''),
-    [status, setStatus] = useState('all'),
-    [priority, setPriority] = useState('all');
-  const filtered = invoices.filter(
-    (i) =>
-      (status === 'all' || i.status === status) &&
-      (priority === 'all' || i.priority === priority) &&
-      `${i.company} ${i.number} ${i.inn}`.toLowerCase().includes(search.toLowerCase())
-  );
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <h1>{t('Счета')}</h1>
-          <p>{t('Счета, остатки и сроки оплаты.')}</p>
-        </div>
-        <div className="heading-actions">
-          <button className="button button-outline" onClick={onImport}>
-            {t('Импорт')}
-            <Upload size={15} />
-          </button>
-          <button className="button button-dark" onClick={onCreate}>
-            {t('Добавить счёт')}
-            <Plus size={15} />
-          </button>
-        </div>
-      </div>
-      <div className="registry-toolbar">
-        <div className="search-input">
-          <Search size={16} />
-          <input
-            aria-label={t('Поиск счетов')}
-            placeholder={t('Контрагент, номер или ИНН')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button aria-label={t('Очистить поиск')} onClick={() => setSearch('')}>
-              <X size={14} />
-            </button>
-          )}
-        </div>
-        <div className="filter-controls">
-          <select
-            aria-label={t('Статус счёта')}
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">{t('Все статусы')}</option>
-            {Object.entries(statusNames).map(([key, value]) => (
-              <option key={key} value={key}>
-                {value}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label={t('Приоритет')}
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-          >
-            <option value="all">{t('Все приоритеты')}</option>
-            <option value="high">{t('Высокий')}</option>
-            <option value="medium">{t('Средний')}</option>
-            <option value="low">{t('Низкий')}</option>
-          </select>
-          <a
-            className="icon-button"
-            href="/api/export"
-            aria-label={t('Экспорт CSV')}
-            title={t('Экспорт CSV')}
-          >
-            <Download size={17} />
-          </a>
-        </div>
-      </div>
-      <section className="registry-panel">
-        {filtered.length > 0 ? (
-          <InvoiceTable invoices={filtered} onOpen={onOpen} />
-        ) : invoices.length > 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">
-              <Search size={24} />
-            </span>
-            <h3>{t('По этим условиям счетов нет')}</h3>
-            <p>{t('Попробуйте другой запрос или сбросьте фильтры.')}</p>
-            <button
-              className="button button-outline"
-              onClick={() => {
-                setSearch('');
-                setStatus('all');
-                setPriority('all');
-              }}
-            >
-              {t('Сбросить фильтры')}
-            </button>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <span className="empty-icon">
-              <Files size={27} />
-            </span>
-            <h3>{t('Начните с первого счёта')}</h3>
-            <p>
-              {t(
-                'Добавьте счёт вручную или загрузите CSV. Мы соберём остатки, сроки и следующие шаги в один реестр.'
-              )}
-            </p>
-            <button className="button button-dark" onClick={onImport}>
-              {t('Загрузить реестр')}
-              <Upload size={16} />
-            </button>
-            <button className="template-empty" onClick={downloadTemplate}>
-              {t('Скачать шаблон CSV')}
-              <Download size={13} />
-            </button>
-          </div>
-        )}
-      </section>
-      <div className="registry-count">
-        <span>
-          {t('Показано')} {filtered.length} {t('из')} {invoices.length} {t('счетов')}
-        </span>
-        <span>
-          {t('Остаток')} {money(filtered.reduce((a, b) => a + b.balance, 0))}
-        </span>
-      </div>
-    </>
-  );
-}
-export function InvoiceTable({
-  invoices,
-  onOpen,
-}: {
-  invoices: Invoice[];
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <div className="table-scroll">
-      <table className="invoice-table">
-        <thead>
-          <tr>
-            <th>{t('Контрагент / счёт')}</th>
-            <th>{t('Остаток')}</th>
-            <th>{t('Срок оплаты')}</th>
-            <th>{t('Статус')}</th>
-            <th>{t('Приоритет')}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((i) => (
-            <tr key={i.id} onClick={() => onOpen(i.id)}>
-              <td>
-                <span className="table-company">{i.company}</span>
-                <button
-                  className="invoice-number"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen(i.id);
-                  }}
-                >
-                  {i.number}
-                </button>
-              </td>
-              <td>
-                <strong>{money(i.balance)}</strong>
-                {i.paid_amount > 0 && i.balance > 0 && (
-                  <small>
-                    {t('из')} {money(i.amount)}
-                  </small>
-                )}
-              </td>
-              <td>
-                {dateText(i.due_on)}
-                {i.days_overdue > 0 && i.balance > 0 && (
-                  <small className="overdue">
-                    {i.days_overdue} {t('дн. просрочки')}
-                  </small>
-                )}
-              </td>
-              <td>
-                <span className={`pill ${statusColors[i.status]}`}>{statusNames[i.status]}</span>
-                {i.promise_date && i.balance > 0 && (
-                  <small>
-                    {t('до')} {dateText(i.promise_date)}
-                  </small>
-                )}
-              </td>
-              <td>
-                <span className={`priority-indicator ${i.priority}`}>
-                  <i />
-                  {i.priority === 'high'
-                    ? t('Высокий')
-                    : i.priority === 'medium'
-                      ? t('Средний')
-                      : t('Низкий')}
-                </span>
-              </td>
-              <td>
-                <button
-                  className="icon-button"
-                  aria-label={t('Открыть счёт {0}', [i.number])}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen(i.id);
-                  }}
-                >
-                  <ArrowUpRight size={15} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-function Correspondence({
-  invoices,
-  onOpen,
-  smtp,
-  onReply,
-  notify,
-}: {
-  invoices: Invoice[];
-  onOpen: (id: string) => void;
-  smtp: boolean;
-  onReply: () => void;
-  notify: (text: string, error?: boolean) => void;
-}) {
-  const [mode, setMode] = useRouteField<'history' | 'calls'>('messagesTab', 'history');
-  const active = invoices.filter(
-    (i) => i.balance > 0 && i.status !== 'paused' && i.status !== 'disputed'
-  );
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <h1>{mode === 'calls' ? t('Звонки покупателям') : t('Переписка с покупателями')}</h1>
-          <p>
-            {mode === 'calls'
-              ? t('Свяжитесь с представителем контрагента по выбранному счёту.')
-              : t('Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.')}
-          </p>
-        </div>
-        {mode !== 'calls' && (
-          <button className="button button-dark" onClick={onReply}>
-            {t('Разобрать ответ')}
-            <ArrowRight size={15} />
-          </button>
-        )}
-      </div>
-      <div className="ops-tabs" aria-label={t('Общение с контрагентами')}>
-        <button type="button" aria-pressed={mode !== 'calls'} onClick={() => setMode('history')}>
-          {t('История и письма')}
-        </button>
-        <button type="button" aria-pressed={mode === 'calls'} onClick={() => setMode('calls')}>
-          {t('Звонки')}
-        </button>
-      </div>
-      {mode === 'calls' ? (
-        <YandexDesk mode="voice" invoices={invoices} notify={notify} embedded />
-      ) : (
-        <>
-          <div className={`mail-connection ${smtp ? 'connected' : 'is-warning'}`}>
-            <Mail size={21} />
-            <div>
-              <strong>{smtp ? t('Почта подключена') : t('Почта не подключена')}</strong>
-              <p>
-                {smtp
-                  ? t(
-                      'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
-                    )
-                  : t(
-                      'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'
-                    )}
-              </p>
-            </div>
-            {smtp ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
-            {!smtp && (
-              <button
-                className="button button-outline"
-                onClick={() => navigate({ section: 'settings' })}
-              >
-                {t('Подключить почту')}
-              </button>
-            )}
-          </div>
-          <CaseConversation invoices={invoices} onOpen={onOpen} />
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>{t('Кому написать')}</h2>
-                <p>{t('Открытые счета без споров и пауз')}</p>
-              </div>
-              <span className="count-badge">{active.length}</span>
-            </div>
-            {active.length ? (
-              <div className="correspondence-list">
-                {active.map((i) => (
-                  <button key={i.id} onClick={() => onOpen(i.id)}>
-                    <div className="company-avatar">
-                      <Mail size={17} />
-                    </div>
-                    <span>
-                      <strong>{i.company}</strong>
-                      <small>
-                        {i.number} · {i.email || t('Email не указан')}
-                      </small>
-                    </span>
-                    <b>{money(i.balance)}</b>
-                    <span className="letter-action">
-                      {t('Открыть счёт')}
-                      <ArrowUpRight size={15} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <span className="empty-icon">
-                  <Mail size={25} />
-                </span>
-                <h3>{t('Письма начинаются со счёта')}</h3>
-                <p>
-                  {t(
-                    'Добавьте задолженность в реестр. В карточке можно подготовить письмо, выбрать тон и согласовать отправку.'
-                  )}
-                </p>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-    </>
-  );
-}
 function SettingsPanel({
   settings,
   onSave,
+  notify,
 }: {
   settings: Settings;
   onSave: (s: Partial<Settings>) => Promise<void>;
+  notify: (text: string, error?: boolean) => void;
 }) {
   const draft = useFormDraft('settings');
   const [mailLoaded, setMailLoaded] = useState(false);
@@ -1022,7 +490,7 @@ function SettingsPanel({
               />
             </label>
             <label className="field">
-              {t('Email для ответа')}
+              {t('Почта для ответа')}
               <input type="email" name="reply_to" defaultValue={settings.reply_to} />
             </label>
             <label className="field full-width">
@@ -1086,6 +554,7 @@ function SettingsPanel({
         </div>
       </form>
       <MailSetup onLoaded={onMailLoaded} />
+      <InboxStatus notify={notify} />
       <WorkspaceDataSettings layoutReady={mailLoaded} />
     </>
   );

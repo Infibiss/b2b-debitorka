@@ -41,7 +41,7 @@ export function CreateInvoice({ onClose, onDone }: { onClose: () => void; onDone
           />
         </label>
         <label className="field">
-          {t('Email покупателя')}
+          {t('Почта покупателя')}
           <input type="email" name="email" placeholder="buh@company.ru" />
         </label>
         <label className="field">

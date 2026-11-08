@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import sqlite3
+from typing import Literal
 from datetime import datetime, timedelta, timezone
 
 from argon2 import PasswordHasher
@@ -146,6 +147,8 @@ class AcceptInput(Input):
     token: str = Field(min_length=20, max_length=200)
     name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=10, max_length=256)
+    personal_data_consent: Literal[True] | None = None
+    consent_version: Literal['2026-11-08'] | None = None
     @field_validator('name')
     @classmethod
     def name_valid(cls, value): return single_line(value)
@@ -611,6 +614,8 @@ def create_router(ctx):
                 key, stamp = f.uid(), f.timestamp()
                 c.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (key, row['tenant_id'], data.name, row['email'], password_hash, stamp))
                 c.execute("INSERT INTO workflow_memberships VALUES(?,?,'accountant',?)", (key, row['tenant_id'], stamp))
+                if data.personal_data_consent is True:
+                    c.execute('INSERT INTO personal_data_consents(user_id,tenant_id,document_version,accepted_at) VALUES(?,?,?,?)', (key, row['tenant_id'], data.consent_version, stamp))
                 c.execute('UPDATE workflow_invitations SET accepted_at=? WHERE id=? AND accepted_at IS NULL', (stamp, row['id']))
                 company = c.execute('SELECT company FROM tenants WHERE id=?', (row['tenant_id'],)).fetchone()['company']
                 return dict(user=dict(id=key, name=data.name, email=row['email'], company=company), role='accountant', login_required=True)

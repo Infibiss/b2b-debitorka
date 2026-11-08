@@ -12,17 +12,7 @@ export { expect };
 
 export type { Page } from '@playwright/test';
 
-/** Reach a section the way a user does: main menu, tools disclosure or settings tabs. */
-const toolSections = [
-  'Работа',
-  'Аудит',
-  'Счета',
-  'Переписка',
-  'Документы',
-  'Прогноз и условия',
-  'Претензии и суд',
-  'Разбор ответов',
-];
+/** Reach a section the way a user does: main menu or settings tabs. */
 const settingsSections: Record<string, string> = {
   Подключения: 'Подключения',
   Управление: 'Команда',
@@ -32,13 +22,8 @@ const aliases: Record<string, string> = {
   Финансы: 'Оплаты',
   'Поступления и сверка': 'Оплаты',
   'Оплаты и сверка': 'Оплаты',
-  Реестр: 'Счета',
-  Дела: 'Претензии и суд',
-  'Юридическая работа': 'Претензии и суд',
-  'Документы и голос': 'Документы',
-  'Поступления и условия': 'Прогноз и условия',
-  Письма: 'Переписка',
-  Агент: 'Разбор ответов',
+  Агент: 'Ответы должников',
+  'Разбор ответов': 'Ответы должников',
 };
 
 export async function navigate(page: import('@playwright/test').Page, name: string) {
@@ -48,15 +33,6 @@ export async function navigate(page: import('@playwright/test').Page, name: stri
   if (settingsSections[target]) {
     await main.getByRole('button', { name: 'Настройки', exact: true }).click();
     await page.getByRole('button', { name: settingsSections[target], exact: true }).click();
-    return;
-  }
-  if (toolSections.includes(target)) {
-    const summary = page.getByText('Инструменты', { exact: true });
-    const details = page.locator('details.workspace-more');
-    if ((await details.getAttribute('open')) === null) await summary.click();
-    await details.getByRole('button', { name: target, exact: true }).click();
-    if (name === 'Документы и голос')
-      await page.getByRole('button', { name: 'Распознавание', exact: true }).click();
     return;
   }
   await main.getByRole('button', { name: target, exact: true }).click();
