@@ -148,7 +148,7 @@ def initialize(config):
             statement = re.sub(r"\bREAL\b", "DOUBLE PRECISION", statement, flags=re.I)
             connection.execute(statement)
         connection.execute("INSERT OR IGNORE INTO schema_version(version,applied_at) VALUES(?,?)", (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
-        for name in ("finance", "legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial"):
+        for name in ("finance", "legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial", "recovery", "financing"):
             import importlib
             try:
                 module = importlib.import_module("server." + name)

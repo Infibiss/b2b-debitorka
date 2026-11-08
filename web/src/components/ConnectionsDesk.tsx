@@ -93,7 +93,7 @@ const names: Record<Provider, string> = {
   one_c: '1С',
   diadoc: 'Диадок',
   tbank: 'Т-Банк',
-  tbank_sandbox: 'Т-Банк · публичная песочница',
+  tbank_sandbox: 'Т-Банк',
   dadata: 'Сведения о должнике',
   bank_exchange: 'Выписка из файла',
 };
@@ -135,7 +135,6 @@ export function ConnectionsDesk({
 }) {
   const [activeSource, setActiveSource] = useRouteField<SourceChoice>('source', 'one_c');
   const [itOpen, setItOpen] = useState(false);
-  const [developerOpen, setDeveloperOpen] = useState(false);
   const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<Connection[]>([]),
@@ -254,12 +253,6 @@ export function ConnectionsDesk({
         notify('Источник прочитан. Проверьте строки перед сохранением.');
     });
   }
-  async function readSandbox() {
-    await perform('tbank_sandbox', async () => {
-      stage(await post<Preview>('/integrations/tbank/sandbox/read', { mode: 'sandbox' }));
-      await reload();
-    });
-  }
   async function filePreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -369,9 +362,7 @@ export function ConnectionsDesk({
   const sourceName = sourceChoices.find((source) => source.id === activeSource)!.name;
   const matchesSource = (provider?: Provider) =>
     activeSource === 'bank'
-      ? provider === 'tbank' ||
-        provider === 'bank_exchange' ||
-        (provider === 'tbank_sandbox' && developerOpen)
+      ? provider === 'tbank' || provider === 'bank_exchange'
       : provider === activeSource;
   const sourceRuns = runs.filter((run) => matchesSource(run.provider));
   const previewVisible = !!preview && matchesSource(preview.provider);
@@ -483,7 +474,6 @@ export function ConnectionsDesk({
             onClick={() => {
               setActiveSource(source.id);
               setItOpen(false);
-              setDeveloperOpen(false);
               setError('');
             }}
           >
@@ -555,34 +545,6 @@ export function ConnectionsDesk({
 
               {!loading && !connections.some((item) => item.provider === 'tbank') && (
                 <p className="ms-note">Статус Т-Банка недоступен. Обновите статусы.</p>
-              )}
-            </details>
-            <details
-              className="connections-disclosure"
-              open={developerOpen}
-              onToggle={(event) => setDeveloperOpen(event.currentTarget.open)}
-            >
-              <summary>Для разработчика</summary>
-              {developerOpen && (
-                <section className="ms-card ms-sandbox">
-                  <div className="ms-card-heading">
-                    <h2>Публичная песочница Т-Банка</h2>
-                    <span className="ms-status">Бесплатный тест формата</span>
-                  </div>
-                  <p>
-                    Отдельная проверка формата ответа на тестовых данных провайдера. Она не
-                    подключает расчётный счёт вашей компании. Данные песочницы нельзя подтвердить
-                    как реальные деньги.
-                  </p>
-                  <button
-                    type="button"
-                    className="button button-outline"
-                    disabled={!!busy}
-                    onClick={() => void readSandbox()}
-                  >
-                    Прочитать публичную песочницу
-                  </button>
-                </section>
               )}
             </details>
           </>
@@ -794,13 +756,6 @@ export function ConnectionsDesk({
                   {preview.provider && names[preview.provider]}
                   {preview.status && ` · ${statuses[preview.status] ?? 'Статус не подтверждён'}`}
                 </p>
-                {sandbox && (
-                  <p className="ms-warning">
-                    Тестовые данные публичной песочницы. Это ответ провайдера для проверки формата,
-                    без реальных счетов и поступлений. Сохранение в реестр и финансовый учёт
-                    недоступно.
-                  </p>
-                )}
                 {!sandbox && preview.coverage?.complete === false && (
                   <p className="ms-warning">
                     Источник вернул часть списка. Каждая страница проверяется и подтверждается

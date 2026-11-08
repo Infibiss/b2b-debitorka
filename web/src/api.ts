@@ -1,3 +1,4 @@
+import { locale, t } from './i18n';
 export type User = {
   id: string;
   name: string;
@@ -101,7 +102,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     credentials: 'same-origin',
   });
   if (!response.ok) {
-    let message = 'Не удалось выполнить действие. Попробуйте ещё раз.';
+    let message = t('Не удалось выполнить действие. Попробуйте ещё раз.');
     try {
       const data = await response.json();
       message =
@@ -113,7 +114,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     } catch {
       /* use readable fallback */
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(t(message), response.status);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -122,8 +123,11 @@ export const post = <T>(path: string, body: unknown = {}) =>
   api<T>(path, { method: 'POST', body: JSON.stringify(body) });
 export const patch = <T>(path: string, body: unknown) =>
   api<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+export const put = <T>(path: string, body: unknown) =>
+  api<T>(path, { method: 'PUT', body: JSON.stringify(body) });
+export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' });
 export const money = (amount: number, compact = false) =>
-  new Intl.NumberFormat('ru-RU', {
+  new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'RUB',
     maximumFractionDigits: compact ? 0 : 2,
@@ -131,7 +135,7 @@ export const money = (amount: number, compact = false) =>
     notation: compact && amount >= 100000000 ? 'compact' : 'standard',
   }).format(amount / 100);
 export const dateText = (value: string) =>
-  new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString('ru-RU', {
+  new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
   });

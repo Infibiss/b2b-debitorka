@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, post } from '../api';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
@@ -15,10 +16,10 @@ export function SupportContact() {
     <div className="support-contact">
       {email ? (
         <a href={`mailto:${email}`}>
-          Написать в поддержку <ArrowUpRight size={14} />
+          {t('Написать в поддержку')} <ArrowUpRight size={14} />
         </a>
       ) : (
-        <p>Для помощи со входом обратитесь к администратору вашей компании.</p>
+        <p>{t('Для помощи со входом обратитесь к администратору вашей компании.')}</p>
       )}
     </div>
   );
@@ -34,10 +35,11 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
     const data = new FormData(event.currentTarget);
     try {
       if (token) {
-        if (data.get('password') !== data.get('confirm')) throw new Error('Пароли не совпадают.');
+        if (data.get('password') !== data.get('confirm'))
+          throw new Error(t('Пароли не совпадают.'));
         await post('/auth/reset-password', { token, password: data.get('password') });
         history.replaceState({}, '', '/app?mode=login');
-        setMessage('Пароль изменён. Войдите с новым паролем.');
+        setMessage(t('Пароль изменён. Войдите с новым паролем.'));
       } else {
         const result = await post<{ detail: string }>('/auth/recovery', {
           email: data.get('email'),
@@ -56,15 +58,15 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
       <main className="auth-main">
         <button className="auth-back" onClick={onBack}>
           <ArrowLeft size={15} />
-          Вернуться ко входу
+          {t('Вернуться ко входу')}
         </button>
         <div className="auth-box recovery-box">
-          <h2>{token ? 'Новый пароль' : 'Восстановить доступ'}</h2>
+          <h2>{token ? t('Новый пароль') : t('Восстановить доступ')}</h2>
           {!message && (
             <p>
               {token
-                ? 'Придумайте пароль не короче 12 символов.'
-                : 'Пришлём ссылку на почту вашего аккаунта.'}
+                ? t('Придумайте пароль не короче 12 символов.')
+                : t('Пришлём ссылку на почту вашего аккаунта.')}
             </p>
           )}
           {message ? (
@@ -76,7 +78,7 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
               {token ? (
                 <>
                   <label className="field">
-                    Новый пароль
+                    {t('Новый пароль')}
                     <input
                       name="password"
                       type="password"
@@ -87,7 +89,7 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
                     />
                   </label>
                   <label className="field">
-                    Повторите пароль
+                    {t('Повторите пароль')}
                     <input
                       name="confirm"
                       type="password"
@@ -100,7 +102,7 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
                 </>
               ) : (
                 <label className="field">
-                  Email аккаунта
+                  {t('Email аккаунта')}
                   <input name="email" type="email" required autoComplete="email" />
                 </label>
               )}
@@ -110,13 +112,13 @@ export function AccountRecovery({ token, onBack }: { token?: string; onBack: () 
                 </p>
               )}
               <button className="button button-dark" disabled={busy}>
-                {busy ? 'Подождите…' : token ? 'Сменить пароль' : 'Получить ссылку'}
+                {busy ? t('Подождите…') : token ? t('Сменить пароль') : t('Получить ссылку')}
               </button>
             </form>
           )}
           {message && (
             <button className="button button-dark recovery-signin" onClick={onBack}>
-              Вернуться ко входу
+              {t('Вернуться ко входу')}
               <ArrowUpRight size={17} />
             </button>
           )}

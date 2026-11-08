@@ -41,8 +41,8 @@ def test_contract_claim_totals_payment_fees_and_second_invoice_staleness(client,
     assert review(client,doc['id']).status_code==200
     file_package(client,item['id'],doc)
     fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert fee['pretrial_fee_amount']==300000
-    assert fee['judicial_package_amount']==700000 and len(fee['package_items'])==1
+    assert fee['pretrial_fee_amount']==400000
+    assert fee['judicial_package_amount']==990000 and len(fee['package_items'])==1
     bank_allocate(client,second['id'],'CONTRACT-SECOND',1000000,'2026-10-25')
     changed=client.get(f"/api/legal/cases/{item['id']}").json()
     assert changed['balance']==24000000
@@ -102,7 +102,7 @@ def test_cancelled_order_needs_evidence_and_blocks_enforcement(client,monkeypatc
     bank=evidence(client,item['id'],'bank_submission','Принят банком','2026-10-29')
     result=client.post(f"/api/legal/cases/{item['id']}/milestones",json=dict(base,stage='bank_submitted',occurred_on='2026-10-29',evidence_ids=[bank['id']]))
     assert result.status_code==201,result.text
-    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['judicial_package_amount']==1900000
+    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['judicial_package_amount']==2480000
 
 
 def test_existing_single_invoice_document_survives_membership_backfill(client):

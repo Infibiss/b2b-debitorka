@@ -1,4 +1,4 @@
-import { test, expect, navigate, type Page } from './fixtures';
+﻿import { test, expect, navigate, type Page } from './fixtures';
 async function signup(page: Page, suffix: string) {
   await page.getByLabel('Ваше имя', { exact: true }).fill('Анна');
   await page.getByLabel('Компания', { exact: true }).fill('ООО Практика');
@@ -55,7 +55,7 @@ test('all paid tiers retain a pending order, explicitly bypass payment and suppo
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Подтвердите подключение' })).toBeVisible();
     await expect(page.locator('input[autocomplete="cc-number"]')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Продолжить без оплаты' }).click();
+    await page.getByRole('button', { name: 'Подключить и получить счёт' }).click();
     await expect(page.getByRole('heading', { name: 'Можно начинать работу' })).toBeVisible();
     await page.goto('/account');
     await expect(page.getByText('Открыт без оплаты', { exact: true })).toBeVisible();

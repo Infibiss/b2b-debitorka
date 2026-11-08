@@ -121,7 +121,7 @@ class CaseFacts(LegalInput):
     pretrial_basis:str=Field(default="Часть 5 статьи 4 АПК РФ",max_length=5000)
     fee_agreement_reference:str=Field(default="",max_length=1000)
     fee_start_on:date|None=None
-    fee_model_version:Literal["mandato-2026-10-26"]=TARIFF['version']
+    fee_model_version:Literal["mandato-2026-11-08"]=TARIFF['version']
     lawyer_agreement_reference:str=Field(default="",max_length=1000)
     responsible_lawyer:str=Field(default="",max_length=300)
     lawyer_authority:str=Field(default="",max_length=2000)

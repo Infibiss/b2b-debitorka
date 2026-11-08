@@ -57,7 +57,7 @@ def facts(**changes):
           "debtor":{"kind":"organization","name":"ООО Покупатель","inn":"7701234567","ogrn":"1027700000001","address":"Москва, улица Покупателя, 1","email":"debtor@example.ru","phone":"+7 495 000 00 00","bank_details":"Реквизиты в договоре № П-1"},
           "contract_number":"П-1","contract_date":"2026-07-01","obligation_description":"Оплата поставленного оборудования","performance_description":"Товар передан по УПД № 10 от 01.08.2026, принят без замечаний","due_basis":"Пункт 3.1 договора, отсрочка до 01.09.2026","legal_basis":"Статьи 309, 310, 516 ГК РФ и договор № П-1",
           "court_name":"Арбитражный суд города Москвы","court_address":"Москва, Большая Тульская, 17","jurisdiction_basis":"Место нахождения ответчика, статья 35 АПК РФ","undisputed":True,"business_debt_confirmed":True,"special_regimes_checked":True,
-          "pretrial_days":30,"pretrial_basis":"Часть 5 статьи 4 АПК РФ","fee_agreement_reference":"Договор сопровождения № А-1","fee_start_on":"2026-08-01","fee_model_version":"mandato-2026-10-26","lawyer_agreement_reference":"Отдельное соглашение с адвокатом № 1"}
+          "pretrial_days":30,"pretrial_basis":"Часть 5 статьи 4 АПК РФ","fee_agreement_reference":"Договор сопровождения № А-1","fee_start_on":"2026-08-01","fee_model_version":"mandato-2026-11-08","lawyer_agreement_reference":"Отдельное соглашение с адвокатом № 1"}
     data.update(changes)
     return data
 
@@ -242,19 +242,19 @@ def test_fee_uses_only_net_bank_allocations_and_handles_stage_date_ambiguity_con
     assert filing.status_code==201,filing.text
     bank_allocate(client,inv['id'],'B-SAME-DAY',2000000,'2026-10-24')
     fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert fee['confirmed_recovery_amount']==3000000 and fee['fee_amount']==760000
-    assert fee['pretrial_fee_amount']==60000 and fee['judicial_package_amount']==700000
+    assert fee['confirmed_recovery_amount']==3000000 and fee['fee_amount']==1070000
+    assert fee['pretrial_fee_amount']==80000 and fee['judicial_package_amount']==990000
     assert fee['ambiguous_recovery_amount']==2000000 and fee['lawyer_fee_amount']==0
     assert fee['line_items'][-1]['stage']=='ambiguous'
     finance=importlib.import_module('server.finance');monkeypatch.setattr(finance,'business_today',lambda:date(2026,10,25))
     legal=importlib.import_module('server.legal');monkeypatch.setattr(legal,'business_today',lambda:date(2026,10,25))
     later=bank_allocate(client,inv['id'],'B-JUDICIAL',1000000,'2026-10-25')
     later_fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert later_fee['fee_amount']==760000 and later_fee['lawyer_fee_amount']==120000
+    assert later_fee['fee_amount']==1070000 and later_fee['lawyer_fee_amount']==120000
     reversed_payment=client.post(f"/api/finance/payments/{later['id']}/reverse",json={'amount':500000,'reason':'Возвращена часть подтверждённого поступления','idempotency_key':'refund-1','kind':'refund'})
     assert reversed_payment.status_code==200,reversed_payment.text
     after=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert after['confirmed_recovery_amount']==3500000 and after['fee_amount']==760000
+    assert after['confirmed_recovery_amount']==3500000 and after['fee_amount']==1070000
     assert after['lawyer_fee_amount']==60000
 
 
@@ -335,12 +335,12 @@ def test_package_fixed_prices_require_filing_and_do_not_duplicate_versions_or_re
     revised=document(client,item['id'],'court_order','none')
     assert review(client,revised['id']).status_code==200
     file_package(client,item['id'],revised)
-    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['fee_amount']==700000
+    assert client.get(f"/api/legal/cases/{item['id']}/fee").json()['fee_amount']==990000
     lawsuit=document(client,item['id'],'statement_of_claim','none')
     assert review(client,lawsuit['id']).status_code==200
     file_package(client,item['id'],lawsuit)
     fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert fee['fee_amount']==fee['judicial_package_amount']==1900000
+    assert fee['fee_amount']==fee['judicial_package_amount']==2480000
     assert fee['pretrial_fee_amount']==fee['lawyer_fee_amount']==0
     assert len(fee['package_items'])==2
     assert client.get('/api/invoices/'+inv['id']).json()['invoice']['balance']==inv['balance']

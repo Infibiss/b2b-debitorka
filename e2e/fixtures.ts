@@ -12,33 +12,52 @@ export { expect };
 
 export type { Page } from '@playwright/test';
 
-/** Use the same persistent commands and profile menu as the user. */
+/** Reach a section the way a user does: main menu, tools disclosure or settings tabs. */
+const toolSections = [
+  'Работа',
+  'Аудит',
+  'Счета',
+  'Переписка',
+  'Документы',
+  'Прогноз и условия',
+  'Претензии и суд',
+  'Разбор ответов',
+];
+const settingsSections: Record<string, string> = {
+  Подключения: 'Подключения',
+  Управление: 'Команда',
+  Настройки: 'Почта',
+};
+const aliases: Record<string, string> = {
+  Финансы: 'Оплаты',
+  'Поступления и сверка': 'Оплаты',
+  'Оплаты и сверка': 'Оплаты',
+  Реестр: 'Счета',
+  Дела: 'Претензии и суд',
+  'Юридическая работа': 'Претензии и суд',
+  'Документы и голос': 'Документы',
+  'Поступления и условия': 'Прогноз и условия',
+  Письма: 'Переписка',
+  Агент: 'Разбор ответов',
+};
+
 export async function navigate(page: import('@playwright/test').Page, name: string) {
-  await expect(page.getByRole('navigation', { name: 'Разделы кабинета' })).toBeVisible();
-  const labels: Record<string, string> = {
-    Финансы: 'Оплаты и сверка',
-    'Поступления и сверка': 'Оплаты и сверка',
-    Реестр: 'Счета',
-    Дела: 'Претензии и суд',
-    'Юридическая работа': 'Претензии и суд',
-    'Документы и голос': 'Документы',
-    'Поступления и условия': 'Прогноз и условия',
-    Письма: 'Переписка',
-  };
-  if (name === 'Настройки') {
-    await page.getByRole('button', { name: 'Профиль и настройки', exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Настройки', exact: true }).click();
+  const main = page.getByRole('navigation', { name: 'Разделы кабинета' });
+  await expect(main).toBeVisible();
+  const target = aliases[name] || name;
+  if (settingsSections[target]) {
+    await main.getByRole('button', { name: 'Настройки', exact: true }).click();
+    await page.getByRole('button', { name: settingsSections[target], exact: true }).click();
     return;
   }
-  const menu = page.getByRole('button', { name: /^Операции ·/ });
-  if ((await menu.isVisible()) && (await menu.getAttribute('aria-expanded')) === 'false')
-    await menu.click();
-  if (name === 'Агент' || name === 'Разбор ответов') {
-    await page.getByRole('button', { name: 'Переписка', exact: true }).click();
-    await page.getByRole('button', { name: 'Разобрать ответ', exact: true }).click();
+  if (toolSections.includes(target)) {
+    const summary = page.getByText('Инструменты', { exact: true });
+    const details = page.locator('details.workspace-more');
+    if ((await details.getAttribute('open')) === null) await summary.click();
+    await details.getByRole('button', { name: target, exact: true }).click();
+    if (name === 'Документы и голос')
+      await page.getByRole('button', { name: 'Распознавание', exact: true }).click();
     return;
   }
-  await page.getByRole('button', { name: labels[name] || name, exact: true }).click();
-  if (name === 'Документы и голос')
-    await page.getByRole('button', { name: 'Распознавание', exact: true }).click();
+  await main.getByRole('button', { name: target, exact: true }).click();
 }

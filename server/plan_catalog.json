@@ -1,6 +1,6 @@
 {
   "trial_days": 14,
-  "payment_mode": "sandbox",
+  "payment_mode": "invoice",
   "items": [
     {
       "id": "start",
@@ -19,7 +19,7 @@
     {
       "id": "team",
       "name": "Команда",
-      "price_monthly": 1990000,
+      "price_monthly": 2490000,
       "currency": "RUB",
       "billing_period": "month",
       "active_invoice_limit": 500,
@@ -34,7 +34,7 @@
     {
       "id": "scale",
       "name": "Масштаб",
-      "price_monthly": 3990000,
+      "price_monthly": 4990000,
       "currency": "RUB",
       "billing_period": "month",
       "active_invoice_limit": 2000,

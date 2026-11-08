@@ -1,4 +1,4 @@
-import { navigate, test, expect } from './fixtures';
+﻿import { navigate, test, expect } from './fixtures';
 
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date());
 
@@ -154,7 +154,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   await expect(page.locator('.legal-fee')).toContainText('0 ₽');
   await expect(
     page.locator('.legal-fee .ops-result-grid > div').filter({ hasText: 'Итого Mandato' })
-  ).toContainText(/7\s?000\s?₽/);
+  ).toContainText(/9\s?900\s?₽/);
   await expect(
     page.locator('.legal-fee .ops-result-grid > div').filter({ hasText: 'Адвокату отдельно' })
   ).toContainText('0 ₽');
@@ -163,7 +163,7 @@ test('legal facts, calculation, evidence, real DOCX review and manual filing per
   ).toContainText('Заявление о судебном приказе');
   await expect(
     page.getByRole('table', { name: 'Стоимость поданных судебных пакетов' })
-  ).toContainText(/7\s?000\s?₽/);
+  ).toContainText(/9\s?900\s?₽/);
   await page
     .locator('.legal-fee')
     .screenshot({ path: info.outputPath('application-fees.png'), animations: 'disabled' });

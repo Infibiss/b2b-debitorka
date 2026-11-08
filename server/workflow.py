@@ -413,7 +413,8 @@ def dispatch_jobs(config, limit=30):
 def run_once(config):
     from .workflow_mailbox import poll_once
     incoming = poll_once(config)
-    return dict(scheduled=schedule_jobs(config), sent=dispatch_jobs(config), mailbox=incoming)
+    from .recovery import run_automation
+    return dict(moved=run_automation(config), scheduled=schedule_jobs(config), sent=dispatch_jobs(config), mailbox=incoming)
 
 
 async def scheduler_loop(config):

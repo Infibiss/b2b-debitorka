@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRef, useState, type FormEvent } from 'react';
 import { Upload, Download, Check, AlertCircle, FileSpreadsheet, ArrowRight } from 'lucide-react';
 import { Dialog } from './Dialog';
@@ -20,35 +21,35 @@ export function CreateInvoice({ onClose, onDone }: { onClose: () => void; onDone
     }
   }
   return (
-    <Dialog title="Новый счёт" onClose={onClose}>
+    <Dialog title={t('Новый счёт')} onClose={onClose}>
       <p className="dialog-intro">
-        Добавьте неоплаченный счёт. Дальнейшая работа будет храниться в его карточке.
+        {t('Добавьте неоплаченный счёт. Дальнейшая работа будет храниться в его карточке.')}
       </p>
       <form onSubmit={submit} className="form-grid">
         <label className="field full-width">
-          Контрагент
-          <input required name="company" placeholder="ООО «Северстрой»" maxLength={160} />
+          {t('Контрагент')}
+          <input required name="company" placeholder={t('ООО «Северстрой»')} maxLength={160} />
         </label>
         <label className="field">
-          ИНН
+          {t('ИНН')}
           <input
             name="inn"
             inputMode="numeric"
             pattern="[0-9]{10}|[0-9]{12}|^$"
-            placeholder="10 или 12 цифр"
+            placeholder={t('10 или 12 цифр')}
             maxLength={12}
           />
         </label>
         <label className="field">
-          Email покупателя
+          {t('Email покупателя')}
           <input type="email" name="email" placeholder="buh@company.ru" />
         </label>
         <label className="field">
-          Номер счёта
-          <input required name="number" placeholder="СЧ-417" maxLength={80} />
+          {t('Номер счёта')}
+          <input required name="number" placeholder={t('СЧ-417')} maxLength={80} />
         </label>
         <label className="field">
-          Сумма
+          {t('Сумма')}
           <input
             required
             name="amount"
@@ -59,11 +60,11 @@ export function CreateInvoice({ onClose, onDone }: { onClose: () => void; onDone
           />
         </label>
         <label className="field">
-          Дата счёта
+          {t('Дата счёта')}
           <input required type="date" name="issued_on" defaultValue={today()} />
         </label>
         <label className="field">
-          Оплатить до
+          {t('Оплатить до')}
           <input required type="date" name="due_on" defaultValue={today()} />
         </label>
         {error && (
@@ -73,10 +74,10 @@ export function CreateInvoice({ onClose, onDone }: { onClose: () => void; onDone
         )}
         <div className="dialog-actions full-width">
           <button className="button button-outline" type="button" onClick={onClose}>
-            Отмена
+            {t('Отмена')}
           </button>
           <button className="button button-dark" disabled={busy} type="submit">
-            {busy ? 'Сохраняем…' : 'Добавить счёт'}
+            {busy ? t('Сохраняем…') : t('Добавить счёт')}
             <Check size={16} />
           </button>
         </div>
@@ -84,8 +85,9 @@ export function CreateInvoice({ onClose, onDone }: { onClose: () => void; onDone
     </Dialog>
   );
 }
-const template =
-  'контрагент;инн;email;номер;дата;срок;сумма\nООО «Покупатель»;7701234567;buh@example.ru;СЧ-001;01.10.2026;15.10.2026;150000,00\n';
+const template = t(
+  'контрагент;инн;email;номер;дата;срок;сумма\nООО «Покупатель»;7701234567;buh@example.ru;СЧ-001;01.10.2026;15.10.2026;150000,00\n'
+);
 export function downloadTemplate() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8' }));
@@ -110,7 +112,7 @@ export function ImportInvoices({ onClose, onDone }: { onClose: () => void; onDon
     setPreview(null);
     setContent('');
     if (file.size > 2 * 1024 * 1024) {
-      setError('Файл больше 2 МБ. Разделите реестр на несколько файлов.');
+      setError(t('Файл больше 2 МБ. Разделите реестр на несколько файлов.'));
       return;
     }
     setName(file.name);
@@ -136,7 +138,7 @@ export function ImportInvoices({ onClose, onDone }: { onClose: () => void; onDon
         content,
       });
       onDone();
-      if (result.imported === 0) setError('Все счета уже существуют.');
+      if (result.imported === 0) setError(t('Все счета уже существуют.'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -144,20 +146,23 @@ export function ImportInvoices({ onClose, onDone }: { onClose: () => void; onDon
     }
   }
   return (
-    <Dialog title="Импорт реестра" onClose={onClose} wide>
+    <Dialog title={t('Импорт реестра')} onClose={onClose} wide>
       <p className="dialog-intro">
-        Загрузите CSV из учётной системы. Мы проверим даты, суммы и повторяющиеся счета до
-        сохранения.
+        {t(
+          'Загрузите CSV из учётной системы. Мы проверим даты, суммы и повторяющиеся счета до сохранения.'
+        )}
       </p>
       <button className="template-download" onClick={downloadTemplate}>
         <Download size={15} />
-        Скачать шаблон CSV
+        {t('Скачать шаблон CSV')}
         <ArrowRight size={14} />
       </button>
       <label className={`upload-zone ${busy ? 'is-busy' : ''}`}>
         <Upload size={29} />
-        <strong>{busy ? 'Проверяем реестр…' : name || 'Выберите файл или перетащите сюда'}</strong>
-        <span>CSV · UTF-8 · до 2 МБ</span>
+        <strong>
+          {busy ? t('Проверяем реестр…') : name || t('Выберите файл или перетащите сюда')}
+        </strong>
+        <span>{t('CSV · UTF-8 · до 2 МБ')}</span>
         <input
           ref={fileRef}
           type="file"
@@ -175,21 +180,23 @@ export function ImportInvoices({ onClose, onDone }: { onClose: () => void; onDon
           <div className="import-summary">
             <span>
               <FileSpreadsheet size={15} />
-              {preview.items.length} счетов в файле
+              {preview.items.length} {t('счетов в файле')}
             </span>
             {preview.duplicate_count > 0 && (
-              <span className="duplicate-note">{preview.duplicate_count} повторов — пропустим</span>
+              <span className="duplicate-note">
+                {preview.duplicate_count} {t('повторов — пропустим')}
+              </span>
             )}
           </div>
           {preview.errors.length > 0 ? (
             <div className="import-errors" role="alert">
               <strong>
                 <AlertCircle size={15} />
-                Есть ошибки в реестре
+                {t('Есть ошибки в реестре')}
               </strong>
               {preview.errors.slice(0, 8).map((e, i) => (
                 <p key={i}>
-                  Строка {e.row}: {e.message}
+                  {t('Строка')} {e.row}: {e.message}
                 </p>
               ))}
             </div>
@@ -204,21 +211,25 @@ export function ImportInvoices({ onClose, onDone }: { onClose: () => void; onDon
                   <b>{money(item.amount || 0)}</b>
                 </div>
               ))}
-              {preview.items.length > 5 && <p>И ещё {preview.items.length - 5} счетов</p>}
+              {preview.items.length > 5 && (
+                <p>
+                  {t('И ещё')} {preview.items.length - 5} {t('счетов')}
+                </p>
+              )}
             </div>
           )}
         </div>
       )}
       <div className="dialog-actions">
         <button className="button button-outline" onClick={onClose}>
-          Отмена
+          {t('Отмена')}
         </button>
         <button
           disabled={!preview || preview.errors.length > 0 || preview.items.length === 0 || busy}
           className="button button-dark"
           onClick={() => void submit()}
         >
-          Импортировать
+          {t('Импортировать')}
           <Check size={16} />
         </button>
       </div>

@@ -1,0 +1,139 @@
+export type Stage = 'pretrial' | 'court' | 'enforcement' | 'closed';
+export type Step = {
+  key: string;
+  label: string;
+  state: 'done' | 'current' | 'attention' | 'pending';
+};
+export type NextStep = {
+  action: string | null;
+  label: string | null;
+  reason: string;
+  urgency: 'today' | 'soon' | 'later';
+};
+export type Debtor = {
+  id: string;
+  name: string;
+  inn: string;
+  email: string;
+  status: string;
+  status_label: string;
+  stage: Stage;
+  custom_status: string;
+  balance: number;
+  overdue_amount: number;
+  invoice_count: number;
+  open_invoice_count: number;
+  days_overdue: number;
+  oldest_due_on: string | null;
+  route: 'court_order' | 'statement_of_claim' | null;
+  promise_date: string | null;
+  evidence_score: number;
+  steps: Step[];
+  next_step: NextStep | null;
+};
+export type EvidenceItem = {
+  key: string;
+  label: string;
+  hint: string;
+  present: boolean;
+  required: boolean;
+};
+export type FinancingOffer = {
+  id: string;
+  name: string;
+  summary: string;
+  eligible: boolean;
+  reasons: string[];
+  advance_percent: [number, number];
+  amount_from: number;
+  amount_to: number;
+  annual_rate_percent: string | null;
+};
+export type DebtorDetail = Debtor & {
+  invoices: {
+    id: string;
+    number: string;
+    issued_on: string;
+    due_on: string;
+    amount: number;
+    balance: number;
+    days_overdue: number;
+  }[];
+  evidence: { items: EvidenceItem[]; score: number; ready_for_court: boolean; missing: string[] };
+  solvency: { state: string; label: string; warning: string };
+  deadlines: { key: string; label: string; on: string; days_left: number }[];
+  economics: {
+    route: string;
+    duty_amount: number;
+    package_amount: number;
+    upfront_amount: number;
+    upfront_percent: number;
+    warnings: string[];
+  } | null;
+  recommendation: { route: string; reason: string };
+  details: Record<string, string>;
+  actions: string[];
+  log: {
+    id: string;
+    action: string;
+    from_status: string;
+    to_status: string;
+    detail: string;
+    actor_name: string;
+    created_at: string;
+  }[];
+  documents: { id: string; kind: string; version: number; created_at: string }[];
+  financing: { items: FinancingOffer[]; has_active_request: boolean; key_rate_percent: string };
+  claim_sent_on: string | null;
+  claim_reference: string;
+  duty_amount: number | null;
+  duty_reference: string;
+  case_number: string;
+  note: string;
+};
+export type Meta = {
+  statuses: Record<string, { stage: Stage; label: string }>;
+  action_labels: Record<string, string>;
+  actions: Record<string, { manager_only: boolean; required: string[] }>;
+  document_kinds: Record<string, { title: string; stage: Stage }>;
+  variables: Record<string, string>;
+  tariff: Record<string, number | string>;
+};
+export type OnboardingItem = {
+  key: string;
+  label: string;
+  hint: string;
+  done: boolean;
+  target: string;
+};
+export type Dashboard = {
+  onboarding: { items: OnboardingItem[]; done: number; total: number };
+  stages: { stage: Stage; count: number; amount: number }[];
+  tasks: Debtor[];
+  task_count: number;
+  deadlines: {
+    debtor_id: string;
+    name: string;
+    key: string;
+    label: string;
+    on: string;
+    days_left: number;
+  }[];
+  totals: { debtors: number; balance: number; overdue: number; promised: number };
+};
+export type Notify = (text: string, error?: boolean) => void;
+export type FinancingRequest = {
+  id: string;
+  counterparty_id: string;
+  debtor_name: string;
+  product_name: string;
+  amount: number;
+  status: string;
+  status_label: string;
+  partner: string;
+  funded_amount: number | null;
+  repay_amount: number | null;
+  repaid_amount: number;
+  remaining_amount: number | null;
+  created_at: string;
+};

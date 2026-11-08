@@ -27,7 +27,7 @@ def calculate(recovery=(), filings=(), claims=(), facts=None):
     ('2026-07-31', 'before_start', 0, 0),
     ('2026-10-09', 'before_claim', 0, 0),
     ('2026-10-10', 'ambiguous', 0, 0),
-    ('2026-10-11', 'pretrial', 60_000, 0),
+    ('2026-10-11', 'pretrial', 80_000, 0),
     ('2026-10-20', 'ambiguous', 0, 0),
     ('2026-10-21', 'judicial', 0, 120_000),
 ])
@@ -36,7 +36,7 @@ def test_recovery_phase_never_moves_lawyer_income_into_mandato(day, stage, manda
     assert result['line_items'][0]['stage'] == stage
     assert result['pretrial_fee_amount'] == mandato
     assert result['lawyer_fee_amount'] == lawyer
-    assert result['fee_amount'] == 700_000 + mandato
+    assert result['fee_amount'] == 990_000 + mandato
 
 
 def test_no_claim_means_no_pretrial_percentage_but_order_still_has_its_fixed_price():
@@ -44,21 +44,21 @@ def test_no_claim_means_no_pretrial_percentage_but_order_still_has_its_fixed_pri
     assert result['excluded_before_claim_amount'] == 1_000_000
     assert result['pretrial_fee_amount'] == 0
     assert result['lawyer_fee_amount'] == 120_000
-    assert result['fee_amount'] == 700_000
+    assert result['fee_amount'] == 990_000
 
 
 def test_lawyer_requires_a_separate_agreement_even_when_mandato_is_configured():
     facts = terms(); facts['lawyer_agreement_reference'] = ''
     result = calculate([receipt('2026-10-21')], [filing()], facts=facts)
     assert result['configured'] is True and result['lawyer_configured'] is False
-    assert result['fee_amount'] == 700_000 and result['lawyer_fee_amount'] == 0
+    assert result['fee_amount'] == 990_000 and result['lawyer_fee_amount'] == 0
     assert result['lawyer_unconfigured_recovery_amount'] == 1_000_000
 
 
 def test_each_filed_package_kind_is_counted_once_independently_of_recovery_or_versions():
     filings = [filing(), filing(key='same-package-v2'), filing('statement_of_claim', 'lawsuit')]
     result = calculate(filings=filings)
-    assert result['fee_amount'] == result['judicial_package_amount'] == 1_900_000
+    assert result['fee_amount'] == result['judicial_package_amount'] == 2_480_000
     assert result['lawyer_fee_amount'] == result['pretrial_fee_amount'] == 0
     assert len(result['package_items']) == 2
     assert calculate()['judicial_package_amount'] == 0
@@ -88,9 +88,9 @@ def test_refunded_allocations_reduce_percentages_but_not_the_price_of_filed_work
     full = calculate([receipt('2026-10-15'), receipt('2026-10-21', key='later')], [filing()], ['2026-10-10'])
     partial = calculate([receipt('2026-10-15', 500_000), receipt('2026-10-21', 500_000, 'later')], [filing()], ['2026-10-10'])
     refunded = calculate([receipt('2026-10-15', 0), receipt('2026-10-21', 0, 'later')], [filing()], ['2026-10-10'])
-    assert (full['pretrial_fee_amount'], partial['pretrial_fee_amount'], refunded['pretrial_fee_amount']) == (60_000, 30_000, 0)
+    assert (full['pretrial_fee_amount'], partial['pretrial_fee_amount'], refunded['pretrial_fee_amount']) == (80_000, 40_000, 0)
     assert (full['lawyer_fee_amount'], partial['lawyer_fee_amount'], refunded['lawyer_fee_amount']) == (120_000, 60_000, 0)
-    assert all(result['judicial_package_amount'] == 700_000 for result in [full, partial, refunded])
+    assert all(result['judicial_package_amount'] == 990_000 for result in [full, partial, refunded])
 
 
 def test_each_payee_is_rounded_independently_without_floats():
@@ -98,5 +98,5 @@ def test_each_payee_is_rounded_independently_without_floats():
                 receipt('2026-10-21', 4, 'post1'), receipt('2026-10-21', 4, 'post2')]
     result = calculate(recovery, [filing()], ['2026-10-10'])
     assert result['pretrial_fee_amount'] == result['lawyer_fee_amount'] == 1
-    assert result['rounding_difference'] == result['lawyer_rounding_difference'] == 1
-    assert result['fee_amount'] == 700_001
+    assert result['rounding_difference'] == -1 and result['lawyer_rounding_difference'] == 1
+    assert result['fee_amount'] == 990_001

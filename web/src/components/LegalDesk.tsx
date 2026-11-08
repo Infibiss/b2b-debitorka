@@ -921,8 +921,8 @@ export default function LegalDesk({ invoices, onChanged, notify }: DeskProps) {
                   {selected.fee?.requires_fee_model_confirmation && (
                     <label className="consent full-width">
                       <input type="checkbox" name="confirm_fee_model" required />
-                      Подтверждаю переход с прежних условий на 6%, фикс за судебные пакеты и
-                      отдельные 12% адвокату по согласованным договорам
+                      Подтверждаю переход с прежних условий на {tariff.pretrial_percent}%, фикс за
+                      судебные пакеты и отдельные 12% адвокату по согласованным договорам
                     </label>
                   )}
                   <Field
@@ -1684,9 +1684,9 @@ function FeeView({ fee }: { fee?: Fee }) {
         </div>
       </div>
       <p className="ops-muted">
-        {fee.agreement_reference || 'Договор Mandato не указан'}. 6% применяются после
-        подтверждённого направления претензии и до подачи в суд. Поступления в день претензии или
-        подачи показаны для проверки; процент автоматически не начисляется.
+        {fee.agreement_reference || 'Договор Mandato не указан'}. {tariff.pretrial_percent}%
+        применяются после подтверждённого направления претензии и до подачи в суд. Поступления в
+        день претензии или подачи показаны для проверки; процент автоматически не начисляется.
       </p>
       <p className="ops-muted">
         {fee.lawyer_agreement_reference || 'Отдельное соглашение с адвокатом не указано'}.

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { AccountRecovery, SupportContact } from './AccountHelp';
 import { navigate } from '../navigation';
 import { useState, type FormEvent } from 'react';
@@ -55,7 +56,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
       <main className="auth-main">
         <a className="auth-back" href="/">
           <ArrowLeft size={15} />
-          На главную
+          {t('На главную')}
         </a>
         <div className="auth-box">
           <div className="auth-tabs">
@@ -66,7 +67,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
                 setError('');
               }}
             >
-              Создать аккаунт
+              {t('Создать аккаунт')}
             </button>
             <button
               className={mode === 'login' ? 'active' : ''}
@@ -75,42 +76,42 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
                 setError('');
               }}
             >
-              Войти
+              {t('Войти')}
             </button>
           </div>
-          <h2>{mode === 'login' ? 'Войти в Mandato' : 'Создать аккаунт'}</h2>
+          <h2>{mode === 'login' ? t('Войти в Mandato') : t('Создать аккаунт')}</h2>
           <p>
             {mode === 'login'
-              ? 'Введите рабочую почту и пароль.'
-              : 'Создайте рабочее пространство вашей компании.'}
+              ? t('Введите рабочую почту и пароль.')
+              : t('Создайте рабочее пространство вашей компании.')}
           </p>
           <form onSubmit={submit} className="auth-form">
             {mode === 'register' && (
               <>
                 <label className="field">
-                  Компания
+                  {t('Компания')}
                   <input
                     required
                     name="company"
                     autoComplete="organization"
-                    placeholder="ООО «Ваша компания»"
+                    placeholder={t('ООО «Ваша компания»')}
                     maxLength={160}
                   />
                 </label>
                 <label className="field">
-                  Ваше имя
+                  {t('Ваше имя')}
                   <input
                     required
                     name="name"
                     autoComplete="name"
-                    placeholder="Как к вам обращаться"
+                    placeholder={t('Как к вам обращаться')}
                     maxLength={100}
                   />
                 </label>
               </>
             )}
             <label className="field">
-              Рабочая почта
+              {t('Рабочая почта')}
               <input
                 required
                 type="email"
@@ -121,7 +122,7 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               />
             </label>
             <label className="field">
-              Пароль
+              {t('Пароль')}
               <input
                 required
                 type="password"
@@ -129,16 +130,16 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
                 minLength={mode === 'register' ? 12 : 1}
                 maxLength={128}
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                placeholder={mode === 'register' ? 'Не менее 12 символов' : 'Ваш пароль'}
+                placeholder={mode === 'register' ? t('Не менее 12 символов') : t('Ваш пароль')}
               />
             </label>
             {mode === 'register' && (
               <label className="auth-consent">
                 <input type="checkbox" required />
                 <span>
-                  Я уполномочен работать от имени компании и ознакомился с{' '}
+                  {t('Я уполномочен работать от имени компании и ознакомился с')}{' '}
                   <a href="/terms" target="_blank" rel="noreferrer">
-                    условиями использования
+                    {t('условиями использования')}
                   </a>
                   .
                 </span>
@@ -146,13 +147,13 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
             )}
             {mode === 'register' && (
               <p className="auth-policy-note">
-                Как используются имя, рабочая почта и данные компании — в{' '}
+                {t('Как используются имя, рабочая почта и данные компании — в')}{' '}
                 <a href="/privacy" target="_blank" rel="noreferrer">
-                  политике обработки данных
+                  {t('политике обработки данных')}
                 </a>
-                . Запрос на исправление или удаление можно направить{' '}
+                {t('. Запрос на исправление или удаление можно направить')}{' '}
                 <a href="/data-request" target="_blank" rel="noreferrer">
-                  отдельно
+                  {t('отдельно')}
                 </a>
                 .
               </p>
@@ -163,13 +164,13 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
               </p>
             )}
             <button disabled={busy} className="button button-dark" type="submit">
-              {busy ? 'Подождите…' : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+              {busy ? t('Подождите…') : mode === 'login' ? t('Войти') : t('Создать аккаунт')}
               {busy ? <span className="button-loading" /> : <ArrowUpRight size={19} />}
             </button>
           </form>
           {mode === 'login' && (
             <button className="auth-recovery-link" onClick={() => setRecovering(true)}>
-              Забыли пароль?
+              {t('Забыли пароль?')}
             </button>
           )}
           <SupportContact />
@@ -215,18 +216,19 @@ function InvitationRegistration({
       <div className="auth-main">
         <div className="auth-box">
           <Brand />
-          <h1>Присоединиться к команде</h1>
+          <h1>{t('Присоединиться к команде')}</h1>
           <p>
-            Вы получите доступ бухгалтера к рабочему пространству организации, которая вас
-            пригласила.
+            {t(
+              'Вы получите доступ бухгалтера к рабочему пространству организации, которая вас пригласила.'
+            )}
           </p>
           <form className="auth-form" onSubmit={join}>
             <label className="field">
-              Ваше имя
+              {t('Ваше имя')}
               <input name="name" required maxLength={100} autoComplete="name" />
             </label>
             <label className="field">
-              Пароль
+              {t('Пароль')}
               <input
                 name="password"
                 type="password"
@@ -237,13 +239,13 @@ function InvitationRegistration({
               />
             </label>
             <p className="auth-policy-note">
-              Присоединяясь, вы работаете в пределах доступа, предоставленного организацией.{' '}
+              {t('Присоединяясь, вы работаете в пределах доступа, предоставленного организацией.')}{' '}
               <a href="/terms" target="_blank" rel="noreferrer">
-                Условия использования
+                {t('Условия использования')}
               </a>{' '}
-              и{' '}
+              {t('и')}{' '}
               <a href="/privacy" target="_blank" rel="noreferrer">
-                обработка данных
+                {t('обработка данных')}
               </a>
               .
             </p>
@@ -253,12 +255,12 @@ function InvitationRegistration({
               </p>
             )}
             <button className="button button-dark" disabled={busy}>
-              {busy ? 'Присоединяем…' : 'Присоединиться'}
+              {busy ? t('Присоединяем…') : t('Присоединиться')}
               <ArrowUpRight size={16} />
             </button>
           </form>
           <a className="text-link" href="/app?mode=login">
-            Уже приняли приглашение? Войти
+            {t('Уже приняли приглашение? Войти')}
           </a>
         </div>
       </div>

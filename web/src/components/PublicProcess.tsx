@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   ArrowDownLeft,
@@ -17,44 +18,52 @@ import './public-process.css';
 
 const stages = [
   {
-    label: 'Счёт',
-    title: 'У долга появляется история',
-    text: 'Счёт, клиент и срок оплаты собраны в одном деле. Остаток виден сразу.',
-    status: 'Счёт добавлен',
-    date: '10 сентября',
-    event: 'Счёт № 417 добавлен в дело',
+    label: t('Счёт'),
+    title: t('У долга появляется история'),
+    text: t('Счёт, клиент и срок оплаты собраны в одном деле. Остаток виден сразу.'),
+    status: t('Счёт добавлен'),
+    date: t('10 сентября'),
+    event: t('Счёт № 417 добавлен в дело'),
   },
   {
-    label: 'Документы',
-    title: 'Сначала — причина задержки',
-    text: 'В деле не хватает подписанного акта. Ответственный видит, какой документ нужно получить.',
-    status: 'Нужен акт',
-    date: '11 сентября',
-    event: 'Обнаружен недостающий акт',
+    label: t('Документы'),
+    title: t('Сначала — причина задержки'),
+    text: t(
+      'В деле не хватает подписанного акта. Ответственный видит, какой документ нужно получить.'
+    ),
+    status: t('Нужен акт'),
+    date: t('11 сентября'),
+    event: t('Обнаружен недостающий акт'),
   },
   {
-    label: 'Договорённость',
-    title: 'Обещание получает свой срок',
-    text: 'Акт приложен, напоминание отправлено. Ответ клиента сохранён, но задолженность ещё открыта.',
-    status: 'Обещание оплаты',
-    date: '12 сентября',
-    event: 'Клиент обещал оплатить 15 сентября',
+    label: t('Договорённость'),
+    title: t('Обещание получает свой срок'),
+    text: t(
+      'Акт приложен, напоминание отправлено. Ответ клиента сохранён, но задолженность ещё открыта.'
+    ),
+    status: t('Обещание оплаты'),
+    date: t('12 сентября'),
+    event: t('Клиент обещал оплатить 15 сентября'),
   },
   {
-    label: 'Поступление',
-    title: 'Деньги сверяются со счётом',
-    text: 'Поступление из банковской выписки сопоставлено со счётом № 417 по сумме и назначению.',
-    status: 'Оплата найдена',
-    date: '15 сентября',
-    event: 'Поступление 180 000 ₽ сопоставлено',
+    label: t('Поступление'),
+    title: t('Деньги сверяются со счётом'),
+    text: t(
+      'Поступление из банковской выписки сопоставлено со счётом № 417 по сумме и назначению.'
+    ),
+    status: t('Оплата найдена'),
+    date: t('15 сентября'),
+    event: t('Поступление 180 000 ₽ сопоставлено'),
   },
   {
-    label: 'Закрытие',
-    title: 'Дело закрыто. История на месте',
-    text: 'Оплата учтена, остаток равен нулю. Документы и договорённости остаются в истории дела.',
-    status: 'Оплачено',
-    date: '15 сентября',
-    event: 'Остаток обнулён, счёт закрыт',
+    label: t('Закрытие'),
+    title: t('Дело закрыто. История на месте'),
+    text: t(
+      'Оплата учтена, остаток равен нулю. Документы и договорённости остаются в истории дела.'
+    ),
+    status: t('Оплачено'),
+    date: t('15 сентября'),
+    event: t('Остаток обнулён, счёт закрыт'),
   },
 ];
 
@@ -117,10 +126,10 @@ export function PublicProcess() {
   }
 
   return (
-    <section className="public-process" ref={root} aria-label="Как проходит работа со счётом">
+    <section className="public-process" ref={root} aria-label={t('Как проходит работа со счётом')}>
       <div className="pp-heading">
         <div>
-          <h2>Один счёт. Весь путь до оплаты.</h2>
+          <h2>{t('Один счёт. Весь путь до оплаты.')}</h2>
         </div>
         <button
           className="pp-play"
@@ -133,10 +142,10 @@ export function PublicProcess() {
           }}
           aria-label={
             playing
-              ? 'Приостановить пример'
+              ? t('Приостановить пример')
               : step === stages.length - 1
-                ? 'Повторить пример'
-                : 'Воспроизвести пример'
+                ? t('Повторить пример')
+                : t('Воспроизвести пример')
           }
         >
           {playing ? (
@@ -146,10 +155,12 @@ export function PublicProcess() {
           ) : (
             <Play size={16} />
           )}
-          <span>{playing ? 'Пауза' : step === stages.length - 1 ? 'Повторить' : 'Смотреть'}</span>
+          <span>
+            {playing ? t('Пауза') : step === stages.length - 1 ? t('Повторить') : t('Смотреть')}
+          </span>
         </button>
       </div>
-      <div className="pp-tabs" role="tablist" aria-label="Путь счёта">
+      <div className="pp-tabs" role="tablist" aria-label={t('Путь счёта')}>
         {stages.map((stage, index) => (
           <button
             key={stage.label}
@@ -180,7 +191,7 @@ export function PublicProcess() {
       >
         <div className="pp-case-head">
           <span>
-            ООО «Северстрой» <span className="pp-case-divider">/</span> Счёт № 417
+            {t('ООО «Северстрой»')} <span className="pp-case-divider">/</span> {t('Счёт № 417')}
           </span>
           <span className={`pp-status ${step === 1 ? 'is-attention' : ''}`}>
             {step === 4 && <Check size={14} />}
@@ -188,7 +199,7 @@ export function PublicProcess() {
           </span>
         </div>
         <div className="pp-workspace">
-          <div className="pp-scene" aria-label="Документы и события по счёту">
+          <div className="pp-scene" aria-label={t('Документы и события по счёту')}>
             <div className="pp-scene-rail" aria-hidden="true">
               <span className={step <= 1 ? 'active' : ''}>
                 <FileText size={18} />
@@ -207,22 +218,22 @@ export function PublicProcess() {
                 <div className="pp-paper">
                   <div className="pp-paper-top">
                     <FileText size={22} />
-                    <span>Документы по сделке</span>
+                    <span>{t('Документы по сделке')}</span>
                     <span>№ 417</span>
                   </div>
-                  <h3>Счёт на оплату</h3>
-                  <p>ООО «Северстрой»</p>
+                  <h3>{t('Счёт на оплату')}</h3>
+                  <p>{t('ООО «Северстрой»')}</p>
                   <strong className="pp-document-amount">
                     180 000 <span>₽</span>
                   </strong>
                   <dl className="pp-paper-details">
                     <div>
-                      <dt>Договор</dt>
-                      <dd>№ 12 от 01.09</dd>
+                      <dt>{t('Договор')}</dt>
+                      <dd>{t('№ 12 от 01.09')}</dd>
                     </div>
                     <div>
-                      <dt>Оплатить до</dt>
-                      <dd>10 сентября</dd>
+                      <dt>{t('Оплатить до')}</dt>
+                      <dd>{t('10 сентября')}</dd>
                     </div>
                   </dl>
                   <div className={`pp-document-check ${step === 1 ? 'needs-document' : ''}`}>
@@ -230,16 +241,16 @@ export function PublicProcess() {
                       <>
                         <span className="pp-missing-icon">!</span>
                         <div>
-                          <strong>Нет подписанного акта</strong>
-                          <span>Запросить у ответственного</span>
+                          <strong>{t('Нет подписанного акта')}</strong>
+                          <span>{t('Запросить у ответственного')}</span>
                         </div>
                       </>
                     ) : (
                       <>
                         <FileCheck2 size={20} />
                         <div>
-                          <strong>Счёт добавлен</strong>
-                          <span>Проверка комплекта документов</span>
+                          <strong>{t('Счёт добавлен')}</strong>
+                          <span>{t('Проверка комплекта документов')}</span>
                         </div>
                       </>
                     )}
@@ -250,29 +261,30 @@ export function PublicProcess() {
                 <div className="pp-correspondence">
                   <div className="pp-attachment">
                     <FileCheck2 size={18} />
-                    <span>Акт № 417 подписан</span>
+                    <span>{t('Акт № 417 подписан')}</span>
                     <Check size={16} />
                   </div>
                   <div className="pp-message pp-message-out">
-                    <span>Напоминание · 12 сентября</span>
+                    <span>{t('Напоминание · 12 сентября')}</span>
                     <p>
-                      Документы в порядке. Подскажите, когда ожидать оплату счёта № 417 на 180 000
-                      ₽?
+                      {t(
+                        'Документы в порядке. Подскажите, когда ожидать оплату счёта № 417 на 180 000 ₽?'
+                      )}
                     </p>
                     <CheckCheck size={16} />
                   </div>
                   <div className="pp-message pp-message-in">
-                    <span>ООО «Северстрой»</span>
+                    <span>{t('ООО «Северстрой»')}</span>
                     <p>
-                      Спасибо, акт получили.
+                      {t('Спасибо, акт получили.')}
                       <br />
-                      Оплатим 15 сентября.
+                      {t('Оплатим 15 сентября.')}
                     </p>
                   </div>
                   <div className="pp-promise">
-                    <span>Обещание сохранено</span>
+                    <span>{t('Обещание сохранено')}</span>
                     <strong>
-                      15 сентября <ArrowRight size={16} /> 180 000 ₽
+                      {t('15 сентября')} <ArrowRight size={16} /> 180 000 ₽
                     </strong>
                   </div>
                 </div>
@@ -281,24 +293,24 @@ export function PublicProcess() {
                 <div className="pp-bank">
                   <div className="pp-paper-top">
                     <Landmark size={22} />
-                    <span>Банковская выписка</span>
+                    <span>{t('Банковская выписка')}</span>
                     <span>15.09</span>
                   </div>
                   <span className="pp-bank-arrow">
                     <ArrowDownLeft size={28} />
                   </span>
-                  <h3>Поступление на счёт</h3>
+                  <h3>{t('Поступление на счёт')}</h3>
                   <strong className="pp-document-amount">
                     +180 000 <span>₽</span>
                   </strong>
-                  <p>ООО «Северстрой»</p>
+                  <p>{t('ООО «Северстрой»')}</p>
                   <div className="pp-bank-purpose">
-                    <span>Назначение платежа</span>
-                    <p>Оплата по счёту № 417, договор № 12</p>
+                    <span>{t('Назначение платежа')}</span>
+                    <p>{t('Оплата по счёту № 417, договор № 12')}</p>
                   </div>
                   <div className="pp-match">
                     <Check size={18} />
-                    <span>Совпали сумма и номер счёта</span>
+                    <span>{t('Совпали сумма и номер счёта')}</span>
                   </div>
                 </div>
               )}
@@ -307,24 +319,24 @@ export function PublicProcess() {
                   <span className="pp-closed-icon">
                     <ShieldCheck size={38} strokeWidth={1.5} />
                   </span>
-                  <span className="pp-closed-label">Счёт № 417 оплачен</span>
+                  <span className="pp-closed-label">{t('Счёт № 417 оплачен')}</span>
                   <strong>
                     0 <span>₽</span>
                   </strong>
-                  <p>Осталось к оплате</p>
+                  <p>{t('Осталось к оплате')}</p>
                   <div className="pp-reconciliation">
                     <div>
-                      <span>Сумма счёта</span>
+                      <span>{t('Сумма счёта')}</span>
                       <strong>180 000 ₽</strong>
                     </div>
                     <div>
-                      <span>Получено</span>
+                      <span>{t('Получено')}</span>
                       <strong>180 000 ₽</strong>
                     </div>
                   </div>
                   <div className="pp-closed-docs">
                     <FileCheck2 size={16} />
-                    <span>Документы и переписка сохранены</span>
+                    <span>{t('Документы и переписка сохранены')}</span>
                   </div>
                 </div>
               )}
@@ -332,23 +344,23 @@ export function PublicProcess() {
           </div>
           <div className="pp-explanation">
             <div className="pp-step-count">
-              Шаг {step + 1} из 5 <span>{current.date}</span>
+              {t('Шаг')} {step + 1} {t('из 5')} <span>{current.date}</span>
             </div>
             <div className="pp-copy" key={step}>
               <h3>{current.title}</h3>
               <p>{current.text}</p>
             </div>
             <div className="pp-balance">
-              <span>Осталось к оплате</span>
+              <span>{t('Осталось к оплате')}</span>
               <strong>
                 {step === 4 ? '0' : '180 000'} <span>₽</span>
               </strong>
               <span className="pp-balance-note">
                 {step === 4
-                  ? 'Подтверждено поступлением'
+                  ? t('Подтверждено поступлением')
                   : step === 3
-                    ? 'До учёта поступления'
-                    : 'По счёту № 417'}
+                    ? t('До учёта поступления')
+                    : t('По счёту № 417')}
               </span>
             </div>
             <div className="pp-event" aria-live={playing ? 'off' : 'polite'}>
@@ -361,8 +373,8 @@ export function PublicProcess() {
       <div className="pp-footer">
         <span>
           {reducedMotion
-            ? 'Этапы можно переключать вручную'
-            : 'От документов — к подтверждённой оплате'}
+            ? t('Этапы можно переключать вручную')
+            : t('От документов — к подтверждённой оплате')}
         </span>
       </div>
     </section>

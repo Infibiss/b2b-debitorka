@@ -24,12 +24,12 @@ role. Reads are tenant-scoped. Origin checks apply when `APP_URL` is configured.
 
 | Method and path | Body | Result |
 | --- | --- | --- |
-| `GET /api/commercial/plans` | — | `{trial_days:14,payment_mode:"sandbox",items:[...]}` |
+| `GET /api/commercial/plans` | — | `{trial_days:14,payment_mode:"invoice",items:[...]}` |
 | `POST /api/commercial/requests` | `{kind:"demo"\|"custom",name,email,company?:"",note?:"",consent:true}` | `201 {id,kind,status:"requested",created_at}`; no contact information is echoed |
 | `GET /api/commercial/account` | — | Current plan snapshot, trial/subscription state, orders and deletion ticket |
 | `POST /api/commercial/trial` | `{}` | Account with 14-day Команда trial; `409` if previously used or a plan was connected |
 | `POST /api/commercial/orders` | `{plan_id:"start"\|"team"\|"scale",consent:true,idempotency_key}` | `201` order with server-selected amount and `pending` state |
-| `POST /api/commercial/orders/{id}/sandbox-confirm` | `{}` | `{order,account}`; only simulated confirmation, no actual payment |
+| `POST /api/commercial/orders/{id}/confirm` | `{}` | `{order,account}`; only simulated confirmation, no actual payment |
 | `POST /api/commercial/orders/{id}/cancel` | `{}` | Cancel a pending order; confirmed orders require account cancellation |
 | `POST /api/commercial/cancel` | `{consent:true}` | End current trial/simulated subscription and cancel pending orders; preserve records |
 | `POST /api/commercial/deletion-request` | `{confirmation:"УДАЛИТЬ",consent:true}` | `201 {id,status:"requested",created_at}`; idempotent tenant ticket |
@@ -42,13 +42,13 @@ Confirmation retries return the existing order and current account without
 extending access or undoing cancellation. Confirming one pending order cancels
 other pending orders in that tenant. Foreign-tenant order IDs return `404`.
 
-Account `status` is `none`, `trial`, `trial_expired`, `sandbox_active`,
-`sandbox_expired` or `canceled`. Trial timestamps are UTC; duration is exactly
+Account `status` is `none`, `trial`, `trial_expired`, `active`,
+`expired` or `canceled`. Trial timestamps are UTC; duration is exactly
 14 days. Simulated subscription duration is one calendar month, clamped at month
 end. `auto_renew` is always `false`. Expiry is calculated when reading the account;
 there is no charge or automatic renewal job. `plan` is a stored snapshot, not an
 assurance that payment took place. Order states are `pending`,
-`sandbox_confirmed` and `canceled`; **there is no `paid` state**.
+`confirmed` and `canceled`; **there is no `paid` state**.
 
 Public requests have a separate process-local limit of 15/minute/IP; other API
 limits still apply. A proxy must provide distributed limits for multiple workers.
@@ -151,7 +151,7 @@ Connecting a merchant requires a separate implementation and release:
    reconciliation and entitlement grants transactionally. Cover duplicate,
    delayed, out-of-order, forged and cross-tenant events. Define pending, failed,
    real-payment, cancellation, refund and chargeback handling separately from
-   simulation states. Do not reinterpret `sandbox_confirmed` as a real payment.
+   simulation states. Do not reinterpret `confirmed` as a real payment.
 5. Implement and verify provider checkout failure recovery, reconciliation,
    settlement reporting, customer cancellation/refund paths and audit records.
    Address receipt/fiscalization integration applicable to the actual merchant;

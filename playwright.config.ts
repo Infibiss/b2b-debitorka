@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Windows has no python3 command; E2E_PYTHON points at a virtualenv there.
+// E2E_CHANNEL=chrome uses an installed browser when Chromium cannot be downloaded.
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env;
+const python = env?.E2E_PYTHON ?? 'python3';
+
 export default defineConfig({
   testDir: './e2e',
   outputDir: './e2e/results',
@@ -10,6 +15,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'e2e/report', open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:8001',
+    ...(env?.E2E_CHANNEL ? { channel: env.E2E_CHANNEL } : {}),
     // APIRequestContext has no browser-generated Origin. Keep the real Origin
     // guard enabled and send the same allowed origin as the browser frontend.
     extraHTTPHeaders: { Origin: 'http://127.0.0.1:8001' },
@@ -24,7 +30,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'python3 e2e/run_server.py',
+    command: `${python} e2e/run_server.py`,
     url: 'http://127.0.0.1:8001/api/health',
     reuseExistingServer: false,
     timeout: 60_000,

@@ -1,7 +1,8 @@
-"""Tenant commercial records and an explicitly simulated payment adapter.
+"""Plans, trials and subscriptions paid by invoice.
 
-No bank/card credentials, provider calls, fiscal receipts or receivables entries.
-Future adapters must independently verify provider payments before granting access.
+An order opens access and an operator issues the invoice to the account email.
+No card data is handled. An online payment adapter must verify provider
+callbacks independently before it can grant access.
 """
 import calendar
 import json
@@ -15,7 +16,7 @@ from pydantic import Field, StrictBool, field_validator
 
 from .models import Input, single_line, valid_email
 
-CATALOG = json.loads(Path(__file__).with_name('plan_catalog.json').read_text())
+CATALOG = json.loads(Path(__file__).with_name('plan_catalog.json').read_text(encoding='utf-8'))
 PLANS = {item['id']: item for item in CATALOG['items']}
 TRIAL_PLAN = 'team'
 
@@ -108,9 +109,9 @@ class DeletionRequest(Consent):
 class PaymentAdapter(Protocol):
     """Provider boundary; real adapters require verified server-side callbacks.
 
-    Only sandbox is registered. A future checkout adapter must implement a
-    separate authenticated webhook, verify amount/currency and replay protection,
-    and introduce a real payment state. It must not reuse sandbox-confirm.
+    Only payment by invoice is registered (stored as mode 'sandbox' for schema
+    compatibility). A card adapter must add an authenticated webhook, verify
+    amount/currency and replay protection, and its own payment state.
     """
     mode: str
 
@@ -128,7 +129,7 @@ def payment_adapter(ctx) -> PaymentAdapter:
     # Explicitly fail closed if an operator tries selecting an unimplemented
     # provider. No environment switch can silently enable real billing.
     if os.getenv('COMMERCIAL_PAYMENT_MODE', 'sandbox') != 'sandbox':
-        ctx.problem(503, 'Платёжный провайдер пока не подключён. Доступен только тестовый сценарий.')
+        ctx.problem(503, 'Онлайн-оплата недоступна. Оформите подключение по счёту.')
     return SandboxPaymentAdapter()
 
 
@@ -136,8 +137,12 @@ ORDER_FIELDS = ('id', 'plan_id', 'plan_name', 'amount', 'currency', 'billing_per
                 'status', 'payment_mode', 'created_at', 'confirmed_at', 'canceled_at')
 
 
+def public_status(value):
+    return {'sandbox_confirmed': 'confirmed', 'sandbox_active': 'active', 'sandbox_expired': 'expired'}.get(value, value)
+
+
 def order_view(row):
-    return {key: row[key] for key in ORDER_FIELDS}
+    return {key: row[key] for key in ORDER_FIELDS} | {'status': public_status(row['status']), 'payment_mode': 'invoice'}
 
 
 def next_month(stamp):
@@ -168,10 +173,11 @@ def create_router(ctx):
         if row and row['subscription_started_at']:
             subscription = {'plan_id': row['plan_id'], 'status': status, 'started_at': row['subscription_started_at'],
                             'ends_at': row['subscription_ends_at'], 'order_id': row['active_order_id'], 'auto_renew': False}
+            subscription['status'] = public_status(status)
         deletion = c.execute('SELECT id,status,created_at FROM commercial_deletion_requests WHERE tenant_id=?', (user['tenant_id'],)).fetchone()
-        return {'payment_mode': 'sandbox', 'can_manage': user['role'] == 'manager',
+        return {'payment_mode': 'invoice', 'can_manage': user['role'] == 'manager',
                 'plan': json.loads(row['plan_snapshot']) if row and row['plan_snapshot'] else None,
-                'status': status,
+                'status': public_status(status),
                 'trial': {'days': CATALOG['trial_days'], 'started_at': row['trial_started_at'] if row else None,
                           'ends_at': row['trial_ends_at'] if row else None,
                           'available': not row or (not row['trial_started_at'] and row['state'] == 'none')},
@@ -228,7 +234,7 @@ def create_router(ctx):
             c.execute("INSERT INTO commercial_orders(id,tenant_id,created_by,idempotency_key,plan_id,plan_name,amount,currency,billing_period,plan_snapshot,status,payment_mode,consent_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'pending',?,?,?)", (order_id, user['tenant_id'], user['id'], data.idempotency_key, plan['id'], plan['name'], plan['price_monthly'], plan['currency'], plan['billing_period'], json.dumps(plan, ensure_ascii=False), adapter.mode, stamp, stamp))
             return order_view(find_order(c, user, order_id))
 
-    @router.post('/orders/{order_id}/sandbox-confirm')
+    @router.post('/orders/{order_id}/confirm')
     def confirm_order(order_id: str, data: Input, user=Depends(ctx.get_user)):
         manager(user)
         adapter = payment_adapter(ctx)
@@ -238,7 +244,7 @@ def create_router(ctx):
                 ctx.problem(409, 'Отменённый заказ нельзя подтвердить')
             if row['status'] == 'pending':
                 if row['payment_mode'] != adapter.mode or adapter.mode != 'sandbox':
-                    ctx.problem(409, 'Заказ не относится к тестовой оплате')
+                    ctx.problem(409, 'Заказ оформлен другим способом оплаты')
                 reference, stamp = adapter.confirm(dict(row)), ctx.now()
                 ensure_account(c, user['tenant_id'])
                 c.execute("UPDATE commercial_orders SET status='sandbox_confirmed',provider_reference=?,confirmed_at=? WHERE id=? AND tenant_id=?", (reference, stamp, order_id, user['tenant_id']))

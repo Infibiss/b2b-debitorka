@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronUp, LogOut, Settings } from 'lucide-react';
 
@@ -49,7 +50,7 @@ export function WorkspaceProfile({
         <div
           className="profile-menu"
           role="menu"
-          aria-label="Меню профиля"
+          aria-label={t('Меню профиля')}
           ref={menu}
           onKeyDown={(event) => {
             const buttons = Array.from(
@@ -78,7 +79,7 @@ export function WorkspaceProfile({
             }}
           >
             <Settings size={16} />
-            Настройки
+            {t('Настройки')}
           </button>
           <button
             role="menuitem"
@@ -88,7 +89,7 @@ export function WorkspaceProfile({
             }}
           >
             <Settings size={16} aria-hidden="true" />
-            Тариф и аккаунт
+            {t('Тариф и аккаунт')}
           </button>
           <button
             role="menuitem"
@@ -98,14 +99,14 @@ export function WorkspaceProfile({
             }}
           >
             <LogOut size={16} />
-            Выйти
+            {t('Выйти')}
           </button>
         </div>
       )}
       <button
         className="profile-trigger"
         ref={trigger}
-        aria-label="Профиль и настройки"
+        aria-label={t('Профиль и настройки')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -139,7 +140,7 @@ export function WorkspaceAdvice({ userId, onRules }: { userId: string; onRules: 
     <div className="sidebar-help">
       <button
         className="advice-dismiss"
-        aria-label="Скрыть подсказку о правилах"
+        aria-label={t('Скрыть подсказку о правилах')}
         onClick={() => {
           setHidden(true);
           try {
@@ -151,9 +152,9 @@ export function WorkspaceAdvice({ userId, onRules }: { userId: string; onRules: 
       >
         ×
       </button>
-      <strong>Всё под вашим контролем</strong>
-      <p>Mandato работает по вашим правилам. Исключения — на согласование.</p>
-      <button onClick={onRules}>Правила работы →</button>
+      <strong>{t('Всё под вашим контролем')}</strong>
+      <p>{t('Mandato работает по вашим правилам. Исключения — на согласование.')}</p>
+      <button onClick={onRules}>{t('Правила работы →')}</button>
     </div>
   );
 }

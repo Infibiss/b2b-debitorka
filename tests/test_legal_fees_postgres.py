@@ -17,7 +17,7 @@ def test_postgres_fee_separates_mandato_packages_and_lawyer_recovery(postgres_cl
     result=c.get(f"/api/legal/cases/{item['id']}/fee")
     assert result.status_code==200,result.text
     fee=result.json()
-    assert fee['fee_amount']==fee['judicial_package_amount']==700000
+    assert fee['fee_amount']==fee['judicial_package_amount']==990000
     assert fee['pretrial_fee_amount']==0 and fee['lawyer_fee_amount']==120000
     assert len(fee['package_items'])==1
     assert c.get('/api/invoices/'+inv['id']).json()['invoice']['balance']==8000000

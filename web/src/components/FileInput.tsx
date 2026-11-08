@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import {
   forwardRef,
   useEffect,
@@ -36,10 +37,10 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(function F
     <span className="file-picker">
       <span className="file-picker-button" aria-hidden="true">
         <Upload size={16} />
-        {multiple ? 'Выбрать файлы' : 'Выбрать файл'}
+        {multiple ? t('Выбрать файлы') : t('Выбрать файл')}
       </span>
       <span className="file-picker-name" aria-hidden="true" title={names}>
-        {names || 'Файл не выбран'}
+        {names || t('Файл не выбран')}
       </span>
       <input
         {...props}

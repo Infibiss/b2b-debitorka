@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { CaseConversation } from './CaseConversation';
 import { ContextHelp } from './ContextHelp';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -22,15 +23,12 @@ import {
   Bot,
   Scale,
   ClipboardCheck,
-  PlugZap,
-  CircleHelp,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
 import { Auth } from './Auth';
 import { useInvitationToken } from './useInvitationToken';
 import { WorkflowDesk, WorkflowManagement } from './WorkflowDesk';
-import { WorkflowOnboarding } from './WorkflowOnboarding';
 import './workflow.css';
 import { CreateInvoice, ImportInvoices, downloadTemplate } from './InvoiceForms';
 import { DebtDrawer, statusNames, statusColors } from './DebtDrawer';
@@ -60,7 +58,27 @@ import { DocumentsDesk } from './DocumentsDesk';
 import { MailSetup } from './MailSetup';
 import WorkspaceDataSettings from './WorkspaceDataSettings';
 import { YandexDesk } from './YandexDesk';
+import { LanguageSwitch } from './LanguageSwitch';
+import { RecoveryHome } from './recovery/RecoveryHome';
+import { DebtorsDesk } from './recovery/DebtorsDesk';
+import { DebtorCard } from './recovery/DebtorCard';
+import {
+  AutomationForm,
+  FinancingDesk,
+  OrganizationForm,
+  ReportsDesk,
+  TemplatesDesk,
+} from './recovery/RecoverySettings';
+import type { Meta, Stage } from './recovery/types';
+import './recovery/recovery.css';
 type Tab =
+  | 'home'
+  | 'debtors'
+  | 'finance'
+  | 'financing'
+  | 'templates'
+  | 'reports'
+  | 'settings'
   | 'workflow'
   | 'management'
   | 'yandex'
@@ -68,50 +86,60 @@ type Tab =
   | 'connections'
   | 'intelligence'
   | 'registry'
-  | 'finance'
   | 'agent'
   | 'legal'
-  | 'messages'
-  | 'settings';
+  | 'messages';
+type SettingsTab = 'organization' | 'automation' | 'connections' | 'team' | 'mail';
 const navigation = [
-  { id: 'workflow' as Tab, label: 'Работа', icon: LayoutDashboard },
-  { id: 'audit' as Tab, label: 'Аудит', icon: ClipboardCheck },
-  { id: 'connections' as Tab, label: 'Подключения', icon: PlugZap },
-  { id: 'management' as Tab, label: 'Управление', icon: ShieldCheck },
+  { id: 'home' as Tab, label: t('Главная'), icon: LayoutDashboard },
+  { id: 'debtors' as Tab, label: t('Должники'), icon: Scale },
+  { id: 'finance' as Tab, label: t('Оплаты'), icon: Wallet },
+  { id: 'financing' as Tab, label: t('Финансирование'), icon: TrendingUp },
+  { id: 'templates' as Tab, label: t('Шаблоны'), icon: Files },
+  { id: 'reports' as Tab, label: t('Отчёты'), icon: ClipboardCheck },
+  { id: 'settings' as Tab, label: t('Настройки'), icon: SettingsIcon },
 ];
+/** Detailed tools, reachable from the sidebar without crowding daily work. */
 const tools = [
-  { id: 'registry' as Tab, label: 'Счета', icon: Files },
-  { id: 'finance' as Tab, label: 'Оплаты и сверка', icon: Wallet },
-  { id: 'messages' as Tab, label: 'Переписка', icon: Mail },
-  { id: 'yandex' as Tab, label: 'Документы', icon: Bot },
-  { id: 'intelligence' as Tab, label: 'Прогноз и условия', icon: TrendingUp },
-  { id: 'legal' as Tab, label: 'Претензии и суд', icon: Scale },
-  { id: 'agent' as Tab, label: 'Разбор ответов', icon: Bot },
-  { id: 'settings' as Tab, label: 'Настройки', icon: SettingsIcon },
+  { id: 'workflow' as Tab, label: t('Работа'), icon: LayoutDashboard },
+  { id: 'audit' as Tab, label: t('Аудит'), icon: ClipboardCheck },
+  { id: 'registry' as Tab, label: t('Счета'), icon: Files },
+  { id: 'messages' as Tab, label: t('Переписка'), icon: Mail },
+  { id: 'yandex' as Tab, label: t('Документы'), icon: Bot },
+  { id: 'intelligence' as Tab, label: t('Прогноз и условия'), icon: TrendingUp },
+  { id: 'legal' as Tab, label: t('Претензии и суд'), icon: Scale },
+  { id: 'agent' as Tab, label: t('Разбор ответов'), icon: Bot },
 ];
-function parentSection(tab: Tab): 'workflow' | 'audit' | 'connections' | 'management' {
-  if (tab === 'audit' || tab === 'connections' || tab === 'management') return tab;
-  return tab === 'settings' ? 'management' : 'workflow';
-}
+const settingsTabs: [SettingsTab, string][] = [
+  ['organization', t('Компания')],
+  ['automation', t('Автоматизация')],
+  ['connections', t('Подключения')],
+  ['team', t('Команда')],
+  ['mail', t('Почта')],
+];
 export function Workspace() {
   const invitation = useInvitationToken();
-  const [routeTab, setTab] = useRouteField<Tab>('section', 'workflow');
-  const tab = [...navigation, ...tools].some((item) => item.id === routeTab)
+  const [routeTab, setTab] = useRouteField<Tab>('section', 'home');
+  const tab = [...navigation, ...tools, { id: 'management' }, { id: 'connections' }].some(
+    (item) => item.id === routeTab
+  )
     ? routeTab
-    : 'workflow';
+    : 'home';
+  const [debtorId, setDebtorId] = useRouteField<string | null>('debtor', null);
+  const [stage] = useRouteField<Stage>('stage', 'pretrial');
+  const [settingsTab] = useRouteField<SettingsTab>('settingsTab', 'organization');
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useRouteField<string | null>('invoice', null);
   const [contextInvoice] = useRouteField<string>('context', '');
   const [contextCase] = useRouteField<string>('case', '');
   const [contextIds, setContextIds] = useState<string[]>([]);
   const [returnCase, setReturnCase] = useState('');
-  const [operationsOpen, setOperationsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [intent] = useRouteField<string>('intent', '');
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
     [loadError, setLoadError] = useState(''),
-    [tourReplay, setTourReplay] = useState(0),
-    [generalTourReplay, setGeneralTourReplay] = useState(0),
     [invoices, setInvoices] = useState<Invoice[]>([]),
     [overview, setOverview] = useState<Overview | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
@@ -163,6 +191,8 @@ export function Workspace() {
       setInvoices(list.items);
       setOverview(summary);
       setSettings(config);
+      setMeta(await api<Meta>('/recovery/meta'));
+      setRefreshKey((value) => value + 1);
       setLoadError('');
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -197,7 +227,7 @@ export function Workspace() {
   async function logout() {
     if (
       hasFormDrafts() &&
-      !window.confirm('В этой вкладке есть черновики. При выходе они будут удалены. Выйти?')
+      !window.confirm(t('В этой вкладке есть черновики. При выходе они будут удалены. Выйти?'))
     )
       return;
     try {
@@ -238,7 +268,7 @@ export function Workspace() {
     return (
       <div className="loading">
         <div className="spinner" />
-        Открываем рабочее пространство…
+        {t('Открываем рабочее пространство…')}
       </div>
     );
   if (!session || invitation || new URLSearchParams(location.hash.slice(1)).has('reset'))
@@ -246,7 +276,7 @@ export function Workspace() {
       <div className="loading">
         <p>{loadError}</p>
         <button className="button button-dark" onClick={() => void checkSession()}>
-          Повторить
+          {t('Повторить')}
         </button>
       </div>
     ) : (
@@ -255,31 +285,38 @@ export function Workspace() {
   const done = () => {
     setModal(null);
     void refresh();
-    notify(modal === 'import' ? 'Реестр загружен' : 'Счёт добавлен');
+    notify(modal === 'import' ? t('Реестр загружен') : t('Счёт добавлен'));
   };
+  function goTo(target: string) {
+    const [section, detail] = target.split(':');
+    if (section === 'debtors' && detail === 'import') {
+      navigate({ section: 'debtors', stage: null, debtor: null });
+      setModal('import');
+    } else if (section === 'debtors') navigate({ section, stage: detail || null, debtor: null });
+    else navigate({ section, settingsTab: detail || null, debtor: null });
+  }
   return (
     <WorkContext.Provider
       value={{ userId: session.user.id, invoiceId: contextInvoice, caseId: contextCase }}
     >
       <div className="workspace">
         <a className="skip-link" href="#workspace-main">
-          К содержимому
+          {t('К содержимому')}
         </a>
         <aside className="sidebar">
           <div className="sidebar-brand">
             <Brand />
           </div>
-          <nav className="workspace-nav" aria-label="Разделы кабинета">
+          <nav className="workspace-nav" aria-label={t('Разделы кабинета')}>
             {navigation.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => {
-                  setTab(id);
-                  setOperationsOpen(false);
+                  navigate({ section: id, debtor: null });
                 }}
                 data-tour={`nav-${id}`}
-                className={parentSection(tab) === id ? 'active' : ''}
-                aria-current={parentSection(tab) === id ? 'page' : undefined}
+                className={tab === id ? 'active' : ''}
+                aria-current={tab === id ? 'page' : undefined}
               >
                 <Icon size={17} />
                 <span>{label}</span>
@@ -287,22 +324,32 @@ export function Workspace() {
               </button>
             ))}
           </nav>
+          <details className="workspace-more">
+            <summary>{t('Инструменты')}</summary>
+            <nav className="workspace-nav" aria-label={t('Инструменты')}>
+              {tools.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={tab === id ? 'active' : ''}
+                  aria-current={tab === id ? 'page' : undefined}
+                >
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+          </details>
           <div className="sidebar-bottom">
             <WorkspaceAdvice
               key={session.user.id}
               userId={session.user.id}
-              onRules={() => setTab('management')}
+              onRules={() => goTo('settings:automation')}
             />
-            <button
-              className="workflow-help"
-              onClick={() => setGeneralTourReplay((value) => value + 1)}
-            >
-              Обучение
-            </button>
             <WorkspaceProfile
               name={session.user.name}
               company={settings?.company || session.user.company}
-              role={session.user.role === 'accountant' ? 'Бухгалтер' : 'Руководитель'}
+              role={session.user.role === 'accountant' ? t('Бухгалтер') : t('Руководитель')}
               onSettings={() => setTab('settings')}
               onLogout={() => void logout()}
             />
@@ -310,52 +357,16 @@ export function Workspace() {
         </aside>
         <div className="workspace-body">
           <header className="workspace-header workspace-command-header">
-            <button
-              className="section-help workspace-section-help"
-              aria-label="Как работать в разделе"
-              title="Помощь по разделу"
-              onClick={() => setTourReplay((value) => value + 1)}
-            >
-              <CircleHelp size={18} aria-hidden="true" />
-              Помощь по разделу
-            </button>
-            <button
-              className="mobile-operations-toggle button button-outline"
-              aria-expanded={operationsOpen}
-              onClick={() => setOperationsOpen(!operationsOpen)}
-            >
-              Операции · {[...tools, ...navigation].find((n) => n.id === tab)?.label}
-            </button>
-            <nav
-              className={`workspace-operations ${operationsOpen ? 'is-open' : ''}`}
-              aria-label="Операции с дебиторкой"
-            >
-              {tools
-                .filter((tool) => !['settings', 'agent'].includes(tool.id))
-                .map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    className={tab === id || (id === 'messages' && tab === 'agent') ? 'active' : ''}
-                    aria-current={tab === id ? 'page' : undefined}
-                    onClick={() => {
-                      setTab(id);
-                      setOperationsOpen(false);
-                    }}
-                  >
-                    <Icon size={15} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-            </nav>
             <div className="workspace-header-actions">
+              <LanguageSwitch />
               <span className="server-status">
                 <i />
-                {loadError ? 'Нет связи' : refreshing ? 'Обновляем…' : 'Данные обновлены'}
+                {loadError ? t('Нет связи') : refreshing ? t('Обновляем…') : t('Данные обновлены')}
               </span>
               <button
                 className={`icon-button ${refreshing ? 'refreshing' : ''}`}
                 onClick={() => void refresh()}
-                aria-label="Обновить данные"
+                aria-label={t('Обновить данные')}
                 disabled={refreshing}
               >
                 <RefreshCw size={15} />
@@ -363,29 +374,6 @@ export function Workspace() {
             </div>
           </header>
           <main id="workspace-main" className="workspace-main" data-tour="workspace">
-            <WorkflowOnboarding
-              userId={session.user.id}
-              replayToken={tourReplay}
-              generalReplayToken={generalTourReplay}
-              onSectionChange={setTab}
-              section={tab}
-              contextKey={tab}
-            />
-            {tab === 'management' && (
-              <div className="workspace-management-links">
-                <button className="wf-text-button" onClick={() => setTab('settings')}>
-                  Реквизиты и почта
-                  <ArrowUpRight size={14} />
-                </button>
-              </div>
-            )}
-            {tab !== parentSection(tab) && (
-              <button className="workspace-back" onClick={() => setTab(parentSection(tab))}>
-                <ArrowRight size={14} />
-                Вернуться в раздел «
-                {navigation.find((item) => item.id === parentSection(tab))?.label}»
-              </button>
-            )}
             {tab !== 'workflow' &&
               tab !== 'legal' &&
               contextInvoice &&
@@ -393,9 +381,9 @@ export function Workspace() {
                 <div className="work-context-bar">
                   {tab !== 'messages' && (
                     <label>
-                      Работаем со счётом
+                      {t('Работаем со счётом')}
                       <select
-                        aria-label="Текущая задолженность"
+                        aria-label={t('Текущая задолженность')}
                         value={contextInvoice}
                         onChange={(e) =>
                           navigate({
@@ -423,13 +411,13 @@ export function Workspace() {
                       })
                     }
                   >
-                    Вернуться к делу
+                    {t('Вернуться к делу')}
                   </button>
                   <button
                     className="wf-text-button"
                     onClick={() => navigate({ context: null, case: null })}
                   >
-                    Все задолженности
+                    {t('Все задолженности')}
                   </button>
                 </div>
               )}
@@ -437,10 +425,67 @@ export function Workspace() {
               <div className="page-error" role="alert">
                 <AlertCircle size={16} />
                 {loadError}
-                <button onClick={() => void refresh()}>Повторить</button>
+                <button onClick={() => void refresh()}>{t('Повторить')}</button>
               </div>
             )}
-            {tab === 'workflow' ? (
+            {debtorId && meta ? (
+              <DebtorCard
+                key={debtorId}
+                id={debtorId}
+                meta={meta}
+                isManager={session.user.role !== 'accountant'}
+                onBack={() => setDebtorId(null)}
+                onChanged={() => void refresh()}
+                onEvidence={(id) => navigate({ debtor: null, section: 'audit', auditInvoice: id })}
+                notify={notify}
+              />
+            ) : tab === 'home' ? (
+              <RecoveryHome
+                onOpenDebtor={setDebtorId}
+                onGo={goTo}
+                onImport={() => setModal('import')}
+                refreshKey={refreshKey}
+                notify={notify}
+              />
+            ) : tab === 'debtors' ? (
+              <DebtorsDesk
+                initialStage={stage}
+                onOpen={setDebtorId}
+                onImport={() => setModal('import')}
+                onCreate={() => setModal('create')}
+                refreshKey={refreshKey}
+                notify={notify}
+              />
+            ) : tab === 'financing' ? (
+              <FinancingDesk notify={notify} isManager={session.user.role !== 'accountant'} />
+            ) : tab === 'templates' && meta ? (
+              <TemplatesDesk meta={meta} notify={notify} />
+            ) : tab === 'reports' ? (
+              <ReportsDesk notify={notify} />
+            ) : tab === 'settings' && settingsTab !== 'mail' ? (
+              <div className="rc-page">
+                <header className="rc-head">
+                  <div>
+                    <h1>{t('Настройки')}</h1>
+                  </div>
+                </header>
+                <SettingsNav current={settingsTab} />
+                {settingsTab === 'organization' ? (
+                  <OrganizationForm notify={notify} onSaved={() => void refresh()} />
+                ) : settingsTab === 'automation' ? (
+                  <AutomationForm notify={notify} onSaved={() => void refresh()} />
+                ) : settingsTab === 'connections' ? (
+                  <ConnectionsDesk
+                    invoices={invoices}
+                    onChanged={() => void refresh()}
+                    notify={notify}
+                    onNavigate={(next) => setTab(next)}
+                  />
+                ) : (
+                  <WorkflowManagement notify={notify} onNavigate={(next) => setTab(next as Tab)} />
+                )}
+              </div>
+            ) : tab === 'workflow' ? (
               <WorkflowDesk
                 invoices={invoices}
                 totals={overview || undefined}
@@ -515,18 +560,21 @@ export function Workspace() {
                 notify={notify}
               />
             ) : settings ? (
-              <SettingsPanel
-                settings={settings}
-                onSave={async (data) => {
-                  await patch('/settings', data);
-                  await refresh();
-                  notify('Настройки сохранены');
-                }}
-              />
+              <div className="rc-page">
+                <SettingsNav current="mail" />
+                <SettingsPanel
+                  settings={settings}
+                  onSave={async (data) => {
+                    await patch('/settings', data);
+                    await refresh();
+                    notify(t('Настройки сохранены'));
+                  }}
+                />
+              </div>
             ) : (
               <div className="loading">
                 <div className="spinner" />
-                Загружаем настройки…
+                {t('Загружаем настройки…')}
               </div>
             )}
           </main>
@@ -551,7 +599,7 @@ export function Workspace() {
             <span>{toast.text}</span>
             <button
               className="toast-close"
-              aria-label="Закрыть уведомление"
+              aria-label={t('Закрыть уведомление')}
               onClick={() => setToast(null)}
             >
               <X size={14} />
@@ -586,16 +634,16 @@ function Registry({
     <>
       <div className="page-heading">
         <div>
-          <h1>Счета</h1>
-          <p>Счета, остатки и сроки оплаты.</p>
+          <h1>{t('Счета')}</h1>
+          <p>{t('Счета, остатки и сроки оплаты.')}</p>
         </div>
         <div className="heading-actions">
           <button className="button button-outline" onClick={onImport}>
-            Импорт
+            {t('Импорт')}
             <Upload size={15} />
           </button>
           <button className="button button-dark" onClick={onCreate}>
-            Добавить счёт
+            {t('Добавить счёт')}
             <Plus size={15} />
           </button>
         </div>
@@ -604,24 +652,24 @@ function Registry({
         <div className="search-input">
           <Search size={16} />
           <input
-            aria-label="Поиск счетов"
-            placeholder="Контрагент, номер или ИНН"
+            aria-label={t('Поиск счетов')}
+            placeholder={t('Контрагент, номер или ИНН')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button aria-label="Очистить поиск" onClick={() => setSearch('')}>
+            <button aria-label={t('Очистить поиск')} onClick={() => setSearch('')}>
               <X size={14} />
             </button>
           )}
         </div>
         <div className="filter-controls">
           <select
-            aria-label="Статус счёта"
+            aria-label={t('Статус счёта')}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
-            <option value="all">Все статусы</option>
+            <option value="all">{t('Все статусы')}</option>
             {Object.entries(statusNames).map(([key, value]) => (
               <option key={key} value={key}>
                 {value}
@@ -629,20 +677,20 @@ function Registry({
             ))}
           </select>
           <select
-            aria-label="Приоритет"
+            aria-label={t('Приоритет')}
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
           >
-            <option value="all">Все приоритеты</option>
-            <option value="high">Высокий</option>
-            <option value="medium">Средний</option>
-            <option value="low">Низкий</option>
+            <option value="all">{t('Все приоритеты')}</option>
+            <option value="high">{t('Высокий')}</option>
+            <option value="medium">{t('Средний')}</option>
+            <option value="low">{t('Низкий')}</option>
           </select>
           <a
             className="icon-button"
             href="/api/export"
-            aria-label="Экспорт CSV"
-            title="Экспорт CSV"
+            aria-label={t('Экспорт CSV')}
+            title={t('Экспорт CSV')}
           >
             <Download size={17} />
           </a>
@@ -656,8 +704,8 @@ function Registry({
             <span className="empty-icon">
               <Search size={24} />
             </span>
-            <h3>По этим условиям счетов нет</h3>
-            <p>Попробуйте другой запрос или сбросьте фильтры.</p>
+            <h3>{t('По этим условиям счетов нет')}</h3>
+            <p>{t('Попробуйте другой запрос или сбросьте фильтры.')}</p>
             <button
               className="button button-outline"
               onClick={() => {
@@ -666,7 +714,7 @@ function Registry({
                 setPriority('all');
               }}
             >
-              Сбросить фильтры
+              {t('Сбросить фильтры')}
             </button>
           </div>
         ) : (
@@ -674,17 +722,18 @@ function Registry({
             <span className="empty-icon">
               <Files size={27} />
             </span>
-            <h3>Начните с первого счёта</h3>
+            <h3>{t('Начните с первого счёта')}</h3>
             <p>
-              Добавьте счёт вручную или загрузите CSV. Мы соберём остатки, сроки и следующие шаги в
-              один реестр.
+              {t(
+                'Добавьте счёт вручную или загрузите CSV. Мы соберём остатки, сроки и следующие шаги в один реестр.'
+              )}
             </p>
             <button className="button button-dark" onClick={onImport}>
-              Загрузить реестр
+              {t('Загрузить реестр')}
               <Upload size={16} />
             </button>
             <button className="template-empty" onClick={downloadTemplate}>
-              Скачать шаблон CSV
+              {t('Скачать шаблон CSV')}
               <Download size={13} />
             </button>
           </div>
@@ -692,9 +741,11 @@ function Registry({
       </section>
       <div className="registry-count">
         <span>
-          Показано {filtered.length} из {invoices.length} счетов
+          {t('Показано')} {filtered.length} {t('из')} {invoices.length} {t('счетов')}
         </span>
-        <span>Остаток {money(filtered.reduce((a, b) => a + b.balance, 0))}</span>
+        <span>
+          {t('Остаток')} {money(filtered.reduce((a, b) => a + b.balance, 0))}
+        </span>
       </div>
     </>
   );
@@ -711,11 +762,11 @@ export function InvoiceTable({
       <table className="invoice-table">
         <thead>
           <tr>
-            <th>Контрагент / счёт</th>
-            <th>Остаток</th>
-            <th>Срок оплаты</th>
-            <th>Статус</th>
-            <th>Приоритет</th>
+            <th>{t('Контрагент / счёт')}</th>
+            <th>{t('Остаток')}</th>
+            <th>{t('Срок оплаты')}</th>
+            <th>{t('Статус')}</th>
+            <th>{t('Приоритет')}</th>
             <th />
           </tr>
         </thead>
@@ -736,32 +787,42 @@ export function InvoiceTable({
               </td>
               <td>
                 <strong>{money(i.balance)}</strong>
-                {i.paid_amount > 0 && i.balance > 0 && <small>из {money(i.amount)}</small>}
+                {i.paid_amount > 0 && i.balance > 0 && (
+                  <small>
+                    {t('из')} {money(i.amount)}
+                  </small>
+                )}
               </td>
               <td>
                 {dateText(i.due_on)}
                 {i.days_overdue > 0 && i.balance > 0 && (
-                  <small className="overdue">{i.days_overdue} дн. просрочки</small>
+                  <small className="overdue">
+                    {i.days_overdue} {t('дн. просрочки')}
+                  </small>
                 )}
               </td>
               <td>
                 <span className={`pill ${statusColors[i.status]}`}>{statusNames[i.status]}</span>
-                {i.promise_date && i.balance > 0 && <small>до {dateText(i.promise_date)}</small>}
+                {i.promise_date && i.balance > 0 && (
+                  <small>
+                    {t('до')} {dateText(i.promise_date)}
+                  </small>
+                )}
               </td>
               <td>
                 <span className={`priority-indicator ${i.priority}`}>
                   <i />
                   {i.priority === 'high'
-                    ? 'Высокий'
+                    ? t('Высокий')
                     : i.priority === 'medium'
-                      ? 'Средний'
-                      : 'Низкий'}
+                      ? t('Средний')
+                      : t('Низкий')}
                 </span>
               </td>
               <td>
                 <button
                   className="icon-button"
-                  aria-label={`Открыть счёт ${i.number}`}
+                  aria-label={t('Открыть счёт {0}', [i.number])}
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpen(i.id);
@@ -798,26 +859,26 @@ function Correspondence({
     <>
       <div className="page-heading">
         <div>
-          <h1>{mode === 'calls' ? 'Звонки покупателям' : 'Переписка с покупателями'}</h1>
+          <h1>{mode === 'calls' ? t('Звонки покупателям') : t('Переписка с покупателями')}</h1>
           <p>
             {mode === 'calls'
-              ? 'Свяжитесь с представителем контрагента по выбранному счёту.'
-              : 'Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.'}
+              ? t('Свяжитесь с представителем контрагента по выбранному счёту.')
+              : t('Откройте счёт, чтобы написать покупателю, или разберите полученный ответ.')}
           </p>
         </div>
         {mode !== 'calls' && (
           <button className="button button-dark" onClick={onReply}>
-            Разобрать ответ
+            {t('Разобрать ответ')}
             <ArrowRight size={15} />
           </button>
         )}
       </div>
-      <div className="ops-tabs" aria-label="Общение с контрагентами">
+      <div className="ops-tabs" aria-label={t('Общение с контрагентами')}>
         <button type="button" aria-pressed={mode !== 'calls'} onClick={() => setMode('history')}>
-          История и письма
+          {t('История и письма')}
         </button>
         <button type="button" aria-pressed={mode === 'calls'} onClick={() => setMode('calls')}>
-          Звонки
+          {t('Звонки')}
         </button>
       </div>
       {mode === 'calls' ? (
@@ -827,11 +888,15 @@ function Correspondence({
           <div className={`mail-connection ${smtp ? 'connected' : 'is-warning'}`}>
             <Mail size={21} />
             <div>
-              <strong>{smtp ? 'Почта подключена' : 'Почта не подключена'}</strong>
+              <strong>{smtp ? t('Почта подключена') : t('Почта не подключена')}</strong>
               <p>
                 {smtp
-                  ? 'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
-                  : 'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'}
+                  ? t(
+                      'Письма можно отправлять из карточки счёта. Автоматические напоминания включаются в управлении.'
+                    )
+                  : t(
+                      'Вы можете готовить и скачивать письма. Для отправки обратитесь к администратору.'
+                    )}
               </p>
             </div>
             {smtp ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
@@ -840,7 +905,7 @@ function Correspondence({
                 className="button button-outline"
                 onClick={() => navigate({ section: 'settings' })}
               >
-                Подключить почту
+                {t('Подключить почту')}
               </button>
             )}
           </div>
@@ -848,8 +913,8 @@ function Correspondence({
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <h2>Кому написать</h2>
-                <p>Открытые счета без споров и пауз</p>
+                <h2>{t('Кому написать')}</h2>
+                <p>{t('Открытые счета без споров и пауз')}</p>
               </div>
               <span className="count-badge">{active.length}</span>
             </div>
@@ -863,12 +928,12 @@ function Correspondence({
                     <span>
                       <strong>{i.company}</strong>
                       <small>
-                        {i.number} · {i.email || 'Email не указан'}
+                        {i.number} · {i.email || t('Email не указан')}
                       </small>
                     </span>
                     <b>{money(i.balance)}</b>
                     <span className="letter-action">
-                      Открыть счёт
+                      {t('Открыть счёт')}
                       <ArrowUpRight size={15} />
                     </span>
                   </button>
@@ -879,10 +944,11 @@ function Correspondence({
                 <span className="empty-icon">
                   <Mail size={25} />
                 </span>
-                <h3>Письма начинаются со счёта</h3>
+                <h3>{t('Письма начинаются со счёта')}</h3>
                 <p>
-                  Добавьте задолженность в реестр. В карточке можно подготовить письмо, выбрать тон
-                  и согласовать отправку.
+                  {t(
+                    'Добавьте задолженность в реестр. В карточке можно подготовить письмо, выбрать тон и согласовать отправку.'
+                  )}
                 </p>
               </div>
             )}
@@ -926,8 +992,8 @@ function SettingsPanel({
     <>
       <div className="page-heading">
         <div>
-          <h1>Настройки</h1>
-          <p>Реквизиты, почта и данные организации.</p>
+          <h1>{t('Настройки')}</h1>
+          <p>{t('Реквизиты, почта и данные организации.')}</p>
         </div>
       </div>
       <form ref={draft.ref} className="settings-form" onSubmit={save}>
@@ -938,16 +1004,16 @@ function SettingsPanel({
         )}
         <section className="settings-panel">
           <div className="settings-intro">
-            <h2>Компания и письма</h2>
-            <p>Эти данные используются при подготовке текста покупателю.</p>
+            <h2>{t('Компания и письма')}</h2>
+            <p>{t('Эти данные используются при подготовке текста покупателю.')}</p>
           </div>
           <div className="form-grid">
             <label className="field full-width">
-              Название компании
+              {t('Название компании')}
               <input required name="company" defaultValue={settings.company} maxLength={160} />
             </label>
             <label className="field">
-              Имя отправителя
+              {t('Имя отправителя')}
               <input
                 required
                 name="sender_name"
@@ -956,29 +1022,29 @@ function SettingsPanel({
               />
             </label>
             <label className="field">
-              Email для ответа
+              {t('Email для ответа')}
               <input type="email" name="reply_to" defaultValue={settings.reply_to} />
             </label>
             <label className="field full-width">
-              Реквизиты для оплаты
+              {t('Реквизиты для оплаты')}
               <textarea
                 rows={4}
                 name="bank_details"
                 defaultValue={settings.bank_details}
                 maxLength={2000}
-                placeholder="Расчётный счёт, банк, БИК"
+                placeholder={t('Расчётный счёт, банк, БИК')}
               />
             </label>
           </div>
         </section>
         <section className="settings-panel">
           <div className="settings-intro">
-            <h2>Правила работы</h2>
-            <p>Ограничения действуют при подготовке и отправке писем.</p>
+            <h2>{t('Правила работы')}</h2>
+            <p>{t('Ограничения действуют при подготовке и отправке писем.')}</p>
           </div>
           <div className="form-grid">
             <label className="field">
-              Пауза между письмами, дней
+              {t('Пауза между письмами, дней')}
               <input
                 type="number"
                 required
@@ -989,7 +1055,7 @@ function SettingsPanel({
               />
             </label>
             <label className="field">
-              Ставка по кредиту, % годовых
+              {t('Ставка по кредиту, % годовых')}
               <input
                 type="number"
                 required
@@ -1001,8 +1067,9 @@ function SettingsPanel({
               />
             </label>
             <p className="form-note full-width">
-              Повторное напоминание не уйдёт раньше указанного срока. Оплаченные, спорные и
-              поставленные на паузу счета исключаются из отправки.
+              {t(
+                'Повторное напоминание не уйдёт раньше указанного срока. Оплаченные, спорные и поставленные на паузу счета исключаются из отправки.'
+              )}
             </p>
           </div>
         </section>
@@ -1013,7 +1080,7 @@ function SettingsPanel({
         )}
         <div className="settings-save">
           <button type="submit" className="button button-dark" disabled={busy}>
-            {busy ? 'Сохраняем…' : 'Сохранить настройки'}
+            {busy ? t('Сохраняем…') : t('Сохранить настройки')}
             <Check size={17} />
           </button>
         </div>
@@ -1021,5 +1088,22 @@ function SettingsPanel({
       <MailSetup onLoaded={onMailLoaded} />
       <WorkspaceDataSettings layoutReady={mailLoaded} />
     </>
+  );
+}
+
+function SettingsNav({ current }: { current: SettingsTab }) {
+  return (
+    <nav className="rc-tabs rc-settings-tabs" aria-label={t('Разделы настроек')}>
+      {settingsTabs.map(([key, label]) => (
+        <button
+          key={key}
+          className={current === key ? 'active' : ''}
+          aria-current={current === key ? 'page' : undefined}
+          onClick={() => navigate({ section: 'settings', settingsTab: key })}
+        >
+          {label}
+        </button>
+      ))}
+    </nav>
   );
 }

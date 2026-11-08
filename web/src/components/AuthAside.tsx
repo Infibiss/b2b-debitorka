@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Brand } from './Brand';
 
 export function AuthAside() {
@@ -6,13 +7,13 @@ export function AuthAside() {
       <Brand light />
       <div>
         <h1>
-          Управляйте
+          {t('Управляйте')}
           <br />
-          дебиторкой
+          {t('дебиторкой')}
           <br />
-          <span>в одном месте.</span>
+          <span>{t('в одном месте.')}</span>
         </h1>
-        <p>Счета, документы, переписка и оплаты — в делах ваших клиентов.</p>
+        <p>{t('Счета, документы, переписка и оплаты — в делах ваших клиентов.')}</p>
       </div>
     </aside>
   );

@@ -1,0 +1,52 @@
+{
+  "version": "mandato-financing-2026-11-08",
+  "note": "Indicative parameters for pre-qualification. A partner sets final terms in its own offer.",
+  "key_rate_percent": "14.00",
+  "products": [
+    {
+      "id": "factoring",
+      "name": "Факторинг",
+      "summary": "Деньги под счёт, срок которого ещё не наступил или просрочка небольшая.",
+      "max_days_overdue": 30,
+      "min_amount": 10000000,
+      "min_evidence_score": 50,
+      "advance_percent": [70, 90],
+      "margin_percent": 8,
+      "stages": ["pretrial"]
+    },
+    {
+      "id": "recovery_advance",
+      "name": "Аванс на время взыскания",
+      "summary": "Часть просроченного долга сейчас. Партнёр возвращает аванс из поступлений от должника.",
+      "max_days_overdue": 365,
+      "min_amount": 20000000,
+      "min_evidence_score": 75,
+      "advance_percent": [30, 50],
+      "margin_percent": 14,
+      "stages": ["pretrial", "court"]
+    },
+    {
+      "id": "judgment_advance",
+      "name": "Финансирование после решения суда",
+      "summary": "Аванс под вступивший в силу судебный акт до фактического взыскания.",
+      "max_days_overdue": 1825,
+      "min_amount": 30000000,
+      "min_evidence_score": 75,
+      "advance_percent": [50, 70],
+      "margin_percent": 12,
+      "stages": ["court", "enforcement"],
+      "requires_court_act": true
+    },
+    {
+      "id": "debt_sale",
+      "name": "Продажа долга",
+      "summary": "Цессия: партнёр покупает требование с дисконтом и взыскивает его сам.",
+      "max_days_overdue": 1825,
+      "min_amount": 50000000,
+      "min_evidence_score": 75,
+      "advance_percent": [10, 40],
+      "margin_percent": 0,
+      "stages": ["pretrial", "court", "enforcement"]
+    }
+  ]
+}

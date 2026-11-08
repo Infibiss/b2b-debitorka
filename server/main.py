@@ -632,7 +632,7 @@ def create_app():
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial", "recovery", "financing"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:

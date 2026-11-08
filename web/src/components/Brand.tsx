@@ -1,9 +1,10 @@
+import { t } from '../i18n';
 export function Brand({ light = false }: { light?: boolean }) {
   return (
     <a
       className={`brand brand-mandato ${light ? 'brand-light' : ''}`}
       href="/"
-      aria-label="Mandato — на главную"
+      aria-label={t('Mandato — на главную')}
     >
       <svg
         className="mandato-mark"
