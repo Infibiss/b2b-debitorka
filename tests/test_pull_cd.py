@@ -132,3 +132,8 @@ def test_release_failure_recovery_is_phase_aware(tmp_path,phase,resume):
     assert result.returncode==7
     assert log.exists()==resume
     assert marker.exists()!=resume
+
+
+def test_docker_configuration_is_writable_despite_protected_home():
+    source=(Path(__file__).resolve().parents[1]/'infra/yandex/agentpay-cd.service').read_text()
+    assert 'Environment=DOCKER_CONFIG=/var/lib/agentpay-cd/docker' in source

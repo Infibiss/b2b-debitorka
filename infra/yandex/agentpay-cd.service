@@ -14,6 +14,7 @@ StateDirectoryMode=0700
 WorkingDirectory=/var/lib/agentpay-cd
 ExecStart=/usr/bin/python3 /usr/local/lib/agentpay-cd/pull_cd.py
 Environment=PYTHONUNBUFFERED=1
+Environment=DOCKER_CONFIG=/var/lib/agentpay-cd/docker
 TimeoutStartSec=40min
 TimeoutStopSec=60
 Nice=10
