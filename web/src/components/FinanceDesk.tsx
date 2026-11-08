@@ -95,7 +95,8 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
     [error, setError] = useState('');
   const [modal, setModal] = useState<Modal | null>(null),
     [selected, setSelected] = useRouteField<string>('context', invoiceId),
-    [ledger, setLedger] = useState<Ledger | null>(null);
+    [ledger, setLedger] = useState<Ledger | null>(null),
+    [ledgerError, setLedgerError] = useState('');
   const [partyRoute] = useRouteField<string>('party', '');
   const [returnTo] = useRouteField<string>('returnTo', '');
   useEffect(() => {
@@ -125,15 +126,16 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
   const loadLedger = useCallback(async (id: string) => {
     const request = ++ledgerRequest.current;
     setLedger(null);
+    setLedgerError('');
     if (!id) return;
     try {
       const result = await api<Ledger>(`/finance/invoices/${id}/ledger`);
       if (request === ledgerRequest.current) {
         setLedger(result);
-        setError('');
+        setLedgerError('');
       }
     } catch (e) {
-      if (request === ledgerRequest.current) setError((e as Error).message);
+      if (request === ledgerRequest.current) setLedgerError((e as Error).message);
     }
   }, []);
   useEffect(() => {
@@ -186,7 +188,7 @@ export function FinanceDesk({ invoices, onChanged, notify }: DeskProps) {
           </button>
         ))}
       </div>
-      <DeskError>{error}</DeskError>
+      <DeskError>{tab === 'ledger' ? ledgerError || error : error}</DeskError>
       {tab === 'bank' && (
         <section className="ops-card">
           <div className="ops-card-heading">
