@@ -1,0 +1,28 @@
+[Unit]
+Description=Mandato verified GitHub pull deployment
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=agentpay
+Group=agentpay
+UMask=0077
+StateDirectory=agentpay-cd
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/agentpay-cd
+ExecStart=/usr/bin/python3 /usr/local/lib/agentpay-cd/pull_cd.py
+Environment=PYTHONUNBUFFERED=1
+TimeoutStartSec=40min
+TimeoutStopSec=60
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/agentpay /var/lib/agentpay-cd /etc/agentpay /var/backups/agentpay
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal

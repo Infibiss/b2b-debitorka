@@ -115,3 +115,35 @@ bash -n scripts/deploy_yandex_vm.sh infra/yandex/backup.sh infra/yandex/renew-ce
 ```
 
 Compose-конфигурация/генераторы/права/SSH guard проверяются без VM. Фактический TLS ACME challenge и restore проверяются уже на согласованном экземпляре до объявления ссылки готовой.
+
+## CD из публичного GitHub без входящего SSH
+
+Согласованная схема: `infra/yandex/pull_cd.py` проверяет публичный `Infibiss/b2b-debitorka` и успешный push-CI `.github/workflows/ci.yml` точного текущего `main`. PR, fork, ошибочный/незавершённый CI и сменившийся main не разрешают deploy. Код выгружается как git archive полного SHA. Контроллер не является GitHub Actions runner, не содержит GitHub-токенов и не требует доступа к firewall. При переводе репозитория в private он безопасно прекратит обновления.
+
+CI остаётся на GitHub-hosted runners. Старый `.github/workflows/deploy-yandex.yml` не включать (`YANDEX_VM_DEPLOY_ENABLED` оставить выключенным): одновременно работает только pull-CD. Доступ на запись в main даёт возможность обновлять production; правила review ветки должны соответствовать этому доступу.
+
+Общий `infra/yandex/deploy_release.sh` применяется и ручным SSH deploy, и CD: сборка до остановки приложения, резервная копия, проверка HTTPS, смена current только после успеха. CD повторно проверяет main и CI после сборки, до остановки старого приложения; последующие изменения main обрабатываются следующим запуском. При неудаче процесса SHA блокируется до явного разбора оператором. Автоматического восстановления поверх рабочей БД нет. При свободном месте менее 3 ГБ обновление не начинается.
+
+Установка из проверенного релиза (сама не включает timer):
+
+```sh
+sudo bash infra/yandex/install_pull_cd.sh
+sudo -u agentpay python3 /usr/local/lib/agentpay-cd/pull_cd.py --dry-run
+sudo systemctl start agentpay-cd.service
+# После проверки текущего SHA, HTTPS, финансовых fingerprints и восстановления backup:
+sudo systemctl enable --now agentpay-cd.timer
+systemctl list-timers agentpay-cd.timer
+```
+
+Timer запускается каждые пять минут, с небольшим случайным смещением. Пропущенный запуск восполняется после старта VM; одновременно выполняется не больше одной проверки/deploy. Скрипты root-owned, состояние `/var/lib/agentpay-cd` принадлежит agentpay с 0700, журнал — systemd. Контроллер не обновляет сам себя автоматически: изменения его политики принимаются оператором отдельной установкой.
+
+```sh
+journalctl -u agentpay-cd.service -n 80 --no-pager
+sudo systemctl disable --now agentpay-cd.timer  # остановить новые проверки; активный deploy не прерывать
+# Только после устранения причины сбоя, при остановленном timer:
+sudo -u agentpay python3 /usr/local/lib/agentpay-cd/pull_cd.py --retry-failed
+```
+
+Текущее обновление не повторяется. Ошибки API, rate limit и сети приводят к отказу от обновления и паузе 15 минут; неудачная сборка/установка не повторяется бесконечно на одном SHA. Не хранить GitHub/PAT/LLM ключи в units или CD-состоянии. Существующие секреты приложения остаются в `/etc/agentpay/production.env`.
+
+Если сбой произошёл после остановки, но до запуска новой версии, release script пытается возобновить прежнее приложение: схема БД ещё не менялась. После начала активации автоматического отката нет; создаётся `/opt/agentpay/deploy-needs-operator`, который блокирует **любые** последующие CD-обновления. Сначала оператор проверяет контейнеры, схему и HTTPS и выполняет согласованное восстановление; успешный ручной deploy снимет marker. Одного `--retry-failed` для обхода marker недостаточно. Рутинная ошибка продления сертификата не скрывает здоровый выпуск: приёмка всё равно требует действующего trusted HTTPS, а продление остаётся задачей отдельного cert timer.
