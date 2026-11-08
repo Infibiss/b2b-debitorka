@@ -448,6 +448,19 @@ export function DebtorCard({
               ))}
             </dl>
             <p className="rc-muted">{t(debtor.recommendation.reason)}</p>
+            {debtor.inn && (
+              <button
+                className="button button-outline"
+                onClick={() =>
+                  post('/integrations/registry/check', { inn: debtor.inn })
+                    .then(() => load())
+                    .then(() => notify(t('Проверка выполнена')))
+                    .catch((error) => notify(error.message, true))
+                }
+              >
+                {t('Проверить должника')}
+              </button>
+            )}
             {debtor.solvency.warning && <p className="rc-note">{t(debtor.solvency.warning)}</p>}
             {debtor.economics?.warnings.map((text) => (
               <p className="rc-note" key={text}>

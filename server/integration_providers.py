@@ -139,7 +139,11 @@ def binding(tenant_id,provider):
         entries=json.loads(raw)
         if not isinstance(entries,list):return None
         matches=[x for x in entries if isinstance(x,dict) and x.get('tenant_id')==tenant_id and x.get('provider')==provider]
-        return matches[0] if len(matches)==1 else None
+        if len(matches)==1:return matches[0]
+        # The public registry lookup runs on Mandato's own account unless a client brought its own.
+        if provider=='dadata' and not matches and os.environ.get('DADATA_API_KEY'):
+            return dict(tenant_id=tenant_id,provider='dadata',token=os.environ['DADATA_API_KEY'])
+        return None
     except (ValueError,TypeError):return None
 
 

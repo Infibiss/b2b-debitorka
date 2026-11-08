@@ -259,3 +259,17 @@ def test_claim_is_issued_without_interest_when_rates_are_unavailable():
     template = dict(address='', body='Сумма {{principal}}. {{interest_text}}')
     assert templates.missing_variables(template, {'principal': '100', 'interest_text': ' '}) == []
     assert templates.missing_variables(template, {'principal': '', 'interest_text': ' '}) == ['principal']
+
+
+def test_platform_dadata_key_serves_clients_without_their_own(monkeypatch):
+    from server import integration_providers as providers
+    monkeypatch.setenv('MANDATO_INTEGRATIONS_JSON', '[]')
+    monkeypatch.delenv('DADATA_API_KEY', raising=False)
+    assert providers.binding('tenant', 'dadata') is None
+    monkeypatch.setenv('DADATA_API_KEY', 'platform-key')
+    assert providers.binding('tenant', 'dadata')['token'] == 'platform-key'
+    assert providers.configured(providers.binding('tenant', 'dadata'), 'dadata')
+    assert providers.binding('tenant', 'tbank') is None
+    own = '[{"tenant_id":"tenant","provider":"dadata","token":"own-key"}]'
+    monkeypatch.setenv('MANDATO_INTEGRATIONS_JSON', own)
+    assert providers.binding('tenant', 'dadata')['token'] == 'own-key'
