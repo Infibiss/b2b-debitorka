@@ -86,18 +86,19 @@ def test_cloud_init_requires_operator_public_key_and_configures_renewal_timer():
 
 
 def test_shell_recipe_is_parseable_and_never_uses_unverified_ssh():
-    for script in ('scripts/deploy_yandex_vm.sh','infra/yandex/backup.sh','infra/yandex/renew-cert.sh'):
+    for script in ('scripts/deploy_yandex_vm.sh','infra/yandex/backup.sh','infra/yandex/renew-cert.sh','infra/yandex/deploy_release.sh'):
         # Feed UTF-8/LF source through stdin so a Windows CRLF checkout does not
         # change the Linux shell program being syntax-checked.
         result=subprocess.run(bash('-n'),input=(ROOT/script).read_text(encoding='utf-8').encode('utf-8'),capture_output=True)
         assert result.returncode==0,result.stderr
     text=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
-    assert '-o StrictHostKeyChecking=yes' in text and 'hashlib.file_digest' in text
+    release=(ROOT/'infra/yandex/deploy_release.sh').read_text()
+    assert '-o StrictHostKeyChecking=yes' in text and 'hashlib.file_digest' in release
     assert 'options=(-F /dev/null ' in text
-    assert 'git get-tar-commit-id' in text and 'before stopping' in text
-    assert 'filter=\'data\'' in text
+    assert 'git get-tar-commit-id' in release and 'before stopping' in text
+    assert 'filter=\'data\'' in release
     assert 'bash -s --' not in text
-    assert 'cat > "$remote_script"' in text
+    assert 'cp "$repo/infra/yandex/deploy_release.sh" "$remote_script"' in text
     assert '"$checksum" "$host" "$public_url" < /dev/null' in text
 
 
@@ -154,7 +155,7 @@ def test_optional_cd_public_origin_is_passed_as_one_argument_without_enabling_de
 
 
 def test_domain_preflight_refuses_missing_nginx_without_mutating_files(tmp_path):
-    script=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
+    script=(ROOT/'infra/yandex/deploy_release.sh').read_text()
     start=script.index('custom_domain=false')
     end=script.index('compose=(',start)
     path=tmp_path/'nginx-site.conf'
@@ -170,7 +171,7 @@ def test_domain_preflight_refuses_missing_nginx_without_mutating_files(tmp_path)
     ('false',False,'bootstrap configuration'),
 ])
 def test_nginx_domain_branch_preserves_existing_config_while_ip_path_stays_compatible(tmp_path,custom_domain,certificate,expected):
-    script=(ROOT/'scripts/deploy_yandex_vm.sh').read_text()
+    script=(ROOT/'infra/yandex/deploy_release.sh').read_text()
     start=script.index('certificate_present=false')
     end=script.index('"${compose[@]}" up -d --wait',start)
     config=tmp_path/'nginx-site.conf';config.write_text('existing domain configuration')

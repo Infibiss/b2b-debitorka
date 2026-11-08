@@ -380,6 +380,14 @@ test('a failed ledger switch never offers an action on the previous invoice', as
   await page.getByRole('tab', { name: 'Движение по счёту', exact: true }).click();
   await selectInvoice(page, first);
   await expect(page.locator('.ops-ledger-summary')).toContainText(/1\s?000/);
+  let releaseCatalogue!: () => void;
+  const catalogueGate = new Promise<void>((resolve) => {
+    releaseCatalogue = resolve;
+  });
+  await page.route('**/api/finance/counterparties', async (route) => {
+    await catalogueGate;
+    await route.continue();
+  });
   const select = page.getByRole('combobox', { name: 'Счёт', exact: true });
   const id = await select.locator('option').filter({ hasText: second }).getAttribute('value');
   await page.route(`**/api/finance/invoices/${id}/ledger`, (route) =>
@@ -390,6 +398,13 @@ test('a failed ledger switch never offers an action on the previous invoice', as
     })
   );
   await selectInvoice(page, second);
+  await expect(page.getByRole('alert')).toContainText('Сверка временно недоступна');
+  releaseCatalogue();
+  await page.getByRole('tab', { name: 'Контрагенты', exact: true }).click();
+  await expect(
+    page.locator('.ops-card').getByText('ООО Северные системы', { exact: true }).first()
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Движение по счёту', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Сверка временно недоступна');
   await expect(page.locator('.ops-ledger-summary')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Изменить требование', exact: true })).toHaveCount(
