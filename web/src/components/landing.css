@@ -941,13 +941,13 @@ html.js .words.is-in span {
   line-height: 1.5;
   color: var(--ink-soft);
 }
-.ghost {
+.landing .ghost {
   position: relative;
   z-index: 0;
   display: grid;
   max-width: 88rem;
   margin: 3rem auto 0;
-  font-size: 7.4vw;
+  font-size: 6.2vw;
   line-height: 1.02;
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -970,7 +970,7 @@ html.js .words.is-in span {
 .ghost-ink {
   color: var(--ink-site);
 }
-.trust-card {
+.landing .trust-card {
   position: absolute;
   z-index: 10;
   top: 50%;
@@ -1255,7 +1255,7 @@ html.js .words.is-in span {
   background: var(--brand-deep);
   color: #fff;
 }
-.stats-grid {
+.landing .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 3rem 2rem;
@@ -1424,7 +1424,10 @@ main:has(.landing) + .site-footer {
   }
 }
 @media (max-width: 1080px) {
-  .trust-card {
+  .landing .ghost {
+    font-size: 7.4vw;
+  }
+  .landing .trust-card {
     position: relative;
     top: auto;
     left: auto;
@@ -1435,7 +1438,7 @@ main:has(.landing) + .site-footer {
   .trust-controls {
     margin-top: 3rem;
   }
-  .stats-grid {
+  .landing .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .site-footer-grid {
