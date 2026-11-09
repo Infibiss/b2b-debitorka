@@ -1,16 +1,16 @@
 :root {
-  font-family: 'Manrope Variable', Manrope, Arial, sans-serif;
-  color: #1c2c25;
+  font-family: 'Onest Variable', system-ui, sans-serif;
+  color: #183d31;
   background: #f4f3ed;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   font-weight: 450;
   --paper: #f4f3ed;
-  --ink: #1c2c25;
+  --ink: #183d31;
   --green: #183d31;
   --lime: #d9ed92;
-  --muted: #7e857a;
+  --muted: #626874;
   --line: #dcded4;
 }
 * {
@@ -111,17 +111,17 @@ a svg {
   color: #fff;
 }
 .button-dark:hover {
-  background: #285440;
+  background: #183d31;
 }
 .button-lime {
   background: var(--lime);
-  color: #203423;
+  color: #183d31;
 }
 .button-lime:hover {
-  background: #e5f6b1;
+  background: #e9efeb;
 }
 .button-outline {
-  border-color: #8c9986;
+  border-color: #626874;
   background: transparent;
 }
 .button-outline:hover {
@@ -212,14 +212,14 @@ a svg {
   justify-content: space-between;
 }
 .muted {
-  color: #888e7f;
+  color: #626874;
 }
 .text-link {
   display: inline-flex;
   align-items: center;
   gap: 22px;
   padding: 12px 0;
-  border-bottom: 1px solid #849071;
+  border-bottom: 1px solid #626874;
   font-size: 13px;
   font-weight: 650;
 }
@@ -231,8 +231,8 @@ a svg {
   font-weight: 600;
 }
 .pill.green {
-  color: #386240;
-  background: #e4eedc;
+  color: #183d31;
+  background: #e9efeb;
 }
 .pill.orange {
   color: #936b35;
@@ -240,7 +240,7 @@ a svg {
 }
 .pill.gray {
   background: #eceee9;
-  color: #767d71;
+  color: #626874;
 }
 .pill.red {
   color: #a34d40;
@@ -306,7 +306,7 @@ label {
   flex-direction: column;
   gap: 8px;
   font-size: 12px;
-  color: #5b685f;
+  color: #626874;
 }
 .field input,
 .field textarea,
@@ -315,7 +315,7 @@ label {
   width: 100%;
   padding: 13px 14px;
   background: #fff;
-  border: 1px solid #d9ded5;
+  border: 1px solid #e9efeb;
   border-radius: 7px;
   color: var(--ink);
   font-size: 13px;
@@ -326,7 +326,7 @@ label {
 }
 .field input:focus,
 .field textarea:focus {
-  border-color: #779a60;
+  border-color: #626874;
 }
 .form-grid {
   display: grid;
@@ -346,7 +346,7 @@ label {
   color: #9f3e2c;
 }
 .form-note {
-  color: #858d80;
+  color: #626874;
   font-size: 11px;
   line-height: 1.6;
 }
@@ -360,9 +360,9 @@ label {
   height: 62px;
   align-items: center;
   justify-content: center;
-  color: #7b8c68;
+  color: #626874;
   background: #edf1e6;
-  border: 1px solid #e2e9d9;
+  border: 1px solid #e9efeb;
   border-radius: 16px;
   margin-bottom: 23px;
 }
@@ -375,21 +375,21 @@ label {
 .empty-state p {
   font-size: 13px;
   line-height: 1.8;
-  color: #818b7b;
+  color: #626874;
   margin: auto auto 24px;
   max-width: 370px;
 }
 .loading {
   padding: 120px;
   text-align: center;
-  color: #7e8976;
+  color: #626874;
   font-size: 13px;
 }
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid #dae2d3;
-  border-top-color: #224b35;
+  border: 2px solid #e9efeb;
+  border-top-color: #183d31;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 15px;
@@ -405,9 +405,9 @@ label {
   left: 50%;
   transform: translateX(-50%);
   padding: 15px 22px;
-  background: #193d30;
+  background: #183d31;
   color: #fff;
-  border: 1px solid #58775c;
+  border: 1px solid #626874;
   border-radius: 10px;
   z-index: 200;
   font-size: 12px;

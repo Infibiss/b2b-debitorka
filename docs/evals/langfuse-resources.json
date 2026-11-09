@@ -1,6 +1,6 @@
 {
   "captured_at": "2026-10-24T01:29:10.428431+00:00",
-  "scope": "Six AgentPay local Langfuse containers only, Docker Desktop, synthetic data",
+  "scope": "Six Mandato local Langfuse containers only, Docker Desktop, synthetic data",
   "measurement": "Single docker stats --no-stream snapshot after successful application/Yandex/Langfuse canary; rounded values, not a load test or peak measurement",
   "canary_peak_measured": false,
   "containers": [
@@ -43,7 +43,7 @@
   ],
   "approximate_total_memory_mib": 2414.98,
   "total_container_limits_mib": 5504,
-  "excluded": "AgentPay application, application PostgreSQL, host OS, Docker overhead and other containers",
+  "excluded": "Mandato application, application PostgreSQL, host OS, Docker overhead and other containers",
   "observed_failure": "ClickHouse cap 1024MiB produced OvercommitTracker query failures on a small number of synthetic traces; cap raised to 2048MiB before successful full canary",
   "inference": "Do not co-host this full Langfuse stack on the baseline 2GiB application VM. A 4GiB all-in deployment is not validated safe. Keep optional local tracing or provision a separate appropriately sized deployment.",
   "vendor_compose_recommendation": {

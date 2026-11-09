@@ -17,6 +17,6 @@ def test_fastapi_langgraph_workflow_emits_real_sdk_span(env, monkeypatch):
     p = ingest(http, text)
     observer.flush()
     spans = exporter.get_finished_spans()
-    assert any(span.name == "agentpay.workflow" for span in spans)
+    assert any(span.name == "mandato.workflow" for span in spans)
     assert all("langfuse.observation.input" not in dict(span.attributes) for span in spans)
     assert p["status"] == "review_required"

@@ -1,10 +1,10 @@
-# Эксплуатация AgentPay
+# Эксплуатация Mandato
 
 Актуальный контур: Yandex VM, постоянный PostgreSQL, HTTPS по статическому IP. SSH только с IP оператора; CI автоматический, deploy вручную. Langfuse на VM не запускается. [Приёмка и границы](report-mvp-acceptance.md), [точный рецепт](../infra/yandex/README.md), [бюджет](research/yandex-vm-budget.md).
 
 ## Запуск и конфигурация
 
-Локально — `python -m scripts.run_local`, приватный проектный `.env`, SQLite `server/data/agentpay.sqlite3` и sidecar `agentpay.sqlite3.agent-checkpoints.sqlite3`. Не запускать несколько local процессов на одной базе. Старые идентификаторы/счета сохраняются миграцией v1/v2 → v3; конфликты идентичности блокируют контакт и требуют разбора.
+Локально — `python -m scripts.run_local`, приватный проектный `.env`, SQLite `server/data/mandato.sqlite3` и sidecar `mandato.sqlite3.agent-checkpoints.sqlite3`. Не запускать несколько local процессов на одной базе. Старые идентификаторы/счета сохраняются миграцией v1/v2 → v3; конфликты идентичности блокируют контакт и требуют разбора.
 
 На VM — `compose.production.yml`, app non-root/read-only rootfs, приватный PostgreSQL без host port, Nginx только 80/443. `/etc/agentpay/production.env` имеет права `0600`; DB password создаётся один раз и не ротируется поверх существующего тома. Не выводить compose config/env в общие логи. `DATABASE_URL` важнее `DATABASE_PATH`; секреты не включать в Git, image, archive или CI outputs.
 
@@ -38,7 +38,7 @@ Let's Encrypt IP certificate shortlived (~160 часов); `agentpay-cert-renew.
 
 2 vCPU20%, 2 ГБ RAM, SSD30ГБ, IPv4 ≈1 905 ₽/31 день по зафиксированным тарифам, без модельных запросов/платного исходящего трафика. Swap2ГБ — резерв пика сборки, не дополнительная RAM. Контролировать память/диск/backup size, OOM, health, ошибки API и срок сертификата. Langfuse отдельно, только после нового sizing/бюджета. Новые GPU, managed DB, load balancer не создаются.
 
-Остановка VM не прекращает оплату диска/зарезервированного IP. Для полного завершения расходов сначала сохранить нужные копии, затем удалить **только ресурсы AgentPay**, отвязанный boot disk и address, проверив ownership. Не трогать существующую default VPC/security group и другие проекты.
+Остановка VM не прекращает оплату диска/зарезервированного IP. Для полного завершения расходов сначала сохранить нужные копии, затем удалить **только ресурсы Mandato**, отвязанный boot disk и address, проверив ownership. Не трогать существующую default VPC/security group и другие проекты.
 
 ## Операционные инциденты
 

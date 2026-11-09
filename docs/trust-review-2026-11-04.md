@@ -28,7 +28,7 @@
 
 ## Cookie и хранение на устройстве
 
-- В исходном коде устанавливается `agentpay_session`: до 7 дней, HttpOnly, SameSite=Lax, Path=/; Secure зависит от защищённой конфигурации. Выход удаляет cookie. Источник: `server/main.py`.
+- В исходном коде устанавливается `mandato_session`: до 7 дней, HttpOnly, SameSite=Lax, Path=/; Secure зависит от защищённой конфигурации. Выход удаляет cookie. Источник: `server/main.py`.
 - CSRF-токен возвращается в JSON сессии и передаётся заголовком; отдельной CSRF-cookie не найдено. Источники: `server/main.py`, `web/src/api.ts`.
 - `sessionStorage` хранит черновики форм; его восстановление браузером нельзя описывать как гарантированное уничтожение после закрытия вкладки. Источник: `web/src/components/useFormDraft.ts`.
 - `localStorage` содержит обучение/онбординг и закрытие подсказок. Источники: `WorkflowOnboarding.tsx`, `WorkspaceProfile.tsx`. Если родительская реализация добавляет запись о закрытии cookie-уведомления, она также раскрыта в тексте `/cookies`.

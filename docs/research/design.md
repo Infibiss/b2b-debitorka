@@ -1,4 +1,4 @@
-# AgentPay — design research and editorial direction
+# Mandato — design research and editorial direction
 
 Research date: 2026-10-24. Product: Russia-first B2B receivables workspace.
 
@@ -11,7 +11,7 @@ Research date: 2026-10-24. Product: Russia-first B2B receivables workspace.
 - [Ramp](https://ramp.com/). The homepage uses short business-outcome language, a single clear first action, and workflow-led product navigation. Adopt the clarity and directness, while avoiding its scale and results claims.
 - [Linear](https://linear.app/). The page exposes product objects, statuses, activity, and agent work in a credible interface rather than relying on abstract AI imagery. Adopt the density control, hairline divisions, product-led storytelling, and legible work history. It is a product craft reference, not a fintech category competitor.
 
-These observations come from primary product pages and indexed source artwork. The direction below is an original recommendation for AgentPay, not a claim that these sites use these exact tokens.
+These observations come from primary product pages and indexed source artwork. The direction below is an original recommendation for Mandato, not a claim that these sites use these exact tokens.
 
 ## Art direction
 
@@ -50,8 +50,8 @@ Suggested site copy:
 
 - Brand descriptor: «Дебиторка под контролем».
 - Hero: «Оплаты вовремя. Отношения — надолго.»
-- Supporting text: «AgentPay собирает счета и переписку в одном месте, готовит напоминания и помогает команде видеть следующий шаг по каждому клиенту.»
-- Main action: «Открыть AgentPay».
+- Supporting text: «Mandato собирает счета и переписку в одном месте, готовит напоминания и помогает команде видеть следующий шаг по каждому клиенту.»
+- Main action: «Открыть Mandato».
 - Secondary action: «Как это работает».
 - Product chapter: «От счёта до оплаты. В одном процессе.»
 - Inbox chapter: «Внимание — тем, кому оно нужно».
@@ -59,11 +59,11 @@ Suggested site copy:
 - Integration chapter: «Начните с тех данных, которые уже есть».
 - Final action: «Наведите порядок в дебиторке».
 
-If an action opens a contact form, label it «Обсудить подключение» and make the form honest about what happens next. If the application is locally functional, «Открыть AgentPay» should open that application directly. A primary action must not silently scroll to a different section.
+If an action opens a contact form, label it «Обсудить подключение» and make the form honest about what happens next. If the application is locally functional, «Открыть Mandato» should open that application directly. A primary action must not silently scroll to a different section.
 
 ## Marketing flow
 
-1. Navigation: AgentPay wordmark, «Возможности», «Как работает», «Интеграции», and a clear app entry. Mobile navigation needs a working menu and a reachable close action.
+1. Navigation: Mandato wordmark, «Возможности», «Как работает», «Интеграции», and a clear app entry. Mobile navigation needs a working menu and a reachable close action.
 2. Hero: one promise, short explanation, two purposeful actions, and an original financial workflow visual.
 3. Product proof: a recognisable working view of receivables, with the state of an account changing when a tab or workflow step is selected.
 4. Three business jobs: understand what is overdue; prepare and review communication; track the promise and receipt. Use long editorial rows rather than three interchangeable feature tiles.
@@ -83,7 +83,7 @@ If an action opens a contact form, label it «Обсудить подключе�
 - **Settings:** organisation details, sender signature, business hours, notification preference, and agent review mode. Persist meaningful local edits between reloads when a backend is absent.
 - **Search and navigation:** global search opens a usable result state; Escape closes overlays; active navigation reflects the current section. Every icon-only control needs an accessible label and clear focus indication.
 
-For the initial workspace, use internally consistent example invoice records as working product content. Never describe those records as customers of AgentPay or as evidence of business results. Product charts should be derived from those records, with clear ruble amounts and Russian dates.
+For the initial workspace, use internally consistent example invoice records as working product content. Never describe those records as customers of Mandato or as evidence of business results. Product charts should be derived from those records, with clear ruble amounts and Russian dates.
 
 ## Acceptance checks
 

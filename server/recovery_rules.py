@@ -361,15 +361,30 @@ DEFAULT_AUTOMATION = {
         'post': {'enabled': False, 'min_amount': 5_000_000, 'repeat_days': 30},
     },
     'weekdays': [0, 1, 2, 3, 4], 'start_hour': 9, 'end_hour': 18,
+    'month_days': [], 'claim_tiers': [], 'auto_to_court': False, 'court_min_amount': 5_000_000,
+    'auto_enforcement': False, 'auto_archive_paid': False,
 }
 
 
-def automation_decision(status, *, balance, days_overdue, contact_allowed, automation):
-    """Next unattended move for a debtor. Court is always a human decision."""
-    if not automation.get('enabled') or not contact_allowed:
+def claim_kind(balance, automation):
+    """The largest tier the debt reaches picks the letter; no tiers means the standard claim."""
+    reached = [tier for tier in automation.get('claim_tiers') or [] if balance >= tier['min_amount']]
+    return max(reached, key=lambda tier: tier['min_amount'])['kind'] if reached else 'claim'
+
+
+def automation_decision(status, *, balance, days_overdue, contact_allowed, automation, act_on=None, today=None):
+    """Next unattended move for a debtor. Going to court needs the client's explicit opt-in."""
+    if not automation.get('enabled'):
         return None
-    if not automation['min_amount'] <= balance <= automation['max_amount']:
+    # Procedural moves after a court act do not contact the debtor.
+    if automation.get('auto_enforcement') and status == 'in_force':
+        return 'to_enforcement'
+    if automation.get('auto_enforcement') and status == 'order_issued' and act_on and today and date.fromisoformat(act_on) + timedelta(days=ORDER_OBJECTION_DAYS) < today:
+        return 'to_enforcement'
+    if not contact_allowed or not automation['min_amount'] <= balance <= automation['max_amount']:
         return None
+    if automation.get('auto_to_court') and status == 'ready_for_court' and balance >= automation.get('court_min_amount', 0):
+        return 'to_court'
     if status == 'new' and days_overdue >= automation['start_after_overdue_days']:
         return 'start'
     if status in ('reminders', 'promise_broken') and automation['auto_prepare_claim'] and days_overdue >= automation['claim_after_overdue_days']:

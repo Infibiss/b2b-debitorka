@@ -130,7 +130,7 @@ export const money = (amount: number, compact = false) =>
   new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'RUB',
-    maximumFractionDigits: compact ? 0 : 2,
+    maximumFractionDigits: compact ? (amount >= 100000000 ? 1 : 0) : 2,
     minimumFractionDigits: 0,
     notation: compact && amount >= 100000000 ? 'compact' : 'standard',
   }).format(amount / 100);

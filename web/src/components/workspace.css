@@ -1,7 +1,7 @@
 .workspace {
   min-height: 100vh;
   background: var(--paper);
-  --line: #dce2dd;
+  --line: #e6e8ec;
 }
 .sidebar {
   width: 240px;
@@ -1584,9 +1584,9 @@
   background: var(--surface-subtle);
 }
 .auth-aside {
-  background: #1c4031;
+  background: #183d31;
   padding: 46px 50px;
-  color: #edf3e4;
+  color: #e9efeb;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1613,7 +1613,7 @@
 }
 .auth-aside .eyebrow {
   font-size: 7px;
-  color: #a9c291;
+  color: #626874;
   letter-spacing: 1px;
   margin-bottom: 27px;
 }
@@ -1626,12 +1626,12 @@
   z-index: 1;
 }
 .auth-aside h1 > span {
-  color: #acc593;
+  color: #e9efeb;
 }
 .auth-aside p {
   font-size: 11px;
   line-height: 1.9;
-  color: #9bb582;
+  color: #626874;
   margin-top: 25px;
   position: relative;
   z-index: 1;
@@ -1641,7 +1641,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 7px;
-  color: #84a96a;
+  color: #626874;
   letter-spacing: 1px;
   margin-top: 35px;
 }
@@ -1728,7 +1728,7 @@
   margin: 1px 0 2px;
 }
 .auth-consent input {
-  accent-color: #6b9350;
+  accent-color: #626874;
   width: 12px;
   height: 12px;
   flex-shrink: 0;
@@ -1817,7 +1817,7 @@
   color: var(--text-secondary);
 }
 .hero-photo {
-  background: #364435 url('/hero.webp') center 60% / cover no-repeat;
+  background: #183d31 url('/hero.webp') center 60% / cover no-repeat;
 }
 @media (min-width: 1500px) {
   .workspace-main {
@@ -2469,7 +2469,7 @@
   }
   .table-scroll {
     scrollbar-width: thin;
-    scrollbar-color: #cedcbb #f4f8eb;
+    scrollbar-color: #e9efeb #f4f8eb;
   }
   .registry-count {
     font-size: 12px;

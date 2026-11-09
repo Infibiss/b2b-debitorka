@@ -56,7 +56,7 @@ cp -n .env.example .env
 python -m scripts.run_local
 ```
 
-[Приложение](http://127.0.0.1:8000). База `server/data/agentpay.sqlite3`; checkpoint-файл агента рядом. `scripts.run_local` загружает только локальный `.env`, без подстановок переменных; уже заданное окружение важнее. Production и тестовые импорты `.env` не читают. При смене настроек перезапустить процесс. Секреты и базы исключены из Git.
+[Приложение](http://127.0.0.1:8000). База `server/data/mandato.sqlite3`; checkpoint-файл агента рядом. `scripts.run_local` загружает только локальный `.env`, без подстановок переменных; уже заданное окружение важнее. Production и тестовые импорты `.env` не читают. При смене настроек перезапустить процесс. Секреты и базы исключены из Git.
 
 Для разработки UI запустить API с `APP_URL=http://127.0.0.1:5173`, затем `npm run dev`. Vite проксирует API к 8000. Origin должен точно совпадать с `APP_URL`.
 
@@ -83,7 +83,7 @@ npm run format:check
 npm run build
 npx playwright install chromium
 npm run test:e2e
-docker build --tag agentpay:local .
+docker build --tag mandato:local .
 ```
 
 Playwright использует временную БД на 8001 и отключает SMTP/Yandex/Langfuse; не запускать его против клиентской базы. GitHub Actions повторяет Python, реальные PostgreSQL-транзакции, eval, аудиты, сборку, desktop/mobile браузер и Docker. Проверенные результаты конкретного выпуска — в [протоколе](docs/release-verification.md).

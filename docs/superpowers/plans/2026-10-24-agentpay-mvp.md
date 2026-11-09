@@ -1,4 +1,4 @@
-# AgentPay MVP Implementation Plan
+# Mandato MVP Implementation Plan
 
 > **For agentic workers:** Use superpowers:subagent-driven-development for independent tasks. Root owns integration, UI and final checks.
 

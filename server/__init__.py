@@ -1,1 +1,1 @@
-"""AgentPay server package."""
+"""Mandato server package."""

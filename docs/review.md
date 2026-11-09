@@ -1,10 +1,10 @@
-# AgentPay: независимая проверка спецификации и безопасности
+# Mandato: независимая проверка спецификации и безопасности
 
-Дата: 24.10.2026. Проверка выполнена отдельным агентом, который не реализовывал сервер и интерфейс. Основание — `docs/superpowers/specs/2026-10-24-agentpay-design.md` и `docs/superpowers/plans/2026-10-24-agentpay-mvp.md`.
+Дата: 24.10.2026. Проверка выполнена отдельным агентом, который не реализовывал сервер и интерфейс. Основание — `docs/superpowers/specs/2026-10-24-mandato-design.md` и `docs/superpowers/plans/2026-10-24-mandato-mvp.md`.
 
 ## Область
 
-Прочитаны серверные модели, схема SQLite, импорт CSV, аутентификация и CSRF, tenant-фильтры всех финансовых ресурсов, жизненный цикл писем, SMTP, адаптер Yandex, формы и карточка счёта. Написаны отдельные регрессионные проверки `e2e/test_security_review.py` и браузерные сценарии `e2e/agentpay.spec.ts`.
+Прочитаны серверные модели, схема SQLite, импорт CSV, аутентификация и CSRF, tenant-фильтры всех финансовых ресурсов, жизненный цикл писем, SMTP, адаптер Yandex, формы и карточка счёта. Написаны отдельные регрессионные проверки `e2e/test_security_review.py` и браузерные сценарии `e2e/mandato.spec.ts`.
 
 Это проверка исходного кода и локальных сценариев. Она не является внешним пентестом или проверкой инфраструктуры действующего хостинга. Внешние SMTP и Yandex API при независимых проверках не вызывались.
 
@@ -60,12 +60,12 @@
 
 Артефакты последнего прогона:
 
-- `e2e/results/agentpay-public-website-is-6b45e-ve-and-offers-a-real-signup-desktop/landing.png`
-- `e2e/results/agentpay-public-website-is-6b45e-ve-and-offers-a-real-signup-mobile/landing.png`
-- `e2e/results/agentpay-invoice-approved--7d3c5-t-without-a-fake-email-send-desktop/drawer.png`
-- `e2e/results/agentpay-invoice-approved--7d3c5-t-without-a-fake-email-send-mobile/drawer.png`
-- `e2e/results/agentpay-invoice-approved--7d3c5-t-without-a-fake-email-send-desktop/workspace.png`
-- `e2e/results/agentpay-invoice-approved--7d3c5-t-without-a-fake-email-send-mobile/workspace.png`
+- `e2e/results/mandato-public-website-is-6b45e-ve-and-offers-a-real-signup-desktop/landing.png`
+- `e2e/results/mandato-public-website-is-6b45e-ve-and-offers-a-real-signup-mobile/landing.png`
+- `e2e/results/mandato-invoice-approved--7d3c5-t-without-a-fake-email-send-desktop/drawer.png`
+- `e2e/results/mandato-invoice-approved--7d3c5-t-without-a-fake-email-send-mobile/drawer.png`
+- `e2e/results/mandato-invoice-approved--7d3c5-t-without-a-fake-email-send-desktop/workspace.png`
+- `e2e/results/mandato-invoice-approved--7d3c5-t-without-a-fake-email-send-mobile/workspace.png`
 
 **В проверенном объёме не осталось известных неустранённых P0/P1.** Исходный P1 закрыт регрессиями; найденные ошибки отображения даты и фокуса также исправлены и проверены. Это заключение относится к рассмотренной локальной версии и сценариям, а не к неизвестному состоянию внешнего хостинга.
 

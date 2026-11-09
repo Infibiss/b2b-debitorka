@@ -166,19 +166,6 @@ export function Auth({ onSession }: { onSession: (session: Session) => void }) {
                 </span>
               </label>
             )}
-            {mode === 'register' && (
-              <p className="auth-policy-note">
-                {t('Как используются имя, рабочая почта и данные компании — в')}{' '}
-                <a href="/privacy" target="_blank" rel="noreferrer">
-                  {t('политике обработки данных')}
-                </a>
-                {t('. Запрос на исправление или удаление можно направить')}{' '}
-                <a href="/data-request" target="_blank" rel="noreferrer">
-                  {t('отдельно')}
-                </a>
-                .
-              </p>
-            )}
             {error && (
               <p className="form-error" role="alert">
                 {error}

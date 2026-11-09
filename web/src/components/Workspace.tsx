@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Scale,
   ClipboardCheck,
+  ScanText,
 } from 'lucide-react';
 import { Brand } from './Brand';
 import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
@@ -44,6 +45,8 @@ import { LanguageSwitch } from './LanguageSwitch';
 import { RecoveryHome } from './recovery/RecoveryHome';
 import { DebtorsDesk } from './recovery/DebtorsDesk';
 import { DebtorCard } from './recovery/DebtorCard';
+import { RecognizeDesk } from './recovery/RecognizeDesk';
+import { OrganizationSwitch } from './recovery/Organizations';
 import {
   AutomationForm,
   FinancingDesk,
@@ -58,6 +61,7 @@ type Tab =
   | 'debtors'
   | 'finance'
   | 'financing'
+  | 'recognize'
   | 'templates'
   | 'reports'
   | 'settings'
@@ -69,6 +73,7 @@ const navigation = [
   { id: 'agent' as Tab, label: t('Ответы должников'), icon: Mail },
   { id: 'finance' as Tab, label: t('Оплаты'), icon: Wallet },
   { id: 'financing' as Tab, label: t('Финансирование'), icon: TrendingUp },
+  { id: 'recognize' as Tab, label: t('Распознавание'), icon: ScanText },
   { id: 'templates' as Tab, label: t('Шаблоны'), icon: Files },
   { id: 'reports' as Tab, label: t('Отчёты'), icon: ClipboardCheck },
   { id: 'settings' as Tab, label: t('Настройки'), icon: SettingsIcon },
@@ -242,6 +247,7 @@ export function Workspace() {
           <div className="sidebar-brand">
             <Brand />
           </div>
+          <OrganizationSwitch notify={notify} />
           <nav className="workspace-nav" aria-label={t('Разделы кабинета')}>
             {navigation.map(({ id, label, icon: Icon }) => (
               <button
@@ -323,6 +329,8 @@ export function Workspace() {
             ) : tab === 'debtors' ? (
               <DebtorsDesk
                 initialStage={stage}
+                meta={meta}
+                isManager={session.user.role !== 'accountant'}
                 onOpen={setDebtorId}
                 onImport={() => setModal('import')}
                 onCreate={() => setModal('create')}
@@ -331,6 +339,8 @@ export function Workspace() {
               />
             ) : tab === 'financing' ? (
               <FinancingDesk notify={notify} isManager={session.user.role !== 'accountant'} />
+            ) : tab === 'recognize' ? (
+              <RecognizeDesk notify={notify} onChanged={() => void refresh()} />
             ) : tab === 'templates' && meta ? (
               <TemplatesDesk meta={meta} notify={notify} />
             ) : tab === 'reports' ? (

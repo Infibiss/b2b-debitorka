@@ -45,11 +45,11 @@ def test_recovery_single_use_revokes_sessions_and_hides_account_existence(client
     # A rapid repeat does not send another email.
     client.post('/api/auth/recovery', json={'email': 'finance@example.ru'})
     assert len(mail) == 1
-    old_cookie = client.cookies.get('agentpay_session')
+    old_cookie = client.cookies.get('mandato_session')
     body = {'token': token, 'password': 'A-new-password-2026!'}
     assert client.post('/api/auth/reset-password', json=body).status_code == 204
     assert client.post('/api/auth/reset-password', json=body).status_code == 400
-    client.cookies.set('agentpay_session', old_cookie)
+    client.cookies.set('mandato_session', old_cookie)
     assert client.get('/api/auth/me').status_code == 401
     assert client.post('/api/auth/login', json={'email': 'finance@example.ru', 'password': 'Correct-horse-24!'}).status_code == 401
     assert client.post('/api/auth/login', json={'email': 'finance@example.ru', 'password': body['password']}).status_code == 200

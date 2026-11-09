@@ -1,25 +1,13 @@
 import { tariff } from '../pricing';
-import { LanguageSwitch } from './LanguageSwitch';
 import { locale, t } from '../i18n';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import {
-  ArrowRight,
-  Check,
-  Menu,
-  X,
-  FileText,
-  MessagesSquare,
-  Landmark,
-  Layers,
-  ArrowUpRight,
-} from 'lucide-react';
-import { Brand } from './Brand';
+import { ArrowRight, Check, ArrowUpRight } from 'lucide-react';
 import { api, post, setCsrf, money, ApiError, type Session } from '../api';
 import catalog from '../../../server/plan_catalog.json';
-import { legalEntityLine, PublicLegal, type PublicLegalKind } from './PublicLegal';
+import { PublicLegal, type PublicLegalKind } from './PublicLegal';
 import './public-site.css';
-import { PublicProcess } from './PublicProcess';
-import { PublicStoryPages } from './PublicStoryPages';
+import { Landing, SiteFooter, SiteHeader } from './Landing';
+import { PublicPages } from './PublicPages';
 
 type Plan = {
   id: string;
@@ -39,42 +27,6 @@ const legalRoutes: Record<string, string> = {
   '/data-request': 'data-request',
   '/consent': 'consent',
 };
-const nav = [
-  [t('Продукт'), '/product'],
-  [t('Для вашей команды'), '/solutions'],
-  [t('Подключения'), '/integrations'],
-  [t('Цены'), '/pricing'],
-];
-const features = [
-  {
-    icon: Layers,
-    title: t('Один портфель вместо разрозненных таблиц'),
-    text: t(
-      'Счета, договоры и частичные оплаты собраны по клиенту. Видно, сколько осталось получить и что мешает оплате.'
-    ),
-  },
-  {
-    icon: MessagesSquare,
-    title: t('Напоминания без ежедневной ручной работы'),
-    text: t(
-      'Задайте расписание и правила общения. Mandato следит за сроками, а споры и новые условия передаёт ответственному.'
-    ),
-  },
-  {
-    icon: Landmark,
-    title: t('Оплата подтверждается поступлением'),
-    text: t(
-      'Сверяйте выписку со счетами. Обещание клиента остаётся обещанием, пока деньги не поступят.'
-    ),
-  },
-  {
-    icon: FileText,
-    title: t('Юридическая работа продолжает историю дела'),
-    text: t(
-      'Соберите документы, рассчитайте требования и передайте пакет юристу. Переписку и основания не придётся искать заново.'
-    ),
-  },
-];
 function Button({
   href,
   children,
@@ -91,64 +43,15 @@ function Button({
     </a>
   );
 }
-function Header() {
-  const [open, setOpen] = useState(false);
-  return (
-    <header className="pub-header">
-      <Brand />
-      <LanguageSwitch />
-      <button
-        className="pub-mobile-menu"
-        aria-label={open ? t('Закрыть меню') : t('Открыть меню')}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <X /> : <Menu />}
-      </button>
-      <nav className={open ? 'is-open' : ''} aria-label={t('Основная навигация')}>
-        {nav.map(([label, href]) => (
-          <a key={href} href={href} aria-current={location.pathname === href ? 'page' : undefined}>
-            {label}
-          </a>
-        ))}
-        <a className="pub-login" href="/app?mode=login">
-          {t('Войти')} <ArrowUpRight size={16} aria-hidden="true" />
-        </a>
-        <a className="pub-nav-demo" href="/demo">
-          {t('Заказать демонстрацию')}
-        </a>
-      </nav>
-    </header>
-  );
-}
-function Footer() {
-  return (
-    <footer className="pub-footer">
-      <div>
-        <Brand />
-        <a href="mailto:info@mandato.ru">info@mandato.ru</a>
-        <small className="pub-legal-line">{legalEntityLine}</small>
-      </div>
-      <nav aria-label={t('Информация о сервисе')}>
-        <a href="/security">{t('Безопасность')}</a>
-        <a href="/company">{t('О компании')}</a>
-        <a href="/privacy">{t('Конфиденциальность')}</a>
-        <a href="/terms">{t('Условия использования')}</a>
-        <a href="/refunds">{t('Возврат средств')}</a>
-        <a href="/cookies">{t('Файлы cookie')}</a>
-      </nav>
-      <p>© {new Date().getFullYear()} Mandato</p>
-    </footer>
-  );
-}
 function CookieNotice() {
-  const [visible, setVisible] = useState(() => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
     try {
-      return localStorage.getItem('mandato-cookie-notice') !== 'seen';
+      setVisible(localStorage.getItem('mandato-cookie-notice') !== 'seen');
     } catch {
-      return true;
+      setVisible(true);
     }
-  });
+  }, []);
   return visible ? (
     <aside className="pub-cookie" aria-label={t('Использование cookie')}>
       <p>
@@ -169,135 +72,6 @@ function CookieNotice() {
       </button>
     </aside>
   ) : null;
-}
-function Home() {
-  return (
-    <>
-      <section className="pub-hero">
-        <h1>
-          {t('Ведите дебиторку')}
-          <br />
-          <span>{t('от счёта до оплаты')}</span>
-        </h1>
-        <p className="pub-lead">
-          {t(
-            'Управляйте задолженностью от первого счёта до поступления денег. Mandato связывает бухгалтерию, общение с клиентом и юридическую работу в одном процессе.'
-          )}
-        </p>
-        <div className="pub-actions">
-          <Button href="/demo">{t('Заказать демонстрацию')}</Button>
-          <Button href="/start?plan=trial" secondary>
-            {t('Попробовать бесплатно')}
-          </Button>
-        </div>
-        <p className="pub-caption">{t('14 дней без карты и автоматического продления')}</p>
-      </section>
-      <PublicProcess />
-      <section className="pub-section">
-        <div className="pub-section-title">
-          <h2>
-            {t('Не упускайте деньги')}
-            <br />
-            {t('между отделами.')}
-          </h2>
-          <p>
-            {t(
-              'Когда каждый видит свою часть работы, задолженность движется к оплате. Общая история помогает команде действовать согласованно.'
-            )}
-          </p>
-        </div>
-        <div className="pub-feature-grid">
-          {features.map(({ title, text }) => (
-            <article key={title}>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="pub-section pub-team">
-        <h2>
-          {t('Одна система')}
-          <br />
-          {t('Понятная роль для каждого')}
-        </h2>
-        <div className="pub-three">
-          <article>
-            <span>{t('Бухгалтерия')}</span>
-            <h3>{t('Точные суммы и документы')}</h3>
-            <p>
-              {t(
-                'Разбирайте поступления и расхождения, находите недостающие документы и передавайте подготовленное дело дальше.'
-              )}
-            </p>
-          </article>
-          <article>
-            <span>{t('Руководитель')}</span>
-            <h3>{t('Решения без потери контроля')}</h3>
-            <p>
-              {t(
-                'Определяйте правила, согласуйте скидки и рассрочки. Видно, какие долги требуют участия команды.'
-              )}
-            </p>
-          </article>
-          <article>
-            <span>{t('Юрист')}</span>
-            <h3>{t('История, готовая к работе')}</h3>
-            <p>
-              {t(
-                'Договор, счета, доказательства и переписка собраны вместе. Проверяйте требования и ведите дальнейшие этапы взыскания.'
-              )}
-            </p>
-          </article>
-        </div>
-      </section>
-      <section className="pub-section pub-connections">
-        <div>
-          <h2>
-            {t('Начните с реестра')}
-            <br />
-            {t('Подключайте источники по мере готовности')}
-          </h2>
-          <p>
-            {t(
-              'Загрузите таблицу, чтобы увидеть портфель. Для регулярного обмена подключите вашу учётную систему, документы и банк.'
-            )}
-          </p>
-          <a className="pub-text-link" href="/integrations">
-            {t('Как устроены подключения')} <ArrowRight size={18} aria-hidden="true" />
-          </a>
-        </div>
-        <div className="pub-source-list">
-          {[
-            [t('Excel и CSV'), t('Загрузка счетов и выписок')],
-            [t('1С'), t('Данные учёта и сверка')],
-            [t('Диадок'), t('Документы по сделкам')],
-            [t('Банк'), t('Подтверждение поступлений')],
-          ].map(([name, text]) => (
-            <div key={name}>
-              <strong>{name}</strong>
-              <span>{text}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="pub-final-cta" aria-labelledby="pub-final-cta-title">
-        <div>
-          <h2 id="pub-final-cta-title">{t('Начните получать оплату вовремя')}</h2>
-          <p>
-            {t(
-              'Соберите задолженность в одном реестре, определите следующий шаг и держите договорённости с клиентами под контролем.'
-            )}
-          </p>
-        </div>
-        <div className="pub-final-cta-action">
-          <p>{t('14 дней бесплатно')}</p>
-          <Button href="/start?plan=trial">{t('Попробовать бесплатно')}</Button>
-          <span>{t('Без карты и автоматического продления')}</span>
-        </div>
-      </section>
-    </>
-  );
 }
 function Pricing() {
   return (
@@ -603,77 +377,6 @@ function ContentPage({ kind }: { kind: string }) {
     string,
     { title: string; lead: string; items: { title: string; text: string }[] }
   > = {
-    product: {
-      title: t('Управляйте всем путём к оплате.'),
-      lead: t(
-        'От загрузки задолженности до юридического дела — с общими данными и понятным следующим действием.'
-      ),
-      items: features.map((f) => ({ title: f.title, text: f.text })),
-    },
-    solutions: {
-      title: t('Каждому — своя работа. Всем — общая картина.'),
-      lead: t(
-        'Соберите бухгалтерию, руководителя и юриста вокруг одного дела, не меняя ответственность людей.'
-      ),
-      items: [
-        {
-          title: t('Для бухгалтера'),
-          text: t(
-            'Сверка остатков, разбор частичных оплат, поиск первичных документов и контроль обещанных дат. Исключения попадают в отдельную очередь.'
-          ),
-        },
-        {
-          title: t('Для руководителя'),
-          text: t(
-            'Правила общения, согласование новых условий, распределение ответственности и контроль портфеля.'
-          ),
-        },
-        {
-          title: t('Для юриста'),
-          text: t(
-            'Подтверждающие документы по каждому счёту, расчёт требований, проверка пакета и история судебных этапов.'
-          ),
-        },
-      ],
-    },
-    integrations: {
-      title: t('Данные из ваших рабочих систем.'),
-      lead: t(
-        'Начните с файлов. Для постоянного обмена используйте доступы вашей компании и проверку подключения.'
-      ),
-      items: [
-        {
-          title: t('Excel и CSV'),
-          text: t(
-            'Загружайте счета и банковские выписки. Перед сохранением проверьте ошибки и сопоставление полей.'
-          ),
-        },
-        {
-          title: t('1С'),
-          text: t(
-            'Обмен учётными данными зависит от конфигурации и версии вашей 1С. Подключение проверяется вместе с ответственным за учётную систему.'
-          ),
-        },
-        {
-          title: t('Диадок'),
-          text: t(
-            'Используйте документы вашей организации по предоставленному доступу. Сначала проверьте организацию и права обмена.'
-          ),
-        },
-        {
-          title: t('Банк'),
-          text: t(
-            'Загрузите выписку файлом или согласуйте подключение доступного банковского API. Поступление уменьшает долг после сопоставления.'
-          ),
-        },
-        {
-          title: t('Почта и телефония'),
-          text: t(
-            'Работа через каналы вашей компании требует подключения и проверки. Расписание и границы автоматизации задаёт руководитель.'
-          ),
-        },
-      ],
-    },
     security: {
       title: t('Доступ и действия под контролем.'),
       lead: t(
@@ -1241,18 +944,8 @@ export function PublicSite() {
   const path = location.pathname.replace(/\/$/, '') || '/';
   const kind = path.slice(1);
   useEffect(() => {
-    const names: Record<string, string> = {
-      '/': t('Дебиторка от счёта до оплаты'),
-      '/pricing': t('Цены и тарифы'),
-      '/demo': t('Демонстрация'),
-      '/start': t('Начать работу'),
-      '/account': t('Тариф и аккаунт'),
-      '/product': t('Продукт'),
-      '/solutions': t('Для вашей команды'),
-      '/integrations': t('Подключения'),
-      '/security': t('Безопасность'),
-    };
-    document.title = `${names[path] || t('Информация о сервисе')} — Mandato`;
+    if (path === '/start' || path === '/account')
+      document.title = `${t('Начать работу')} — Mandato`;
   }, [path]);
   useEffect(() => {
     if (
@@ -1270,12 +963,10 @@ export function PublicSite() {
         }),
       { threshold: 0.08 }
     );
-    document
-      .querySelectorAll('#public-main > section, #public-main > .story-page > section')
-      .forEach((section) => {
-        section.classList.add('pub-reveal');
-        observer.observe(section);
-      });
+    document.querySelectorAll('#public-main > section').forEach((section) => {
+      section.classList.add('pub-reveal');
+      observer.observe(section);
+    });
     return () => observer.disconnect();
   }, [path]);
   if (legalRoutes[path])
@@ -1290,10 +981,10 @@ export function PublicSite() {
       <a className="pub-skip" href="#public-main">
         {t('К содержимому')}
       </a>
-      <Header />
+      {path !== '/' && <SiteHeader />}
       <main id="public-main" tabIndex={-1}>
         {path === '/' ? (
-          <Home />
+          <Landing />
         ) : path === '/pricing' ? (
           <Pricing />
         ) : path === '/demo' ? (
@@ -1303,7 +994,7 @@ export function PublicSite() {
         ) : legalRoutes[path] ? (
           <PublicLegal kind={legalRoutes[path] as PublicLegalKind} />
         ) : kind === 'product' || kind === 'solutions' || kind === 'integrations' ? (
-          <PublicStoryPages kind={kind} />
+          <PublicPages kind={kind} />
         ) : kind === 'security' ? (
           <ContentPage kind={kind} />
         ) : (
@@ -1315,7 +1006,7 @@ export function PublicSite() {
           </section>
         )}
       </main>
-      <Footer />
+      <SiteFooter />
       <CookieNotice />
     </div>
   );

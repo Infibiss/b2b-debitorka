@@ -49,10 +49,10 @@ class AgentObservability:
         # Only these deliberately constructed spans reach Langfuse.
         try:
             context = self.client.start_as_current_observation(
-                trace_context={"trace_id": trace_id}, name="agentpay." + operation,
+                trace_context={"trace_id": trace_id}, name="mandato." + operation,
                 as_type="generation" if operation == "extract" else "span",
-                model=model, version="agentpay-extract-v1", input=None, output=None,
-                metadata={"workflow": "receivables_review", "prompt_version": "agentpay-extract-v1"},
+                model=model, version="mandato-extract-v1", input=None, output=None,
+                metadata={"workflow": "receivables_review", "prompt_version": "mandato-extract-v1"},
             )
             span = context.__enter__()
         except Exception:

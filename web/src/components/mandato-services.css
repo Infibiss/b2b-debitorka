@@ -193,7 +193,7 @@
   color: var(--ink);
 }
 .mandato-services .ms-check input {
-  accent-color: #526f40;
+  accent-color: #183d31;
   width: 16px;
   height: 16px;
   margin-top: 3px;
@@ -232,7 +232,7 @@
   white-space: nowrap;
 }
 .mandato-services td input {
-  accent-color: #526f40;
+  accent-color: #183d31;
   width: 16px;
   height: 16px;
 }

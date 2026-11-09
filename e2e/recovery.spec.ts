@@ -84,6 +84,7 @@ test('provider details and a separate consent are published', async ({ page }) =
 
 test('the site and workspace switch to English', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: 'Понятно' }).click();
   await page.getByRole('button', { name: 'Switch to English' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('link', { name: 'Try for free' }).first()).toBeVisible();

@@ -28,7 +28,7 @@ class Config:
         app_url = (os.getenv("APP_URL") or os.getenv("RENDER_EXTERNAL_URL", "")).rstrip("/")
         if production and (not secure or not app_url.startswith("https://")):
             raise RuntimeError("Production requires SECURE_COOKIES=true and an https APP_URL")
-        default = str(Path(__file__).parent / "data" / "agentpay.sqlite3")
+        default = str(Path(__file__).parent / "data" / "mandato.sqlite3")
         return cls(os.getenv("DATABASE_PATH", default), app_url, secure, production, database_url=os.getenv("DATABASE_URL", ""))
 
 
@@ -91,7 +91,7 @@ def initialize(config):
             migrate_v3(connection, LEGACY_SCHEMA_SQL)
         from .finance import initialize_schema as initialize_finance
         initialize_finance(connection)
-        for module_name in ('legal', 'agent', 'accounting_import', 'portfolio', 'integrations', 'forecasting', 'negotiation', 'partner', 'workflow', 'yandex_services', 'account_help', 'commercial', 'recovery', 'financing'):
+        for module_name in ('legal', 'agent', 'accounting_import', 'portfolio', 'integrations', 'forecasting', 'negotiation', 'partner', 'workflow', 'yandex_services', 'account_help', 'commercial', 'recovery', 'financing', 'organizations'):
             try:
                 module = __import__('server.'+module_name, fromlist=['initialize_schema'])
             except ModuleNotFoundError as error:

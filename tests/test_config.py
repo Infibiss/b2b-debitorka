@@ -21,8 +21,8 @@ def test_production_uses_render_generated_https_origin(production_environment):
 
 def test_explicit_app_origin_overrides_render_default(production_environment):
     production_environment.setenv("RENDER_EXTERNAL_URL", "https://example.onrender.com")
-    production_environment.setenv("APP_URL", "https://agentpay.example.ru/")
-    assert Config.from_environment().app_url == "https://agentpay.example.ru"
+    production_environment.setenv("APP_URL", "https://mandato.example.ru/")
+    assert Config.from_environment().app_url == "https://mandato.example.ru"
 
 
 def test_empty_app_origin_still_uses_render_default(production_environment):
@@ -33,7 +33,7 @@ def test_empty_app_origin_still_uses_render_default(production_environment):
 
 @pytest.mark.parametrize("configured,render", [
     (None, "http://example.onrender.com"),
-    ("http://agentpay.example.ru", "https://example.onrender.com"),
+    ("http://mandato.example.ru", "https://example.onrender.com"),
     (None, None),
 ])
 def test_production_rejects_insecure_or_missing_origin(production_environment, configured, render):

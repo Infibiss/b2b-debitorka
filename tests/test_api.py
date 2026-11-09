@@ -16,7 +16,7 @@ from server.business_time import business_today
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "agentpay.sqlite3"))
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "mandato.sqlite3"))
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("SECURE_COOKIES", "false")
     monkeypatch.setenv("APP_TIMEZONE", "Europe/Moscow")
@@ -192,7 +192,7 @@ def test_settings_persist_without_secrets_and_money_is_strict(client):
 
 def test_origin_and_body_size_controls(client):
     register(client)
-    client.app.state.config.app_url = "https://agentpay.example.ru"
+    client.app.state.config.app_url = "https://mandato.example.ru"
     response = client.post("/api/invoices", json={}, headers={"Origin": "https://evil.example"})
     assert response.status_code == 403
     client.app.state.config.app_url = ""
@@ -335,12 +335,12 @@ def test_email_is_one_valid_mailbox_not_a_header_list(client, email):
 def test_production_cookie_and_origin_configuration(client, monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("SECURE_COOKIES", "true")
-    monkeypatch.setenv("APP_URL", "https://agentpay.example.ru")
+    monkeypatch.setenv("APP_URL", "https://mandato.example.ru")
     module = importlib.import_module("server.main")
-    with TestClient(module.create_app(), base_url="https://agentpay.example.ru") as production:
+    with TestClient(module.create_app(), base_url="https://mandato.example.ru") as production:
         payload = {"name": "Анна", "company": "A", "email": "secure@example.ru", "password": "Strong-password-2026"}
         assert production.post("/api/auth/register", json=payload).status_code == 403
-        registered = production.post("/api/auth/register", json=payload, headers={"Origin": "https://agentpay.example.ru"})
+        registered = production.post("/api/auth/register", json=payload, headers={"Origin": "https://mandato.example.ru"})
         cookie = registered.headers["set-cookie"].lower()
         assert "httponly" in cookie and "secure" in cookie and "samesite=lax" in cookie
         assert production.get("/api/auth/me").status_code == 200

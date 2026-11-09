@@ -13,32 +13,19 @@ test('separate pricing page discloses monthly tiers and additional recovery char
   await expect(page.getByRole('heading', { name: 'Адвокату — 12%' })).toBeVisible();
   await page.screenshot({ path: info.outputPath('pricing.png'), fullPage: true });
 });
-test('home offers a distinct navigation demo and a final free trial action without FAQ', async ({
-  page,
-}) => {
+test('home keeps a demo and a free trial within reach', async ({ page }) => {
   await page.goto('/');
-  const menu = page.getByRole('button', { name: 'Открыть меню', exact: true });
-  const compactNavigation = await menu.isVisible();
-  if (compactNavigation) await menu.click();
-  const navigation = page.getByRole('navigation', { name: 'Основная навигация' });
-  const demo = navigation.getByRole('link', { name: 'Заказать демонстрацию', exact: true });
-  await expect(demo).toBeVisible({ timeout: 1500 });
-  await expect(demo).toHaveAttribute('href', '/demo');
-  await expect(navigation.getByRole('link', { name: 'Войти', exact: true })).toBeVisible();
-  expect((await navigation.getByRole('link').allTextContents()).map((text) => text.trim())).toEqual(
-    ['Продукт', 'Для вашей команды', 'Подключения', 'Цены', 'Войти', 'Заказать демонстрацию']
-  );
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
-  ).toBeLessThanOrEqual(2);
-  if (compactNavigation) await page.getByRole('button', { name: 'Закрыть меню' }).click();
-  const finalAction = page.getByRole('region', { name: 'Начните получать оплату вовремя' });
-  await expect(finalAction).toBeVisible();
-  await expect(finalAction).toContainText('14 дней бесплатно');
-  await expect(finalAction).toContainText(/без карты и автоматического продления/i);
-  const trial = finalAction.getByRole('link', { name: 'Попробовать бесплатно', exact: true });
+  await page.getByRole('button', { name: 'Открыть меню', exact: true }).click();
+  const menu = page.getByRole('dialog', { name: 'Меню' });
+  await expect(menu.getByRole('button', { name: 'Заказать демонстрацию' })).toBeVisible();
+  const before = await page.evaluate(() => scrollY);
+  await page.mouse.wheel(0, 600);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => scrollY)).toBe(before);
+  await expect(menu.getByRole('link', { name: 'Войти' })).toHaveAttribute('href', '/app?mode=login');
+  await menu.getByRole('button', { name: 'Закрыть' }).click();
+  const trial = page.getByRole('contentinfo').getByRole('link', { name: 'Попробовать бесплатно', exact: true });
   await expect(trial).toHaveAttribute('href', '/start?plan=trial');
-  await expect(page.getByRole('heading', { name: 'Вопросы и ответы' })).toHaveCount(0);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
   ).toBeLessThanOrEqual(2);

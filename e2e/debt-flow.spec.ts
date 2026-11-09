@@ -1,6 +1,6 @@
 import { navigate, expect, test, type Page } from './fixtures';
 
-const PASSWORD = 'AgentPay-e2e-correct-2026!';
+const PASSWORD = 'Mandato-e2e-correct-2026!';
 const businessDate = (instant: Date) =>
   instant.toLocaleDateString('en-CA', { timeZone: 'Europe/Moscow' });
 const today = businessDate(new Date());
@@ -78,12 +78,8 @@ test('public website is readable, interactive, and offers a real signup', async 
   await page.goto('/');
   await expect(page.locator('h1')).toBeVisible();
   await expect(
-    page.locator('.pub-hero').getByRole('link', { name: 'Попробовать бесплатно', exact: true })
+    page.locator('.hero').getByRole('link', { name: 'Попробовать бесплатно', exact: true })
   ).toBeVisible();
-  const lastStep = page.getByRole('tab', { name: /Закрытие/ });
-  await lastStep.click();
-  await expect(lastStep).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('Остаток обнулён');
   for (const section of await page.locator('.reveal').all()) await section.scrollIntoViewIfNeeded();
   await page.locator('h1').scrollIntoViewIfNeeded();
   await assertNoHorizontalOverflow(page);
@@ -93,7 +89,7 @@ test('public website is readable, interactive, and offers a real signup', async 
     animations: 'disabled',
   });
   await page
-    .locator('.pub-hero')
+    .locator('.hero')
     .getByRole('link', { name: 'Попробовать бесплатно', exact: true })
     .click();
   await expect(page.getByLabel('Компания', { exact: true })).toBeVisible();

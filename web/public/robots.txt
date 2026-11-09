@@ -2,3 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /app
 Disallow: /api/
+Disallow: /account
+Disallow: /start
+
+Sitemap: https://mandato.ru/sitemap.xml

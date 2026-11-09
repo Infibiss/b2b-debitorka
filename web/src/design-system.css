@@ -1,8 +1,8 @@
 /* Mandato workspace contract. Components own layout; these tokens own hierarchy. */
 :root {
   --surface: #ffffff;
-  --surface-subtle: #f2f4f2;
-  --text-secondary: #56615a;
+  --surface-subtle: #f4f4f4;
+  --text-secondary: #626874;
   --selection-bg: #e9efeb;
   --success-bg: #edf5ef;
   --success-ink: #315d3e;
@@ -28,10 +28,10 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 .workspace {
-  --paper: #f6f7f6;
-  --ink: #202923;
-  --muted: #68746c;
-  --line: #dce2dd;
+  --paper: #f4f4f4;
+  --ink: #0a0a0a;
+  --muted: #626874;
+  --line: #e6e8ec;
   --border: var(--line);
   --green: #183d31;
   --green-dark: var(--green);
@@ -123,7 +123,7 @@
   color: #fff;
 }
 .workspace .button-dark:hover {
-  background: #24513f;
+  background: #183d31;
 }
 .workspace :is(.button-outline, .button-lime) {
   color: var(--ink);

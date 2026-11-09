@@ -17,9 +17,7 @@ export type PublicLegalKind =
 const legalEntity = t(
   'индивидуальный предприниматель Муртазалиев Матвей Асланович, ИНН 263606438909, ОГРНИП 326265100166493'
 );
-export const legalEntityLine = t(
-  'ИП Муртазалиев М. А. · ИНН 263606438909 · ОГРНИП 326265100166493 · Сервис для бизнеса · 18+'
-);
+export const legalEntityLine = t('ИНН 263606438909 · ОГРНИП 326265100166493');
 
 const pages: Record<PublicLegalKind, { title: string; intro: string }> = {
   privacy: {
@@ -350,7 +348,7 @@ function Cookies() {
     <>
       <Section title={t('Вход и безопасность')}>
         <p>
-          Cookie <code>agentpay_session</code>{' '}
+          Cookie <code>mandato_session</code>{' '}
           {t(
             'поддерживает вход в аккаунт и действует до 7 дней. Она недоступна JavaScript страницы (HttpOnly), использует SameSite=Lax и удаляется при выходе. В защищённой конфигурации она передаётся только по HTTPS. Защита запросов от подделки использует отдельный CSRF-токен в памяти приложения, а не рекламную cookie.'
           )}

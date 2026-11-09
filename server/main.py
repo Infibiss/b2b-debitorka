@@ -24,10 +24,10 @@ import importlib
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 from fastapi import Depends, FastAPI, HTTPException, Request
-from starlette.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from .csv_import import parse_csv
 from .business_time import business_today
@@ -38,7 +38,19 @@ from .finance_imports import create_invoice, preview_changes
 from .models import (ContactInput, CSVInput, DraftInput, InvoiceInput, Login, MessageInput,
                      PaymentInput, PromiseInput, Register, SettingsInput, StatusInput)
 
-COOKIE_NAME = "agentpay_session"
+COOKIE_NAME = "mandato_session"
+
+
+class ImmutableStatic(StaticFiles):
+    """Build assets carry a content hash in their name, so browsers may keep them."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 PASSWORDS = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2)
 DUMMY_HASH = PASSWORDS.hash("dummy-verification-password-never-a-user")
 PUBLIC_MESSAGE = ("id", "invoice_id", "subject", "body", "status", "recipient", "source", "created_at")
@@ -83,16 +95,18 @@ class GuardMiddleware:
                 declared = int(headers.get("content-length", "0"))
             except ValueError:
                 return await JSONResponse({"detail": "Некорректный Content-Length"}, 400)(scope, receive, send)
-            if declared > self.config.max_body_bytes:
-                return await JSONResponse({"detail": "Размер запроса превышает 2 МБ"}, 413)(scope, receive, send)
+            from .recovery_recognition import MAX_BODY_BYTES, UPLOAD_PATH
+            body_limit = MAX_BODY_BYTES if scope["path"] == UPLOAD_PATH else self.config.max_body_bytes
+            if declared > body_limit:
+                return await JSONResponse({"detail": "Размер запроса превышает допустимый"}, 413)(scope, receive, send)
             chunks, size = [], 0
             while True:
                 message = await receive()
                 if message["type"] == "http.disconnect":
                     return
                 size += len(message.get("body", b""))
-                if size > self.config.max_body_bytes:
-                    return await JSONResponse({"detail": "Размер запроса превышает 2 МБ"}, 413)(scope, receive, send)
+                if size > body_limit:
+                    return await JSONResponse({"detail": "Размер запроса превышает допустимый"}, 413)(scope, receive, send)
                 chunks.append(message.get("body", b""))
                 if not message.get("more_body", False):
                     break
@@ -233,6 +247,12 @@ def get_user(request: Request):
             WHERE s.token_hash=? AND s.expires_at>?""", (digest(raw_token), now())).fetchone()
     if user is None:
         problem(401, "Сессия завершена. Войдите снова")
+    user = dict(user)
+    from .organizations import active_tenant
+    with database(request.app.state.config) as connection:
+        chosen = active_tenant(connection, user["id"])
+    if chosen:
+        user.update(tenant_id=chosen["tenant_id"], company=chosen["company"])
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         csrf = request.headers.get("x-csrf-token", "")
         if not csrf or not hmac.compare_digest(csrf, user["csrf_token"]):
@@ -634,7 +654,7 @@ def create_app():
                           invoice_row=invoice_row, invoice_view=invoice_view, identifier=identifier,
                           now=now, problem=problem, settings_view=settings_view, contactable=contactable)
     application.include_router(finance.create_router(ctx))
-    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial", "recovery", "financing"):
+    for module_name in ("legal", "agent", "accounting_import", "portfolio", "integrations", "forecasting", "negotiation", "partner", "workflow", "yandex_services", "account_help", "commercial", "recovery", "financing", "organizations"):
         try:
             module = importlib.import_module("server." + module_name)
         except ModuleNotFoundError as error:
@@ -649,7 +669,7 @@ def create_app():
 
     web_dist = Path(__file__).resolve().parents[1] / "web" / "dist"
     if (web_dist / "assets").is_dir():
-        application.mount("/assets", StaticFiles(directory=web_dist / "assets"), name="assets")
+        application.mount("/assets", ImmutableStatic(directory=web_dist / "assets"), name="assets")
 
     @application.get("/{path:path}")
     def frontend(path: str):
@@ -658,6 +678,9 @@ def create_app():
             return FileResponse(candidate)
         if (web_dist / "index.html").is_file():
             public_pages = {"", "product", "solutions", "integrations", "pricing", "security", "demo", "start", "account", "privacy", "terms", "refunds", "cookies", "company", "data-request", "consent"}
+            prerendered = web_dist / "_pages" / path.strip("/") / "index.html"
+            if path.strip("/") in public_pages and prerendered.is_file():
+                return FileResponse(prerendered, headers={"Cache-Control": "no-cache"})
             status = 200 if path.strip("/") in public_pages or path.startswith("app") else 404
             return FileResponse(web_dist / "index.html", status_code=status, headers={"Cache-Control": "no-cache"})
         return JSONResponse({"detail": "Соберите фронтенд: cd web && npm run build"}, 404)

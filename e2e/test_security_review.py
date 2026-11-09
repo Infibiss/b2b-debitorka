@@ -170,7 +170,7 @@ def test_wrong_csrf_or_origin_cannot_mutate_data(reviewed_app):
         client.headers["X-CSRF-Token"] = "wrong"
         assert client.post("/api/invoices", json={}).status_code == 403
         client.headers["X-CSRF-Token"] = correct
-        reviewed_app.state.config.app_url = "https://agentpay.example.ru"
+        reviewed_app.state.config.app_url = "https://mandato.example.ru"
         assert client.post("/api/invoices", json={}).status_code == 403
         assert client.post("/api/invoices", json={}, headers={"Origin": "https://evil.example.ru"}).status_code == 403
         assert client.get("/api/invoices").json()["items"] == []

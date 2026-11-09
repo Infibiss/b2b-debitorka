@@ -1,4 +1,4 @@
-# Итог повторной проверки AgentPay
+# Итог повторной проверки Mandato
 
 24.10.2026. Запрос владельца: бесплатное размещение, полная сверка с исходным PDF, Yandex `.env`, агентный стек и голосовые звонки.
 
@@ -23,7 +23,7 @@
 | `TZ=UTC .venv/bin/python -m pytest -q` | **127 passed**, 9.34 s; одно предупреждение о будущем тестовом транспорте Starlette |
 | `TZ=UTC PATH="$PWD/.venv/bin:$PATH" npm run test:e2e` | **10 passed**, 23.1 s, desktop и mobile |
 | `npm run check` и `npm run build` | exit 0 |
-| `docker build --tag agentpay:audit .` | exit 0 после финального исправления bootstrap |
+| `docker build --tag mandato:audit .` | exit 0 после финального исправления bootstrap |
 | `pip_audit -r requirements.txt` | известных уязвимостей не найдено на момент проверки |
 | `npm audit --audit-level=high` | 0 vulnerabilities |
 | Реальный `scripts.check_llm --live` | **HTTP 200, source=yandex, status=ok** на YandexGPT Pro 5.1; только общие фразы, без клиентских записей |

@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: agentpay-${{ github.workflow }}-${{ github.ref }}
+  group: mandato-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,13 +21,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: agentpay_test
-          POSTGRES_PASSWORD: agentpay-test-only
-          POSTGRES_DB: agentpay_test
+          POSTGRES_USER: mandato_test
+          POSTGRES_PASSWORD: mandato-test-only
+          POSTGRES_DB: mandato_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U agentpay_test -d agentpay_test"
+          --health-cmd "pg_isready -U mandato_test -d mandato_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
@@ -70,7 +70,7 @@ jobs:
           "$client_dir/pg_restore" --version
       - name: Test API and operations
         env:
-          TEST_POSTGRES_URL: postgresql://agentpay_test:agentpay-test-only@127.0.0.1:5432/agentpay_test
+          TEST_POSTGRES_URL: postgresql://mandato_test:mandato-test-only@127.0.0.1:5432/mandato_test
         run: python -m pytest -q
       - name: Evaluate agent safety regressions
         run: python -m server.agent_evals --mode replay --out var/agent-eval-replay.json
@@ -87,7 +87,7 @@ jobs:
       - name: Test browser workflows
         run: npm run test:e2e
       - name: Build production container
-        run: docker build --tag agentpay:ci .
+        run: docker build --tag mandato:ci .
       - name: Save browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

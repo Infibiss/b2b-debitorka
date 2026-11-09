@@ -45,6 +45,19 @@ CREATE TABLE IF NOT EXISTS recovery_log (
  action TEXT NOT NULL, from_status TEXT NOT NULL, to_status TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
  actor_id TEXT NOT NULL, actor_name TEXT NOT NULL, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS recovery_archive (
+ tenant_id TEXT NOT NULL REFERENCES tenants(id), counterparty_id TEXT NOT NULL, archived_at TEXT NOT NULL, PRIMARY KEY(tenant_id,counterparty_id)
+);
+CREATE TABLE IF NOT EXISTS recovery_register (
+ id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id), counterparty_id TEXT NOT NULL, kind TEXT NOT NULL,
+ on_date TEXT NOT NULL, title TEXT NOT NULL, reference TEXT NOT NULL DEFAULT '', amount INTEGER, status TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',
+ created_by TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS recovery_register_debtor ON recovery_register(tenant_id,counterparty_id,on_date);
+CREATE TABLE IF NOT EXISTS recovery_custom_templates (
+ id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id), title TEXT NOT NULL, stage TEXT NOT NULL, heading TEXT NOT NULL, address TEXT NOT NULL, body TEXT NOT NULL,
+ updated_by TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS recovery_log_debtor ON recovery_log(tenant_id,counterparty_id,created_at);
 CREATE TABLE IF NOT EXISTS recovery_organization (
  tenant_id TEXT PRIMARY KEY REFERENCES tenants(id), data_json TEXT NOT NULL, updated_at TEXT NOT NULL
@@ -69,7 +82,8 @@ Line = Annotated[str, Field(max_length=300)]
 
 
 def initialize_schema(connection):
-    for statement in SCHEMA.split(';'):
+    from . import recovery_dashboards, recovery_recognition
+    for statement in (SCHEMA + ';' + recovery_dashboards.SCHEMA + ';' + recovery_recognition.SCHEMA).split(';'):
         if statement.strip():
             connection.execute(statement)
 
@@ -89,7 +103,10 @@ class ActionInput(Input):
 
 class BulkInput(Input):
     ids: list[str] = Field(min_length=1, max_length=500)
-    action: Literal['start', 'prepare_claim']
+    action: Literal['start', 'prepare_claim', 'to_court', 'hold', 'unhold', 'assign', 'custom_status', 'archive', 'unarchive', 'document']
+    assignee_id: str | None = Field(default=None, max_length=100)
+    custom_status: Line = ''
+    kind: str = Field(default='', max_length=100)
 
 
 class DebtorPatch(Input):
@@ -102,6 +119,9 @@ class DebtorPatch(Input):
     court_name: Line = ''
     court_address: Line = ''
     bank_name: Line = ''
+    contact_person: Line = ''
+    phone: Annotated[str, Field(max_length=32)] = ''
+    cedent: Line = ''
 
 
 class Organization(Input):
@@ -128,6 +148,11 @@ class Channels(Input):
     post: Channel
 
 
+class ClaimTier(Input):
+    min_amount: Annotated[StrictInt, Field(ge=0)]
+    kind: Literal['claim_soft', 'claim', 'claim_final']
+
+
 class Automation(Input):
     enabled: StrictBool
     min_amount: Annotated[StrictInt, Field(ge=0)]
@@ -141,6 +166,12 @@ class Automation(Input):
     weekdays: list[StrictInt] = Field(min_length=1, max_length=7)
     start_hour: Annotated[StrictInt, Field(ge=0, le=23)]
     end_hour: Annotated[StrictInt, Field(ge=1, le=24)]
+    month_days: list[Annotated[StrictInt, Field(ge=1, le=31)]] = Field(default_factory=list, max_length=31)
+    claim_tiers: list[ClaimTier] = Field(default_factory=list, max_length=3)
+    auto_to_court: StrictBool = False
+    court_min_amount: Annotated[StrictInt, Field(ge=0)] = 5_000_000
+    auto_enforcement: StrictBool = False
+    auto_archive_paid: StrictBool = False
 
     @model_validator(mode='after')
     def consistent(self):
@@ -152,7 +183,7 @@ class Automation(Input):
 
 
 class DocumentInput(Input):
-    kind: Literal[templates.KINDS]  # type: ignore[valid-type]
+    kind: str = Field(min_length=1, max_length=100)
 
 
 class TemplateInput(Input):
@@ -177,7 +208,8 @@ def day(value):
 
 def get_automation(connection, tenant):
     row = connection.execute('SELECT data_json FROM recovery_automation WHERE tenant_id=?', (tenant,)).fetchone()
-    return json.loads(row['data_json']) if row else json.loads(json.dumps(rules.DEFAULT_AUTOMATION))
+    stored = json.loads(row['data_json']) if row else {}
+    return json.loads(json.dumps(rules.DEFAULT_AUTOMATION)) | stored
 
 
 def get_organization(connection, tenant):
@@ -210,7 +242,8 @@ def tenant_context(connection, tenant):
     return dict(evidence=evidence, checks=latest_registry_checks(connection, tenant), automation=get_automation(connection, tenant),
                 organization=get_organization(connection, tenant), today=business_today(),
                 states={row['counterparty_id']: dict(row) for row in connection.execute('SELECT * FROM recovery_debtors WHERE tenant_id=?', (tenant,))},
-                counterparties={row['id']: dict(row) for row in connection.execute('SELECT * FROM finance_counterparties WHERE tenant_id=?', (tenant,))})
+                counterparties={row['id']: dict(row) for row in connection.execute('SELECT * FROM finance_counterparties WHERE tenant_id=?', (tenant,))},
+                archived={row['counterparty_id'] for row in connection.execute('SELECT counterparty_id FROM recovery_archive WHERE tenant_id=?', (tenant,))})
 
 
 def has_poa(organization):
@@ -225,6 +258,7 @@ def summarize(debtor_id, invoices, context):
     overdue = sum(item['balance'] for item in open_invoices if item['days_overdue'] > 0)
     status = rules.effective_status(state, context['today'], balance, context['automation'])
     evidence_rows = [row for item in open_invoices for row in context['evidence'].get(item['id'], [])]
+    details = json.loads(state.get('details_json') or '{}')
     evidence = rules.evidence_report([item['id'] for item in open_invoices], evidence_rows,
                                      has_poa=has_poa(context['organization']), claim_proof=bool(state.get('claim_reference')))
     return dict(id=debtor_id, name=counterparty['name'], inn=counterparty['inn'], email=counterparty['email'],
@@ -233,7 +267,9 @@ def summarize(debtor_id, invoices, context):
                 assignee_id=state['assignee_id'], balance=balance, overdue_amount=overdue, invoice_count=len(invoices), open_invoice_count=len(open_invoices),
                 days_overdue=max((item['days_overdue'] for item in open_invoices), default=0),
                 oldest_due_on=min((item['due_on'] for item in open_invoices), default=None), route=state['route'], promise_date=state['promise_date'],
-                evidence_score=evidence['score'], steps=rules.steps(status), next_step=rules.next_step(status, evidence=evidence), updated_at=state['updated_at'],
+                archived=debtor_id in context.get('archived', ()), phone=details.get('phone') or '', contact_person=details.get('contact_person') or '', contract=details.get('contract') or '',
+                case_number=state.get('case_number') or '', writ_number=state.get('writ_number') or '', court_name=details.get('court_name') or '', duty_amount=state.get('duty_amount'),
+                stage_changed_at=state.get('stage_changed_at'), evidence_score=evidence['score'], steps=rules.steps(status), next_step=rules.next_step(status, evidence=evidence), updated_at=state['updated_at'],
                 _state=state, _evidence=evidence, _invoices=invoices)
 
 
@@ -266,6 +302,22 @@ def interest(invoices, today):
     return total, first
 
 
+def calculation_text(invoices, today):
+    """One line per invoice with the Art. 395 interest; a missing rate leaves a plain balance."""
+    lines = []
+    for item in invoices:
+        due = date.fromisoformat(item['due_on'])
+        if due >= today:
+            lines.append(f"Счёт № {item['number']}: {money(item['balance'])} руб., срок оплаты {day(item['due_on'])} не наступил.")
+            continue
+        try:
+            result = calculate_debt(principal=item['balance'], due_on=due, through_on=today, sanction='art395')
+            lines.append(f"Счёт № {item['number']}: долг {money(item['balance'])} руб., просрочка с {day(item['due_on'])} по {day(today)}, проценты по ст. 395 ГК РФ {money(result['interest_amount'])} руб.")
+        except ValueError:
+            lines.append(f"Счёт № {item['number']}: долг {money(item['balance'])} руб., просрочка с {day(item['due_on'])}.")
+    return '\n'.join(lines)
+
+
 def document_values(view, organization, *, duty=None):
     state, today = view['_state'], business_today()
     details = json.loads(state.get('details_json') or '{}')
@@ -284,11 +336,18 @@ def document_values(view, organization, *, duty=None):
         'today': day(today), 'pretrial_days': state.get('pretrial_days') or rules.DEFAULT_PRETRIAL_DAYS, 'claim_sent_on': day(state.get('claim_sent_on')),
         'claim_reference': state.get('claim_reference'), 'court.name': details.get('court_name'), 'court.address': details.get('court_address'),
         'case_number': state.get('case_number'), 'act_on': day(state.get('act_on')), 'writ_number': state.get('writ_number'), 'writ_on': day(state.get('writ_on')),
-        'bank.name': details.get('bank_name'),
+        'bank.name': details.get('bank_name'), 'calculation': calculation_text(invoices, today), 'contact_person': details.get('contact_person'),
     }, claim_total
 
 
 def load_template(connection, tenant, kind):
+    if kind.startswith('custom:'):
+        row = connection.execute('SELECT * FROM recovery_custom_templates WHERE id=? AND tenant_id=?', (kind[7:], tenant)).fetchone()
+        if not row:
+            f.fail(404, 'Шаблон не найден')
+        return dict(stage=row['stage'], title=row['title'], heading=row['heading'], address=row['address'], body=row['body'])
+    if kind not in templates.DEFAULTS:
+        f.fail(404, 'Шаблон не найден')
     base = dict(templates.DEFAULTS[kind])
     row = connection.execute('SELECT body FROM recovery_templates WHERE tenant_id=? AND kind=?', (tenant, kind)).fetchone()
     if row:
@@ -388,7 +447,7 @@ def apply_action(connection, tenant, debtor_id, data: ActionInput, actor_id, act
             connection.execute("UPDATE invoices SET status='open' WHERE id=? AND tenant_id=? AND status='disputed'", (key, tenant))
         values = dict(note=data.note)
     elif action == 'prepare_claim':
-        generate_document(connection, tenant, view, 'claim', actor_id, context['organization'])
+        generate_document(connection, tenant, view, rules.claim_kind(view['balance'], context['automation']), actor_id, context['organization'])
     elif action == 'send_claim':
         values = dict(claim_sent_on=str(data.sent_on), claim_reference=data.reference, pretrial_days=context['automation']['pretrial_days'])
         detail = data.reference
@@ -469,9 +528,18 @@ def run_automation(config):
             context = tenant_context(connection, tenant)
             if not context['automation'].get('enabled'):
                 continue
+            month_days = context['automation'].get('month_days') or []
+            if month_days and context['today'].day not in month_days:
+                continue
             for view in all_debtors(connection, tenant, context):
+                if view['archived']:
+                    continue
+                if view['stage'] == rules.CLOSED and context['automation'].get('auto_archive_paid') and view['balance'] <= 0:
+                    connection.execute('INSERT INTO recovery_archive VALUES(?,?,?) ON CONFLICT(tenant_id,counterparty_id) DO NOTHING', (tenant, view['id'], f.timestamp()))
+                    continue
                 action = rules.automation_decision(view['status'], balance=view['balance'], days_overdue=view['days_overdue'],
-                                                   contact_allowed=view['contact_allowed'] and not view['hold'], automation=context['automation'])
+                                                   contact_allowed=view['contact_allowed'] and not view['hold'], automation=context['automation'],
+                                                   act_on=view['_state'].get('act_on'), today=context['today'])
                 if not action:
                     continue
                 try:
@@ -488,8 +556,40 @@ def promised_amount(debtor):
     return max(by_invoice, debtor['balance'] if debtor['status'] == 'promise' else 0)
 
 
+def document_title(kind, custom):
+    if kind.startswith('custom:'):
+        return (custom.get(kind[7:]) or {}).get('title', 'Свой документ')
+    return templates.DEFAULTS[kind]['title'] if kind in templates.DEFAULTS else kind
+
+
+def bulk_one(connection, data, debtor_id, user):
+    tenant, stamp = user['tenant_id'], f.timestamp()
+    if debtor_id not in debtor_rows(connection, tenant):
+        f.fail(404, 'Должник не найден')
+    if data.action in ('hold', 'unhold'):
+        connection.execute('UPDATE finance_counterparties SET hold=? WHERE id=? AND tenant_id=?', (int(data.action == 'hold'), debtor_id, tenant))
+    elif data.action in ('assign', 'custom_status'):
+        state = state_row(connection, tenant, debtor_id)
+        field = dict(assignee_id=data.assignee_id) if data.action == 'assign' else dict(custom_status=single_line(data.custom_status))
+        upsert_state(connection, tenant, debtor_id, state['status'], field)
+    elif data.action == 'archive':
+        connection.execute('INSERT INTO recovery_archive VALUES(?,?,?) ON CONFLICT(tenant_id,counterparty_id) DO NOTHING', (tenant, debtor_id, stamp))
+    elif data.action == 'unarchive':
+        connection.execute('DELETE FROM recovery_archive WHERE tenant_id=? AND counterparty_id=?', (tenant, debtor_id))
+    elif data.action == 'document':
+        context = tenant_context(connection, tenant)
+        view = summarize(debtor_id, debtor_rows(connection, tenant)[debtor_id], context)
+        generate_document(connection, tenant, view, data.kind, user['id'], context['organization'])
+    else:
+        apply_action(connection, tenant, debtor_id, ActionInput(action=data.action), user['id'], user['name'], user['role'])
+        return
+    log(connection, tenant, debtor_id, 'bulk_' + data.action, '', '', data.custom_status or data.kind, user['id'], user['name'])
+
+
 def create_router(ctx):
     router = APIRouter(prefix='/api/recovery', tags=['recovery'])
+    from . import recovery_ops
+    recovery_ops.add_routes(router, ctx)
 
     def manager(user):
         if user['role'] != 'manager':
@@ -512,7 +612,7 @@ def create_router(ctx):
     def dashboard(user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
             context = tenant_context(c, user['tenant_id'])
-            debtors = all_debtors(c, user['tenant_id'], context)
+            debtors = [item for item in all_debtors(c, user['tenant_id'], context) if not item['archived']]
             setup = onboarding(c, user['tenant_id'], context, debtors)
         order = {'today': 0, 'soon': 1, 'later': 2}
         tasks = sorted((item for item in debtors if item['stage'] != rules.CLOSED and item['next_step'] and item['next_step']['action']),
@@ -520,7 +620,10 @@ def create_router(ctx):
         closing = [dict(debtor_id=item['id'], name=item['name'], **deadline) for item in debtors if item['stage'] != rules.CLOSED
                    for deadline in rules.deadlines(item['_state'], item['oldest_due_on'], context['today']) if deadline['days_left'] <= 30]
         open_debtors = [item for item in debtors if item['stage'] != rules.CLOSED]
-        return dict(onboarding=setup, stages=report_rows(debtors), tasks=[public(item) for item in tasks[:10]], task_count=len(tasks),
+        from .recovery_ops import analytics
+        with ctx.database(ctx.config) as c:
+            insight = analytics(c, user['tenant_id'], debtors, context['today'])
+        return dict(analytics=insight, onboarding=setup, stages=report_rows(debtors), tasks=[public(item) for item in tasks[:10]], task_count=len(tasks),
                     deadlines=sorted(closing, key=lambda item: item['days_left'])[:10],
                     totals=dict(debtors=len(open_debtors), balance=sum(item['balance'] for item in open_debtors), overdue=sum(item['overdue_amount'] for item in open_debtors),
                                 promised=sum(promised_amount(item) for item in open_debtors)))
@@ -546,12 +649,16 @@ def create_router(ctx):
             logs = [dict(row) for row in c.execute('SELECT * FROM recovery_log WHERE tenant_id=? AND counterparty_id=? ORDER BY created_at DESC,id', (tenant, debtor_id))]
             documents = [dict(row) for row in c.execute('SELECT id,kind,version,created_at FROM recovery_documents WHERE tenant_id=? AND counterparty_id=? ORDER BY created_at DESC,id', (tenant, debtor_id))]
             financing = offers(c, tenant, view, solvency, context['today'])
+            custom = {row['id']: dict(row) for row in c.execute('SELECT id,title,stage FROM recovery_custom_templates WHERE tenant_id=?', (tenant,))}
+            register = [dict(row) for row in c.execute('SELECT * FROM recovery_register WHERE tenant_id=? AND counterparty_id=? ORDER BY on_date DESC,created_at DESC', (tenant, debtor_id))]
         route = view['route'] or rules.recommend_route(view['balance'], disputed=view['status'] == 'dispute', order_cancelled=bool(state.get('order_cancelled')))['route']
         recommendation = rules.recommend_route(view['balance'], disputed=view['status'] == 'dispute', order_cancelled=bool(state.get('order_cancelled')))
         fields = {key: state.get(key) for key in ('claim_sent_on', 'claim_reference', 'duty_amount', 'duty_reference', 'filed_on', 'court_reference', 'case_number', 'act_on', 'writ_number', 'writ_on', 'enforcement_reference', 'promise_amount', 'note')}
         return public(view) | dict(invoices=view['_invoices'], evidence=view['_evidence'], solvency=solvency, deadlines=rules.deadlines(state if state.get('status') else view['_state'] | dict(status=view['status']), view['oldest_due_on'], context['today']),
                                    economics=rules.economics(view['balance'], route, TARIFF) if view['balance'] else None, recommendation=recommendation,
-                                   details=json.loads(state.get('details_json') or '{}'), actions=rules.available_actions(view['status'], route=view['route']), log=logs, documents=documents, financing=financing, **fields)
+                                   details=json.loads(state.get('details_json') or '{}'), actions=rules.available_actions(view['status'], route=view['route']), log=logs,
+                                   documents=[row | dict(title=document_title(row['kind'], custom)) for row in documents], custom_templates=[dict(kind='custom:' + key, title=value['title'], stage=value['stage']) for key, value in custom.items()],
+                                   register=register, financing=financing, **fields)
 
     @router.patch('/debtors/{debtor_id}')
     def patch_debtor(debtor_id: str, data: DebtorPatch, user=Depends(ctx.get_user)):
@@ -578,7 +685,7 @@ def create_router(ctx):
         for debtor_id in data.ids:
             try:
                 with ctx.database(ctx.config, write=True) as c:
-                    apply_action(c, user['tenant_id'], debtor_id, ActionInput(action=data.action), user['id'], user['name'], user['role'])
+                    bulk_one(c, data, debtor_id, user)
                 results.append(dict(id=debtor_id, ok=True))
             except HTTPException as error:
                 results.append(dict(id=debtor_id, ok=False, error=error.detail))

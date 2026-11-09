@@ -19,6 +19,15 @@ export type Debtor = {
   status_label: string;
   stage: Stage;
   custom_status: string;
+  assignee_id: string | null;
+  hold: boolean;
+  archived: boolean;
+  phone: string;
+  contact_person: string;
+  contract: string;
+  case_number: string;
+  writ_number: string;
+  court_name: string;
   balance: number;
   overdue_amount: number;
   invoice_count: number;
@@ -82,7 +91,9 @@ export type DebtorDetail = Debtor & {
     actor_name: string;
     created_at: string;
   }[];
-  documents: { id: string; kind: string; version: number; created_at: string }[];
+  documents: { id: string; kind: string; title: string; version: number; created_at: string }[];
+  custom_templates: { kind: string; title: string; stage: Stage }[];
+  register: RegisterEntry[];
   financing: { items: FinancingOffer[]; has_active_request: boolean; key_rate_percent: string };
   claim_sent_on: string | null;
   claim_reference: string;
@@ -90,6 +101,30 @@ export type DebtorDetail = Debtor & {
   duty_reference: string;
   case_number: string;
   note: string;
+};
+export type RegisterEntry = {
+  id: string;
+  kind: 'court_event' | 'enforcement_case' | 'bank_account' | 'fns_request' | 'measure';
+  on_date: string;
+  title: string;
+  reference: string;
+  amount: number | null;
+  status: string;
+  note: string;
+};
+export type Analytics = {
+  aging: { key: string; label: string; count: number; amount: number }[];
+  monthly: { month: string; amount: number }[];
+  collected_total: number;
+  open_total: number;
+  recovery_percent: number;
+  collected_this_month: number;
+  collected_last_month: number;
+  promised_30_days: number;
+  average_overdue_days: number;
+  attention: { key: string; label: string; count: number; target: string }[];
+  statuses: { status: string; label: string; count: number; amount: number }[];
+  top: { id: string; name: string; balance: number; status_label: string; days_overdue: number }[];
 };
 export type Meta = {
   statuses: Record<string, { stage: Stage; label: string }>;
@@ -107,6 +142,7 @@ export type OnboardingItem = {
   target: string;
 };
 export type Dashboard = {
+  analytics: Analytics;
   onboarding: { items: OnboardingItem[]; done: number; total: number };
   stages: { stage: Stage; count: number; amount: number }[];
   tasks: Debtor[];

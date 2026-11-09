@@ -57,7 +57,7 @@ Files owned: `server/forecasting.py`, `server/negotiation.py`, `tests/test_forec
 Files owned: `Brand.tsx`, `Landing.tsx`, `Auth.tsx`, `landing.css`, SVG/public brand assets, `web/index.html`, `web/public/site.webmanifest` if present. Do not modify Workspace.tsx, global styles shared by new screens, dependency lockfiles or infrastructure names.
 
 - [x] Create a restrained geometric native SVG mark and `mandato` wordmark; readable in small favicon and monochrome, no imitation certification or registered trademark claim.
-- [x] Replace customer-facing AgentPay branding and metadata in owned files, preserve product visual system and responsive motion.
+- [x] Replace customer-facing Mandato branding and metadata in owned files, preserve product visual system and responsive motion.
 - [x] Keep only implemented functionality and qualified claims on marketing site; do not invent customers, metrics or completed banking connections.
 - [x] Inspect browser rendering desktop/mobile, keyboard and reduced-motion behavior; provide standalone SVG and favicon.
 

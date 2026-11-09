@@ -18,7 +18,7 @@ from .agent_observability import AgentObservability
 from .business_time import business_timezone
 
 ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/completion"
-PROMPT_VERSION = "agentpay-extract-v1"
+PROMPT_VERSION = "mandato-extract-v1"
 SLOTS = threading.BoundedSemaphore(2)
 
 

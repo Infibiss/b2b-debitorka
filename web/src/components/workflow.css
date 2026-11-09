@@ -913,7 +913,7 @@
   margin-bottom: 12px;
 }
 .wf-check input {
-  accent-color: #6c8b50;
+  accent-color: #626874;
   flex-shrink: 0;
 }
 .wf-management-grid {
@@ -959,7 +959,7 @@
 .wf-switch > input {
   width: 32px;
   height: 18px;
-  accent-color: #698a4d;
+  accent-color: #626874;
   flex-shrink: 0;
 }
 .wf-switch strong {
@@ -2279,7 +2279,7 @@ button:disabled {
   gap: 20px;
   padding: 20px 0;
   margin: 0 0 24px;
-  border-block: 1px solid #e0e5d8;
+  border-block: 1px solid #e9efeb;
 }
 .wf-portfolio-sums > div {
   min-width: 0;

@@ -44,7 +44,7 @@ def backup_database(database: Path, output: Path) -> None:
 
 
 def default_database() -> str:
-    return os.getenv("DATABASE_PATH", str(Path(__file__).resolve().parents[1] / "server/data/agentpay.sqlite3"))
+    return os.getenv("DATABASE_PATH", str(Path(__file__).resolve().parents[1] / "server/data/mandato.sqlite3"))
 
 
 def main() -> int:

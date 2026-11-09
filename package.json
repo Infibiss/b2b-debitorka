@@ -1,11 +1,11 @@
 {
-  "name": "agentpay",
+  "name": "mandato",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && vite build --ssr src/prerender.tsx --outDir dist-ssr --emptyOutDir && node scripts/prerender.mjs",
     "check": "tsc --noEmit",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1",
@@ -13,7 +13,8 @@
     "format:check": "prettier --check web/src vite.config.ts tsconfig.json package.json"
   },
   "dependencies": {
-    "@fontsource-variable/manrope": "5.2.8",
+    "@fontsource-variable/onest": "5.2.8",
+    "lenis": "1.1.18",
     "lucide-react": "0.468.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"

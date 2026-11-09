@@ -3,15 +3,24 @@ import { ArrowLeft, Check, Download } from 'lucide-react';
 import { api, dateText, money, patch, post, today, toKopeks } from '../../api';
 import { t } from '../../i18n';
 import { ConversationPanel, EvidencePanel } from './DebtorExtras';
+import { RegisterPanel } from './RegisterPanel';
 import { stageNames } from './RecoveryHome';
 import type { DebtorDetail, FinancingOffer, Meta, Notify } from './types';
 
-type Tab = 'overview' | 'invoices' | 'documents' | 'conversation' | 'financing' | 'history';
+type Tab =
+  | 'overview'
+  | 'invoices'
+  | 'documents'
+  | 'conversation'
+  | 'cases'
+  | 'financing'
+  | 'history';
 const tabs: [Tab, string][] = [
   ['overview', t('Обзор')],
   ['invoices', t('Счета')],
   ['documents', t('Документы')],
   ['conversation', t('Переписка')],
+  ['cases', t('Суд и взыскание')],
   ['financing', t('Финансирование')],
   ['history', t('История')],
 ];
@@ -119,6 +128,9 @@ function DetailsForm({
     court_name: '',
     court_address: '',
     bank_name: '',
+    contact_person: '',
+    phone: '',
+    cedent: '',
     ...debtor.details,
     custom_status: debtor.custom_status,
   };
@@ -131,6 +143,9 @@ function DetailsForm({
     ['court_name', t('Арбитражный суд')],
     ['court_address', t('Адрес суда')],
     ['bank_name', t('Банк должника')],
+    ['contact_person', t('Контактное лицо')],
+    ['phone', t('Телефон')],
+    ['cedent', t('Первоначальный кредитор (при цессии)')],
     ['custom_status', t('Мой статус')],
   ];
   return (
@@ -328,9 +343,12 @@ export function DebtorCard({
     ['settle', 'write_off', 'withdraw'].includes(action)
   );
   const canRun = (action: string) => isManager || !meta.actions[action].manager_only;
-  const kinds = Object.entries(meta.document_kinds).filter(
-    ([, kind]) => kind.stage === debtor.stage
-  );
+  const kinds = [
+    ...Object.entries(meta.document_kinds).filter(([, kind]) => kind.stage === debtor.stage),
+    ...debtor.custom_templates
+      .filter((kind) => kind.stage === debtor.stage)
+      .map((kind): [string, { title: string }] => [kind.kind, kind]),
+  ];
   return (
     <div className="rc-page">
       <button className="wf-text-button rc-back" onClick={onBack}>
@@ -557,8 +575,7 @@ export function DebtorCard({
             {debtor.documents.map((doc) => (
               <li key={doc.id}>
                 <span>
-                  {t(meta.document_kinds[doc.kind]?.title ?? doc.kind)} ·{' '}
-                  {t('версия {0}', [doc.version])}
+                  {t(doc.title)} · {t('версия {0}', [doc.version])}
                 </span>
                 <a href={`/api/recovery/documents/${doc.id}/download`}>
                   <Download size={14} />
@@ -571,6 +588,10 @@ export function DebtorCard({
             )}
           </ul>
         </div>
+      )}
+
+      {tab === 'cases' && (
+        <RegisterPanel debtor={debtor} notify={notify} onSaved={() => void load()} />
       )}
 
       {tab === 'financing' && (

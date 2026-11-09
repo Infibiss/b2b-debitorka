@@ -4,6 +4,7 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json vite.config.ts ./
+COPY scripts/prerender.mjs ./scripts/prerender.mjs
 COPY server/fee_tariff.json ./server/fee_tariff.json
 COPY server/plan_catalog.json ./server/plan_catalog.json
 COPY web ./web
@@ -15,11 +16,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_ENV=production \
     APP_TIMEZONE=Europe/Moscow \
     SECURE_COOKIES=true \
-    DATABASE_PATH=/var/data/agentpay.db \
+    DATABASE_PATH=/var/data/mandato.db \
     PORT=10000
 WORKDIR /app
-RUN groupadd --gid 10001 agentpay \
-    && useradd --no-log-init --uid 10001 --gid 10001 --create-home agentpay \
+RUN groupadd --gid 10001 mandato \
+    && useradd --no-log-init --uid 10001 --gid 10001 --create-home mandato \
     && mkdir -p /var/data \
     && chown 10001:10001 /var/data
 COPY requirements.txt ./

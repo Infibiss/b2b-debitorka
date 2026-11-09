@@ -103,8 +103,8 @@ def initialize_schema(connection):
 
 
 def membership_role(connection, user):
-    row = connection.execute('SELECT role FROM workflow_memberships WHERE user_id=? AND tenant_id=?',
-                             (user['id'], user['tenant_id'])).fetchone()
+    row = connection.execute('''SELECT role FROM workflow_memberships WHERE user_id=? AND tenant_id=?
+        UNION SELECT role FROM organization_memberships WHERE user_id=? AND tenant_id=?''', (user['id'], user['tenant_id'], user['id'], user['tenant_id'])).fetchone()
     return row['role'] if row else 'accountant'
 
 
@@ -417,6 +417,8 @@ def run_once(config):
     from .workflow_mailbox import poll_once
     incoming = poll_once(config)
     from .recovery import run_automation
+    from .recovery_dashboards import run_report_schedules
+    run_report_schedules(config)
     return dict(moved=run_automation(config), scheduled=schedule_jobs(config), sent=dispatch_jobs(config), mailbox=incoming)
 
 
@@ -582,8 +584,9 @@ def create_router(ctx):
 
     @router.get('/team')
     def team(user=Depends(ctx.get_user)):
+        from .organizations import team as team_rows
         with database(ctx.config) as c:
-            members = [dict(id=row['id'], name=row['name'], email=row['email'], role=membership_role(c, row)) for row in c.execute('SELECT id,tenant_id,name,email FROM users WHERE tenant_id=? ORDER BY created_at,id', (user['tenant_id'],))]
+            members = [dict(id=row['id'], name=row['name'], email=row['email'], role=membership_role(c, row)) for row in team_rows(c, user['tenant_id'])]
             invitations = [{key: row[key] for key in ('id', 'email', 'expires_at', 'accepted_at')} for row in c.execute('SELECT * FROM workflow_invitations WHERE tenant_id=? ORDER BY created_at DESC', (user['tenant_id'],))]
             return dict(role=membership_role(c, user), members=members, invitations=invitations)
 
