@@ -2110,3 +2110,120 @@
     font-size: 13.5px;
   }
 }
+
+/* Every section uses the full working width. */
+.workspace .rc-page {
+  max-width: none;
+}
+.workspace .workspace-main {
+  max-width: 1580px;
+  padding-top: 28px;
+}
+.workspace .sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.workspace .sidebar-refresh {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+  cursor: pointer;
+}
+.workspace .sidebar-refresh:hover {
+  background: rgb(255 255 255 / 22%);
+}
+.language-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.language-choice select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+}
+.workspace .rc-kpis.rc-kpis-even {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.ops-confirm-hint {
+  margin: 0;
+}
+/* Chart settings: every field fits its cell. */
+.ch-settings {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+}
+.ch-settings > label {
+  min-width: 0;
+}
+.ch-settings :is(input:not([type='checkbox']), select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.ch-settings .rc-check {
+  min-height: 36px;
+  white-space: nowrap;
+}
+@media (max-width: 860px) {
+  .workspace .sidebar-brand {
+    padding-right: 6px;
+  }
+  .workspace .workspace-main {
+    padding-top: 16px;
+  }
+}
+.ch-settings {
+  align-items: start;
+}
+.ch-settings > label:not(.rc-check) {
+  grid-template-rows: auto 38px;
+}
+.ch-settings :is(input:not([type='checkbox']), select) {
+  height: 38px;
+  min-height: 38px;
+  padding-block: 0;
+}
+.ch-settings > .rc-check {
+  align-self: end;
+  height: 38px;
+}
+@media (min-width: 861px) {
+  .workspace .sidebar {
+    position: fixed;
+    inset: 12px auto 12px 12px;
+    height: auto;
+    margin: 0;
+    border-radius: 28px;
+  }
+  .workspace .workspace-nav {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .workspace .workspace-nav button {
+    flex: initial;
+    width: 100%;
+    white-space: normal;
+  }
+}
+.ch-card {
+  container-type: inline-size;
+}
+@container (max-width: 520px) {
+  .ch-col-value {
+    visibility: hidden;
+  }
+}

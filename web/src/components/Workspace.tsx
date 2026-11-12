@@ -41,7 +41,7 @@ import { navigate, useRouteField, WorkContext } from '../navigation';
 import { clearFormDrafts, hasFormDrafts, useFormDraft } from './useFormDraft';
 import { MailSetup } from './MailSetup';
 import WorkspaceDataSettings from './WorkspaceDataSettings';
-import { LanguageSwitch } from './LanguageSwitch';
+import { LanguageChoice } from './LanguageSwitch';
 import { RecoveryHome } from './recovery/RecoveryHome';
 import { DebtorsDesk } from './recovery/DebtorsDesk';
 import { DebtorCard } from './recovery/DebtorCard';
@@ -247,6 +247,15 @@ export function Workspace() {
         <aside className="sidebar">
           <div className="sidebar-brand">
             <Brand />
+            <button
+              className={`icon-button sidebar-refresh ${refreshing ? 'refreshing' : ''}`}
+              onClick={() => void refresh()}
+              aria-label={t('Обновить данные')}
+              title={loadError ? t('Нет связи') : t('Обновить данные')}
+              disabled={refreshing}
+            >
+              <RefreshCw size={15} />
+            </button>
           </div>
           <nav className="workspace-nav" aria-label={t('Разделы кабинета')}>
             {navigation.map(({ id, label, icon: Icon }) => (
@@ -278,23 +287,6 @@ export function Workspace() {
           </div>
         </aside>
         <div className="workspace-body">
-          <header className="workspace-header workspace-command-header">
-            <div className="workspace-header-actions">
-              <LanguageSwitch />
-              <span className="server-status">
-                <i />
-                {loadError ? t('Нет связи') : refreshing ? t('Обновляем…') : t('Данные обновлены')}
-              </span>
-              <button
-                className={`icon-button ${refreshing ? 'refreshing' : ''}`}
-                onClick={() => void refresh()}
-                aria-label={t('Обновить данные')}
-                disabled={refreshing}
-              >
-                <RefreshCw size={15} />
-              </button>
-            </div>
-          </header>
           <main id="workspace-main" className="workspace-main" data-tour="workspace">
             {loadError && (
               <div className="page-error" role="alert">
@@ -345,9 +337,8 @@ export function Workspace() {
             ) : tab === 'settings' && settingsTab !== 'mail' ? (
               <div className="rc-page">
                 <header className="rc-head">
-                  <div>
-                    <h1>{t('Настройки')}</h1>
-                  </div>
+                  <h1>{t('Настройки')}</h1>
+                  <LanguageChoice />
                 </header>
                 <SettingsNav current={settingsTab} />
                 {settingsTab === 'organization' ? (
@@ -383,6 +374,7 @@ export function Workspace() {
               <div className="rc-page">
                 <header className="rc-head">
                   <h1>{t('Настройки')}</h1>
+                  <LanguageChoice />
                 </header>
                 <SettingsNav current="mail" />
                 <SettingsPanel

@@ -14,3 +14,16 @@ export function LanguageSwitch() {
     </button>
   );
 }
+
+/** Interface language as a labelled setting, for the workspace settings page. */
+export function LanguageChoice() {
+  return (
+    <label className="language-choice">
+      {language === 'ru' ? 'Язык интерфейса' : 'Interface language'}
+      <select value={language} onChange={(event) => setLanguage(event.target.value as 'ru' | 'en')}>
+        <option value="ru">Русский</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+  );
+}

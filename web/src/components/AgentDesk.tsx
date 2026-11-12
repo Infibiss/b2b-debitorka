@@ -202,11 +202,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
               ? t('Обработка сообщений подключена')
               : t('Автоматическая обработка недоступна')}
         </strong>
-        <p>
-          {provider && !provider.enabled
-            ? reasons[provider.reason]
-            : t('Перед подтверждением проверьте извлечённые факты по исходному ответу.')}
-        </p>
+        {provider && !provider.enabled && <p>{reasons[provider.reason]}</p>}
         <div className="wf-actions">
           <button
             className="button button-outline"
@@ -391,6 +387,11 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
                       : t('Поступление направлено на проверку.'))}
               </p>
             </div>
+          )}
+          {!selected.outcome && (
+            <p className="ops-muted ops-confirm-hint">
+              {t('Перед подтверждением проверьте извлечённые факты по исходному ответу.')}
+            </p>
           )}
           <div className="wf-actions">
             <button

@@ -734,7 +734,7 @@ export function ReportsDesk({ notify }: { notify: Notify }) {
       </header>
       <ReportBuilder notify={notify} />
       <ReportSchedules notify={notify} />
-      <section className="rc-kpis">
+      <section className="rc-kpis rc-kpis-even">
         <div>
           <span>{t('Получено оплат')}</span>
           <strong>{money(report.recovered_amount, true)}</strong>
