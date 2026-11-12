@@ -42,7 +42,7 @@ html.scroll-locked body {
   white-space: nowrap;
 }
 .landing {
-  --intro: 1.4s;
+  --intro: 0.9s;
   position: relative;
   width: 100%;
   padding: 0.75rem;
@@ -96,7 +96,7 @@ html.no-intro .landing {
   background: var(--brand-deep);
   color: #fff;
   pointer-events: none;
-  animation: intro-up 0.85s var(--cubic) 1.4s forwards;
+  animation: intro-up 0.6s var(--cubic) 0.9s forwards;
 }
 .intro p {
   display: inline-flex;
@@ -125,7 +125,7 @@ html.no-intro .landing {
   height: 100%;
   transform-origin: left;
   background: #fff;
-  animation: intro-bar 1.28s var(--cubic) 0.12s both;
+  animation: intro-bar 0.8s var(--cubic) 0.08s both;
 }
 @keyframes intro-bar {
   from {
@@ -1599,5 +1599,248 @@ main:has(.landing) + .site-footer {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/* Section headings: one line, with the point of the section beside it. */
+.section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 1.5rem 3rem;
+}
+.landing .section-head .stack {
+  margin-top: 1rem;
+  font-size: clamp(32px, 3rem, 56px);
+  line-height: 1.02;
+}
+.landing .section-lead p {
+  max-width: 30rem;
+  margin-left: auto;
+  font-size: max(15px, 1rem);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.landing .stats .section-lead p {
+  color: rgb(255 255 255 / 75%);
+}
+.landing .views,
+.landing .start {
+  display: grid;
+  gap: 3rem;
+}
+.landing .start ol {
+  margin-top: 0;
+}
+
+/* Hero: the static card above the moving one, same width. */
+.landing .hero-cluster {
+  flex-direction: column;
+  align-items: stretch;
+  width: 18rem;
+}
+.landing .hero-trial,
+.landing .hero-slider {
+  width: 100%;
+}
+
+/* How it works: words on the left, the stage card on the right. */
+.landing .trust {
+  padding: 5rem 2.5rem;
+}
+.trust-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  align-items: center;
+  gap: 3rem 4rem;
+}
+.trust-copy {
+  min-width: 0;
+}
+.landing .ghost {
+  margin: 1.25rem 0 0;
+  max-width: none;
+  font-size: 5.4vw;
+}
+.landing .trust-lead {
+  max-width: 34rem;
+  margin-top: 1.5rem;
+  font-size: max(15px, 1rem);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.landing .trust-controls {
+  justify-content: flex-start;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+.landing .trust-card {
+  position: relative;
+  top: auto;
+  left: auto;
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  aspect-ratio: auto;
+  margin: 0;
+  padding: 1.25rem;
+  transform: rotate(3deg);
+  animation: fade-card 0.5s var(--expo);
+}
+.landing .trust-card figcaption {
+  padding: 0;
+  background: none;
+}
+.landing .trust-card figcaption small {
+  font-size: max(12px, 0.75rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.landing .trust-card figcaption strong {
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+}
+.landing .trust-card-note {
+  font-size: max(13px, 0.8125rem);
+  line-height: 1.4;
+  opacity: 0.88;
+}
+
+/* Two cards of the workspace's first screen, sized by their content. */
+.landing .views-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 1.25rem;
+  max-width: none;
+}
+.landing .view-tile {
+  aspect-ratio: auto;
+  padding: 1.75rem;
+  border-radius: var(--radius-card);
+  color: #fff;
+}
+.view-tile-label {
+  font-size: max(12px, 0.75rem);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.landing .view-tile dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem 1.25rem;
+  margin-top: 1.5rem;
+}
+.landing .view-tile dt {
+  font-size: max(13px, 0.8125rem);
+  opacity: 0.75;
+}
+.landing .view-tile dd {
+  margin-top: 0.3rem;
+  font-size: clamp(24px, 2rem, 40px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+.landing .view-tile dd small {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: max(12.5px, 0.78rem);
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0.75;
+}
+.landing .view-tile ul {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+}
+.landing .view-tile li {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 12%);
+  font-size: max(14px, 0.9rem);
+  line-height: 1.3;
+}
+.landing .view-tile li strong {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 32px;
+  min-height: 32px;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-deep);
+  font-weight: 500;
+}
+.landing .views-note {
+  margin-top: -1.75rem;
+  font-size: max(12.5px, 0.78rem);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 1080px) {
+  .trust-grid {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 2.5rem;
+  }
+  .landing .trust-card {
+    width: 100%;
+    margin: 0;
+    transform: rotate(3deg);
+  }
+  .landing .ghost {
+    font-size: 5.4vw;
+  }
+}
+@media (max-width: 860px) {
+  .section-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing .section-lead p {
+    margin-left: 0;
+  }
+  .trust-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing .trust-card {
+    max-width: 22rem;
+    justify-self: center;
+  }
+  .landing .ghost {
+    font-size: 9vw;
+  }
+  .landing .views-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .landing .trust {
+    padding: 4rem 1.5rem;
+  }
+  .landing .section-head .stack {
+    font-size: 2.25rem;
+  }
+  .landing .view-tile {
+    padding: 1.25rem;
+  }
+  .landing .hero-cluster {
+    width: 100%;
+  }
+  .landing .views-note {
+    margin-top: -2rem;
+  }
+}
+@media (max-width: 768px) {
+  .landing .hero-cluster .hero-slider {
+    display: none;
   }
 }

@@ -22,9 +22,14 @@ test('home keeps a demo and a free trial within reach', async ({ page }) => {
   await page.mouse.wheel(0, 600);
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => scrollY)).toBe(before);
-  await expect(menu.getByRole('link', { name: 'Войти' })).toHaveAttribute('href', '/app?mode=login');
+  await expect(menu.getByRole('link', { name: 'Войти' })).toHaveAttribute(
+    'href',
+    '/app?mode=login'
+  );
   await menu.getByRole('button', { name: 'Закрыть' }).click();
-  const trial = page.getByRole('contentinfo').getByRole('link', { name: 'Попробовать бесплатно', exact: true });
+  const trial = page
+    .getByRole('contentinfo')
+    .getByRole('link', { name: 'Попробовать бесплатно', exact: true });
   await expect(trial).toHaveAttribute('href', '/start?plan=trial');
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)

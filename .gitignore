@@ -31,3 +31,6 @@ e2e/report/
 AgentPay_B2B-debitorka_prorabotka.pdf
 
 output/
+
+# Working notes of the agent between sessions
+agent/status/

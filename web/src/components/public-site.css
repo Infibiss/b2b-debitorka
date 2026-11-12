@@ -1257,3 +1257,25 @@ html {
 .pub-pricing-grid article {
   border-radius: 24px;
 }
+
+/* A slim strip at the bottom instead of a box over the content. */
+.public-site .pub-cookie {
+  right: 12px !important;
+  bottom: 12px;
+  left: 12px !important;
+  width: auto;
+  max-width: none;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px 10px 20px;
+  transform: none;
+}
+.public-site .pub-cookie p {
+  margin: 0;
+}
+@media (min-width: 900px) {
+  .public-site .pub-cookie {
+    right: auto !important;
+    max-width: 560px;
+  }
+}

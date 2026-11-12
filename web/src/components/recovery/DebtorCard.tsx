@@ -396,6 +396,13 @@ export function DebtorCard({
             ))}
         </section>
       )}
+      {debtor.status === 'reminders' && !debtor.mail_connected && (
+        <p className="rc-note">
+          {t(
+            'Почта не подключена, поэтому напоминания этому должнику пока не уходят. Подключить её можно в настройках, вкладка «Почта».'
+          )}
+        </p>
+      )}
       {pending && (
         <ActionForm
           action={pending}

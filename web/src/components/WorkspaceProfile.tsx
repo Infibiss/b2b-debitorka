@@ -1,18 +1,18 @@
 import { t } from '../i18n';
-import { useEffect, useRef, useState } from 'react';
-import { ChevronUp, LogOut, Settings } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronUp, CreditCard, LogOut } from 'lucide-react';
 
 export function WorkspaceProfile({
   name,
   company,
   role,
-  onSettings,
+  organizations,
   onLogout,
 }: {
   name: string;
   company: string;
   role: string;
-  onSettings: () => void;
+  organizations: ReactNode;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -70,17 +70,7 @@ export function WorkspaceProfile({
             }
           }}
         >
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onSettings();
-              trigger.current?.focus();
-            }}
-          >
-            <Settings size={16} />
-            {t('Настройки')}
-          </button>
+          {organizations}
           <button
             role="menuitem"
             onClick={() => {
@@ -88,8 +78,8 @@ export function WorkspaceProfile({
               location.assign('/account');
             }}
           >
-            <Settings size={16} aria-hidden="true" />
-            {t('Тариф и аккаунт')}
+            <CreditCard size={16} aria-hidden="true" />
+            {t('Тариф и оплата')}
           </button>
           <button
             role="menuitem"
@@ -122,39 +112,6 @@ export function WorkspaceProfile({
         </span>
         <ChevronUp size={14} aria-hidden="true" />
       </button>
-    </div>
-  );
-}
-
-export function WorkspaceAdvice({ userId, onRules }: { userId: string; onRules: () => void }) {
-  const key = `mandato-rules-advice:${userId}`;
-  const [hidden, setHidden] = useState(() => {
-    try {
-      return localStorage.getItem(key) === 'hidden';
-    } catch {
-      return false;
-    }
-  });
-  if (hidden) return null;
-  return (
-    <div className="sidebar-help">
-      <button
-        className="advice-dismiss"
-        aria-label={t('Скрыть подсказку о правилах')}
-        onClick={() => {
-          setHidden(true);
-          try {
-            localStorage.setItem(key, 'hidden');
-          } catch {
-            /* Optional preference. */
-          }
-        }}
-      >
-        ×
-      </button>
-      <strong>{t('Всё под вашим контролем')}</strong>
-      <p>{t('Mandato работает по вашим правилам. Исключения — на согласование.')}</p>
-      <button onClick={onRules}>{t('Правила работы →')}</button>
     </div>
   );
 }

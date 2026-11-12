@@ -470,7 +470,9 @@ export function DebtorsDesk({
                     {item.custom_status && <small>{item.custom_status}</small>}
                   </td>
                   <td className="rc-num">{money(item.balance, true)}</td>
-                  <td className="rc-num">{t('{0} дн.', [item.days_overdue])}</td>
+                  <td className="rc-num">
+                    {item.days_overdue > 0 ? t('{0} дн.', [item.days_overdue]) : t('в срок')}
+                  </td>
                   {show('documents') && (
                     <td>
                       <span

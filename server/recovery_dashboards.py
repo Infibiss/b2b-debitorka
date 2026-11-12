@@ -35,14 +35,21 @@ CREATE INDEX IF NOT EXISTS recovery_report_schedules_tenant ON recovery_report_s
 '''
 Line = Annotated[str, Field(max_length=120)]
 MEASURES = {'debt': 'Сумма долга', 'overdue': 'Просрочено', 'count': 'Количество должников', 'promised': 'Обещано оплатить', 'collected': 'Получено оплат', 'duty': 'Госпошлина'}
-GROUPS = {'stage': 'Этапы', 'status': 'Статусы', 'aging': 'Срок просрочки', 'assignee': 'Ответственные', 'organization': 'Организации'}
+GROUPS = {'stage': 'Этапы', 'status': 'Статусы', 'aging': 'Срок просрочки', 'assignee': 'Ответственные', 'organization': 'Организации', 'month': 'Месяцы'}
+CHARTS = {'number': 'Число', 'columns': 'Столбцы', 'bars': 'Полосы', 'line': 'Линия'}
+HOME_TILES = [
+    dict(id='aging', title='Долг по сроку просрочки', chart='columns', measure='debt', group='aging', stage='', width=1),
+    dict(id='monthly', title='Поступления за 12 месяцев', chart='line', measure='collected', group='month', stage='', width=1),
+    dict(id='stages', title='Долг по этапам', chart='bars', measure='debt', group='stage', stage='', width=1),
+    dict(id='statuses', title='Должники по статусам', chart='bars', measure='count', group='status', stage='', width=1),
+]
 STAGE_TITLES = {rules.PRETRIAL: 'Досудебная работа', rules.COURT: 'Суд', rules.ENFORCEMENT: 'Исполнение', rules.CLOSED: 'Закрыто'}
 
 
 class Tile(Input):
     id: str = Field(min_length=1, max_length=40)
     title: Line = Field(min_length=1)
-    kind: Literal['metric', 'category', 'timeline']
+    chart: Literal[tuple(CHARTS)] = 'bars'  # type: ignore[valid-type]
     measure: Literal[tuple(MEASURES)]  # type: ignore[valid-type]
     group: Literal[tuple(GROUPS)] = 'stage'  # type: ignore[valid-type]
     stage: Literal['', 'pretrial', 'court', 'enforcement', 'closed'] = ''
@@ -85,33 +92,50 @@ def report_due(schedule, today, hour):
     return today.weekday() in weekdays or schedule['month_day'] == today.day
 
 
+def normalize(tile):
+    """Tiles saved before chart types existed keep working."""
+    tile = dict(tile)
+    kind = tile.pop('kind', None)
+    if 'chart' not in tile:
+        tile['chart'] = {'metric': 'number', 'timeline': 'line'}.get(kind, 'bars')
+        if kind == 'timeline':
+            tile['group'], tile['measure'] = 'month', 'collected'
+    tile.setdefault('group', 'stage')
+    tile.setdefault('stage', '')
+    tile.setdefault('width', 1)
+    return tile
+
+
 def measure_value(item, measure):
     return {'debt': item['balance'], 'overdue': item['overdue_amount'], 'count': 1, 'duty': item['duty_amount'] or 0,
             'promised': item['balance'] if item['status'] == 'promise' else 0}.get(measure, 0)
 
 
 def tile_data(tile, debtors, connection, tenants, today, names):
+    """Numbers behind one chart. Payments exist per month, debts per debtor."""
+    tile = normalize(tile)
     chosen = [item for item in debtors if (item['stage'] == tile['stage'] if tile['stage'] else item['stage'] != rules.CLOSED)]
     unit = 'count' if tile['measure'] == 'count' else 'money'
-    monthly = None
-    if tile['measure'] == 'collected' or tile['kind'] == 'timeline':
+    if tile['measure'] == 'collected' or tile['group'] == 'month':
         series = [collected_by_month(connection, tenant, today) for tenant in tenants]
         monthly = [dict(month=rows[0]['month'], amount=sum(row['amount'] for row in rows)) for rows in zip(*series)]
-    if tile['kind'] == 'timeline':
-        return dict(unit='money', series=monthly)
-    if tile['measure'] == 'collected':
-        return dict(unit='money', value=monthly[-1]['amount'], note='В этом месяце')
-    if tile['kind'] == 'metric':
+        if tile['chart'] == 'number':
+            return dict(unit='money', value=monthly[-1]['amount'], note='В этом месяце')
+        return dict(unit='money', rows=[dict(label=row['month'], value=row['amount']) for row in monthly], months=True)
+    if tile['chart'] == 'number':
         return dict(unit=unit, value=sum(measure_value(item, tile['measure']) for item in chosen))
     if tile['group'] == 'aging' and tile['measure'] != 'promised':
         field = 'count' if tile['measure'] == 'count' else 'amount'
         return dict(unit=unit, rows=[dict(label=row['label'], value=row[field]) for row in aging_rows(chosen)])
     totals = {}
+    if tile['group'] == 'stage':
+        totals = {STAGE_TITLES[key]: 0 for key in (rules.PRETRIAL, rules.COURT, rules.ENFORCEMENT) if not tile['stage'] or key == tile['stage']}
     for item in chosen:
         label = {'stage': STAGE_TITLES[item['stage']], 'status': item['status_label'], 'aging': next(row[1] for row in AGING if row[0] == bucket(item['days_overdue'])),
                  'assignee': names.get(item['assignee_id']) or 'Не назначен', 'organization': item['_company']}[tile['group']]
         totals[label] = totals.get(label, 0) + measure_value(item, tile['measure'])
-    return dict(unit=unit, rows=[dict(label=key, value=value) for key, value in sorted(totals.items(), key=lambda pair: -pair[1])][:10])
+    ordered = list(totals.items()) if tile['group'] == 'stage' else sorted(totals.items(), key=lambda pair: -pair[1])
+    return dict(unit=unit, rows=[dict(label=key, value=value) for key, value in ordered][:10])
 
 
 def build_csv(debtors, schedule):
@@ -205,6 +229,49 @@ def add_routes(router, ctx):
             ctx.problem(403, 'Изменить общую панель может руководитель')
         return row
 
+    def board_data(c, user, board):
+        from .organizations import team
+        today = business_today()
+        orgs = [item for item in memberships(c, user['id']) if board['scope'] == 'all' and item['role'] == 'manager'] or [dict(id=user['tenant_id'], company=user['company'])]
+        debtors = []
+        for org in orgs:
+            debtors += [item | dict(_company=org['company']) for item in all_debtors(c, org['id']) if not item['archived']]
+        names = {row['id']: row['name'] for org in orgs for row in team(c, org['id'])}
+        tenants = [org['id'] for org in orgs]
+        return [dict(id=tile['id'], **tile_data(tile, debtors, c, tenants, today, names)) for tile in json.loads(board['tiles_json'])]
+
+    def home_board(c, user):
+        key = f"home:{user['tenant_id']}:{user['id']}"
+        row = c.execute('SELECT * FROM recovery_dashboards WHERE id=?', (key,)).fetchone()
+        if row:
+            return dict(row)
+        board = dict(id=key, tenant_id=user['tenant_id'], owner_id=user['id'], name='Главная', shared=0, scope='current', tiles_json=json.dumps(HOME_TILES, ensure_ascii=False), updated_at=ctx.now())
+        return board
+
+    @router.get('/home')
+    def home(user=Depends(ctx.get_user)):
+        """Charts of the first screen: one board per person, built from defaults until changed."""
+        with ctx.database(ctx.config) as c:
+            board = home_board(c, user)
+            tiles = [normalize(tile) for tile in json.loads(board['tiles_json'])]
+            several = len([item for item in memberships(c, user['id']) if item['role'] == 'manager']) > 1
+            return dict(scope=board['scope'], tiles=tiles, data=board_data(c, user, board), measures=MEASURES, groups=GROUPS, charts=CHARTS, several_organizations=several)
+
+    @router.put('/home')
+    def home_save(data: DashboardInput, user=Depends(ctx.get_user)):
+        key = f"home:{user['tenant_id']}:{user['id']}"
+        tiles = json.dumps([tile.model_dump() for tile in data.tiles], ensure_ascii=False)
+        with ctx.database(ctx.config, write=True) as c:
+            c.execute('''INSERT INTO recovery_dashboards VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET scope=excluded.scope,tiles_json=excluded.tiles_json,updated_at=excluded.updated_at''',
+                      (key, user['tenant_id'], user['id'], 'Главная', 0, data.scope, tiles, ctx.now()))
+        return home(user)
+
+    @router.delete('/home')
+    def home_reset(user=Depends(ctx.get_user)):
+        with ctx.database(ctx.config, write=True) as c:
+            c.execute('DELETE FROM recovery_dashboards WHERE id=?', (f"home:{user['tenant_id']}:{user['id']}",))
+        return home(user)
+
     @router.get('/dashboards')
     def dashboard_list(user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
@@ -236,16 +303,8 @@ def add_routes(router, ctx):
 
     @router.get('/dashboards/{key}/data')
     def dashboard_data(key: str, user=Depends(ctx.get_user)):
-        today = business_today()
         with ctx.database(ctx.config) as c:
-            board = visible(c, user, key)
-            orgs = [item for item in memberships(c, user['id']) if board['scope'] == 'all' and item['role'] == 'manager'] or [dict(id=user['tenant_id'], company=user['company'])]
-            debtors = []
-            for org in orgs:
-                debtors += [item | dict(_company=org['company']) for item in all_debtors(c, org['id']) if not item['archived']]
-            names = {row['id']: row['name'] for row in c.execute('SELECT id,name FROM users')}
-            tenants = [org['id'] for org in orgs]
-            return dict(items=[dict(id=tile['id'], **tile_data(tile, debtors, c, tenants, today, names)) for tile in json.loads(board['tiles_json'])])
+            return dict(items=board_data(c, user, visible(c, user, key)))
 
     @router.get('/report-schedules')
     def schedule_list(user=Depends(ctx.get_user)):

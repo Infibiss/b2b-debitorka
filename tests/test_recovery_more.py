@@ -135,13 +135,13 @@ def test_dashboard_builds_tiles_and_aggregates_companies(client):
     ready(client)
     client.post('/api/organizations', json=dict(company='ООО Вторая'))
     invoice(client, company='ООО Другой', inn='7703000003', number='СЧ-2', amount=300_000)
-    tiles = [dict(id='a', title='Долг', kind='metric', measure='debt'), dict(id='b', title='По этапам', kind='category', measure='debt', group='stage'),
-             dict(id='c', title='По компаниям', kind='category', measure='count', group='organization'), dict(id='d', title='Динамика', kind='timeline', measure='collected', width=2),
-             dict(id='e', title='По срокам', kind='category', measure='debt', group='aging')]
+    tiles = [dict(id='a', title='Долг', chart='number', measure='debt'), dict(id='b', title='По этапам', chart='columns', measure='debt', group='stage'),
+             dict(id='c', title='По компаниям', chart='bars', measure='count', group='organization'), dict(id='d', title='Динамика', chart='line', measure='collected', group='month', width=2),
+             dict(id='e', title='По срокам', chart='bars', measure='debt', group='aging')]
     current = client.post('/api/recovery/dashboards', json=dict(name='Моя', tiles=tiles))
     assert current.status_code == 201, current.text
     data = {row['id']: row for row in client.get(f"/api/recovery/dashboards/{current.json()['id']}/data").json()['items']}
-    assert data['a']['value'] == 300_000 and data['a']['unit'] == 'money' and len(data['d']['series']) == 12
+    assert data['a']['value'] == 300_000 and data['a']['unit'] == 'money' and len(data['d']['rows']) == 12
     everything = client.post('/api/recovery/dashboards', json=dict(name='Группа', scope='all', tiles=tiles)).json()['id']
     data = {row['id']: row for row in client.get(f'/api/recovery/dashboards/{everything}/data').json()['items']}
     assert data['a']['value'] > 300_000 and len(data['c']['rows']) == 2
@@ -175,3 +175,25 @@ def test_schedule_only_sends_to_members_and_records_status(client):
     assert boards.run_report_schedules(config, send=lambda c, plan, today: sent.append(plan['name']) or 'Отправлено') == 0
     assert sent == ['Для бухгалтерии']
     assert client.get('/api/recovery/report-schedules').json()['items'][0]['last_status'] == 'Отправлено'
+
+
+def test_home_charts_start_from_defaults_and_keep_changes(client):
+    ready(client)
+    home = client.get('/api/recovery/home').json()
+    assert [tile['id'] for tile in home['tiles']] == ['aging', 'monthly', 'stages', 'statuses']
+    data = {row['id']: row for row in home['data']}
+    assert len(data['aging']['rows']) == 6 and len(data['monthly']['rows']) == 12 and data['monthly']['months']
+    assert [row['label'] for row in data['stages']['rows']] == ['Досудебная работа', 'Суд', 'Исполнение']
+    tiles = home['tiles'][:1] + [dict(home['tiles'][1], chart='columns'), dict(id='n', title='Просрочено', chart='number', measure='overdue', group='stage', stage='', width=1)]
+    saved = client.put('/api/recovery/home', json=dict(name='Главная', tiles=tiles))
+    assert saved.status_code == 200, saved.text
+    again = client.get('/api/recovery/home').json()
+    assert [tile['chart'] for tile in again['tiles']] == ['columns', 'columns', 'number']
+    assert next(row for row in again['data'] if row['id'] == 'n')['value'] > 0
+    assert len(client.delete('/api/recovery/home').json()['tiles']) == 4
+
+
+def test_tiles_saved_before_chart_types_still_render():
+    from server.recovery_dashboards import normalize
+    assert normalize(dict(id='x', title='t', kind='timeline', measure='debt'))['group'] == 'month'
+    assert normalize(dict(id='x', title='t', kind='metric', measure='debt'))['chart'] == 'number'

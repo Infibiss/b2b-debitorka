@@ -556,6 +556,11 @@ def promised_amount(debtor):
     return max(by_invoice, debtor['balance'] if debtor['status'] == 'promise' else 0)
 
 
+def mail_ready(tenant):
+    from .workflow_delivery import smtp_configured
+    return smtp_configured(tenant)
+
+
 def document_title(kind, custom):
     if kind.startswith('custom:'):
         return (custom.get(kind[7:]) or {}).get('title', 'Свой документ')
@@ -658,7 +663,7 @@ def create_router(ctx):
                                    economics=rules.economics(view['balance'], route, TARIFF) if view['balance'] else None, recommendation=recommendation,
                                    details=json.loads(state.get('details_json') or '{}'), actions=rules.available_actions(view['status'], route=view['route']), log=logs,
                                    documents=[row | dict(title=document_title(row['kind'], custom)) for row in documents], custom_templates=[dict(kind='custom:' + key, title=value['title'], stage=value['stage']) for key, value in custom.items()],
-                                   register=register, financing=financing, **fields)
+                                   register=register, financing=financing, mail_connected=mail_ready(tenant), **fields)
 
     @router.patch('/debtors/{debtor_id}')
     def patch_debtor(debtor_id: str, data: DebtorPatch, user=Depends(ctx.get_user)):
@@ -714,7 +719,8 @@ def create_router(ctx):
     @router.get('/organization')
     def organization(user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
-            return get_organization(c, user['tenant_id'])
+            saved = get_organization(c, user['tenant_id'])
+        return dict(full_name=user['company']) | {key: value for key, value in saved.items() if value}
 
     @router.put('/organization')
     def save_organization(data: Organization, user=Depends(ctx.get_user)):

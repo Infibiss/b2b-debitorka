@@ -123,7 +123,7 @@ export function AutomationForm({ notify, onSaved }: { notify: Notify; onSaved: (
       <h2>{t('Правила автоматизации')}</h2>
       <p className="rc-muted">
         {t(
-          'Система работает только в этих рамках. Передача в суд всегда остаётся решением руководителя.'
+          'Система работает только в этих рамках. В суд дело уходит автоматически, только если вы включите это ниже; иначе решает руководитель.'
         )}
       </p>
       <label className="rc-check">
@@ -710,7 +710,7 @@ function ReportBuilder({ notify }: { notify: Notify }) {
           {t('Скачать отчёт')}
         </a>
         <a className="button button-outline" href="/api/recovery/report/aging.csv">
-          {t('Долг по срокам')}
+          {t('Скачать долг по срокам')}
         </a>
       </div>
     </section>
@@ -731,9 +731,6 @@ export function ReportsDesk({ notify }: { notify: Notify }) {
         <div>
           <h1>{t('Отчёты')}</h1>
         </div>
-        <a className="button button-outline" href="/api/recovery/report.csv">
-          {t('Скачать CSV')}
-        </a>
       </header>
       <ReportBuilder notify={notify} />
       <ReportSchedules notify={notify} />

@@ -367,7 +367,7 @@ export function SiteFooter() {
       <div className="site-footer-cta">
         <div>
           <Eyebrow light>{t('Начать')}</Eyebrow>
-          <Stack lines={[t('Готовы'), t('начать?')]} tag="p" />
+          <Stack lines={[t('Готовы начать?')]} tag="p" />
         </div>
         <Reveal className="site-footer-actions" delay={150}>
           <Pill href="/start?plan=trial">{t('Попробовать бесплатно')}</Pill>
@@ -426,6 +426,36 @@ function Reveal({
   );
 }
 
+function SectionHead({
+  eyebrow,
+  title,
+  lead,
+  id,
+  light = false,
+}: {
+  eyebrow: string;
+  title: string;
+  lead: string;
+  id: string;
+  light?: boolean;
+}) {
+  return (
+    <div className="section-head">
+      <div>
+        <Eyebrow light={light}>{eyebrow}</Eyebrow>
+        <h2 className="stack" id={id}>
+          <span className="clip clip-line">
+            <span>{title}</span>
+          </span>
+        </h2>
+      </div>
+      <Reveal className="section-lead" delay={120}>
+        <p>{lead}</p>
+      </Reveal>
+    </div>
+  );
+}
+
 function Stack({
   lines,
   tag: Tag = 'h2',
@@ -445,18 +475,6 @@ function Stack({
         </span>
       ))}
     </Tag>
-  );
-}
-
-function Words({ text }: { text: string }) {
-  return (
-    <p className="words">
-      {text.split(' ').map((word, index) => (
-        <span key={`${word}-${index}`} style={{ animationDelay: `${250 + index * 28}ms` }}>
-          {word}{' '}
-        </span>
-      ))}
-    </p>
   );
 }
 
@@ -539,7 +557,7 @@ function StageSlider() {
 
 const slides = [
   {
-    words: [t('Досудебка'), t('без'), t('ручной'), t('рутины')],
+    words: [t('Претензии'), t('без'), t('ручной'), t('рутины')],
     name: t('Досудебная работа'),
     role: t('Напоминания, обещания, претензии по вашим правилам'),
     rows: [
@@ -582,76 +600,70 @@ function Trust() {
   const go = (step: number) => setIndex((old) => (old + step + slides.length) % slides.length);
   return (
     <section className="trust" aria-labelledby="trust-title">
-      <div className="trust-badges">
-        <Reveal className="trust-circle">
-          <strong>1</strong>
-          <small>{t('карточка на весь путь долга')}</small>
-        </Reveal>
-        <Reveal className="trust-note" delay={120}>
-          <span className="chip">#01</span>
-          <div>
-            <h3>{t('Долг не теряется между отделами')}</h3>
-            <p>
-              {t(
-                'Договор, письма, оплаты и документы суда лежат в одной карточке и переходят с этапа на этап вместе с долгом.'
-              )}
-            </p>
-          </div>
-        </Reveal>
-      </div>
-      <h2 id="trust-title" className="ghost" key={index}>
-        {[0, 2].map((start) => (
-          <span className="ghost-row" key={start}>
-            {slide.words.slice(start, start + 2).map((word, position) => (
-              <span
-                className={`clip ghost-word ${start === 2 && position === 0 ? 'ghost-ink' : ''}`}
-                key={word}
-                data-from={ghostDrift[start + position][0]}
-                data-to={ghostDrift[start + position][1]}
-              >
-                <span>{word}</span>
+      <div className="trust-grid">
+        <div className="trust-copy">
+          <Eyebrow>{t('Один долг — одна карточка')}</Eyebrow>
+          <h2 id="trust-title" className="ghost" key={index}>
+            {[0, 2].map((start) => (
+              <span className="ghost-row" key={start}>
+                {slide.words.slice(start, start + 2).map((word, position) => (
+                  <span
+                    className={`clip ghost-word ${start === 2 && position === 0 ? 'ghost-ink' : ''}`}
+                    key={word}
+                    data-from={ghostDrift[start + position][0]}
+                    data-to={ghostDrift[start + position][1]}
+                  >
+                    <span>{word}</span>
+                  </span>
+                ))}
               </span>
             ))}
-          </span>
-        ))}
-      </h2>
-      <figure className="trust-card">
-        <div className="trust-card-rows" key={index}>
-          {slide.rows.map(([label, value]) => (
-            <p key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </p>
-          ))}
+          </h2>
+          <p className="trust-lead">
+            {t(
+              'Договор, письма, оплаты и документы суда лежат в одной карточке и переходят с этапа на этап вместе с долгом.'
+            )}
+          </p>
+          <div className="trust-controls">
+            <button
+              type="button"
+              className="round round-outline"
+              aria-label={t('Назад')}
+              onClick={() => go(-1)}
+            >
+              <Arrow back />
+            </button>
+            <Dots
+              count={slides.length}
+              index={index}
+              labels={slides.map((item) => item.name)}
+              onPick={setIndex}
+            />
+            <button
+              type="button"
+              className="round round-solid"
+              aria-label={t('Вперёд')}
+              onClick={() => go(1)}
+            >
+              <Arrow />
+            </button>
+          </div>
         </div>
-        <figcaption>
-          <strong>{slide.name}</strong>
-          <small>{slide.role}</small>
-        </figcaption>
-      </figure>
-      <div className="trust-controls">
-        <button
-          type="button"
-          className="round round-outline"
-          aria-label={t('Назад')}
-          onClick={() => go(-1)}
-        >
-          <Arrow back />
-        </button>
-        <Dots
-          count={slides.length}
-          index={index}
-          labels={slides.map((item) => item.name)}
-          onPick={setIndex}
-        />
-        <button
-          type="button"
-          className="round round-solid"
-          aria-label={t('Вперёд')}
-          onClick={() => go(1)}
-        >
-          <Arrow />
-        </button>
+        <figure className="trust-card" key={index}>
+          <figcaption>
+            <small>{t('Этап')}</small>
+            <strong>{slide.name}</strong>
+          </figcaption>
+          <div className="trust-card-rows">
+            {slide.rows.map(([label, value]) => (
+              <p key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </p>
+            ))}
+          </div>
+          <p className="trust-card-note">{slide.role}</p>
+        </figure>
       </div>
     </section>
   );
@@ -667,7 +679,9 @@ const rows = [
   [
     '02',
     t('Напоминания и претензии'),
-    t('Письма по расписанию, разный текст для разных сумм, контроль обещаний.'),
+    t(
+      'Письма уходят с вашей почты от имени вашей компании: по расписанию, с разным текстом для разных сумм.'
+    ),
     '/product#pretrial',
   ],
   [
@@ -683,16 +697,31 @@ const rows = [
     '/product#analytics',
   ],
 ];
+const views = {
+  summary: [
+    [t('В работе'), '8,4 млн ₽', t('25 должников')],
+    [t('Просрочено'), '6,1 млн ₽', t('в среднем 47 дней')],
+    [t('Обещали оплатить'), '1,2 млн ₽', t('в ближайшие 30 дней')],
+    [t('Получено'), '2,3 млн ₽', t('+18% к прошлому месяцу')],
+  ],
+  today: [
+    ['3', t('должника нарушили обещание оплатить')],
+    ['2', t('можно передавать в суд: срок ответа на претензию истёк')],
+    ['1', t('срок давности истекает через 40 дней')],
+    ['4', t('напоминания уйдут сегодня по вашим правилам')],
+  ],
+};
+
 const facts = [
   ['30', t('дней'), t('на ответ по претензии, прежде чем идти в суд')],
   ['750', t('тыс. ₽'), t('предел для судебного приказа')],
   ['3', t('года'), t('срок давности: система предупредит заранее')],
-  ['14', t('дней'), t('бесплатно, без привязки карты')],
+  ['10', t('дней'), t('на возражения по судебному приказу: потом можно взыскивать')],
 ];
 const start = [
   [t('Загрузите реестр'), t('Excel или выгрузка из 1С. Должники сами разойдутся по этапам.')],
   [t('Утвердите правила'), t('С какой суммы, как часто и каким каналом писать.')],
-  [t('Смотрите на деньги'), t('Рутина идёт сама, вам остаются только решения.')],
+  [t('Следите за оплатами'), t('Видно, кто заплатил после письма, а кому пора претензия.')],
 ];
 
 export function Landing() {
@@ -740,7 +769,7 @@ export function Landing() {
     if (!reduced && !root.classList.contains('no-intro')) {
       window.scrollTo(0, 0);
       lockScroll(true);
-      intro = window.setTimeout(() => lockScroll(false), 1400);
+      intro = window.setTimeout(() => lockScroll(false), 900);
     }
     try {
       sessionStorage.setItem('mandato-intro', '1');
@@ -811,11 +840,11 @@ export function Landing() {
             <Pill href="/start?plan=trial">{t('Попробовать бесплатно')}</Pill>
           </div>
           <div className="hero-cluster">
-            <StageSlider />
             <a className="glass hero-trial" href="/pricing">
               <strong>14</strong>
               <small>{t('дней бесплатно, без карты')}</small>
             </a>
+            <StageSlider />
           </div>
         </div>
       </section>
@@ -823,8 +852,14 @@ export function Landing() {
       <Trust />
 
       <section className="programs" id="programs" aria-labelledby="programs-title">
-        <Eyebrow>{t('Что внутри')}</Eyebrow>
-        <Stack lines={[t('Весь путь долга'), t('в одной системе')]} id="programs-title" />
+        <SectionHead
+          eyebrow={t('Что внутри')}
+          title={t('Весь путь долга в одной системе')}
+          lead={t(
+            'Загрузите реестр, и Mandato поведёт каждого должника от первого письма до приставов.'
+          )}
+          id="programs-title"
+        />
         <ul>
           {rows.map(([index, name, text, href], position) => (
             <li key={index}>
@@ -846,57 +881,54 @@ export function Landing() {
       </section>
 
       <section className="views" id="facilities" aria-labelledby="views-title">
-        <div className="views-grid">
-          <div className="views-copy">
-            <Reveal className="views-icon">
-              <Mark />
-            </Reveal>
-            <Stack lines={[t('Ситуация'), t('понятна'), t('с первого экрана')]} id="views-title" />
-            <Words
-              text={t('Открыли кабинет и видите: сколько должны, что горит и какой шаг следующий.')}
-            />
-          </div>
-          <div className="views-cards">
-            <Reveal className="view-tile-wrap">
-              <figure className="view-tile view-tile-deep">
-                <div className="view-tile-inner">
-                  <small>{t('Просрочено')}</small>
-                  <strong>4 820 000 ₽</strong>
-                  <div className="view-bars" aria-hidden="true">
-                    {[62, 88, 54, 36, 22].map((height) => (
-                      <i key={height} style={{ height: `${height}%` }} />
-                    ))}
-                  </div>
+        <SectionHead
+          eyebrow={t('Кабинет')}
+          title={t('Ситуация понятна с первого экрана')}
+          lead={t(
+            'Главная страница отвечает на три вопроса: сколько вам должны, сколько уже вернулось и что сделать сегодня.'
+          )}
+          id="views-title"
+        />
+        <div className="views-cards">
+          <Reveal className="view-tile view-tile-deep">
+            <p className="view-tile-label">{t('Сводка за месяц')}</p>
+            <dl>
+              {views.summary.map(([label, value, note]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>
+                    {value}
+                    {note && <small>{note}</small>}
+                  </dd>
                 </div>
-                <figcaption className="caption-deep">
-                  <strong>{t('Долг по сроку просрочки')}</strong>
-                  <small>{t('Видно, что пора взыскивать в первую очередь.')}</small>
-                </figcaption>
-              </figure>
-            </Reveal>
-            <Reveal className="view-tile-wrap view-tile-second" delay={140}>
-              <figure className="view-tile view-tile-brand">
-                <div className="view-tile-inner">
-                  <small>{t('Следующий шаг')}</small>
-                  <strong>{t('Срок ответа истёк. Можно передавать в суд.')}</strong>
-                  <ul>
-                    <li>{t('Договор и УПД на месте')}</li>
-                    <li>{t('Пошлина: 17 500 ₽')}</li>
-                  </ul>
-                </div>
-                <figcaption className="caption-teal">
-                  <strong>{t('Карточка должника')}</strong>
-                  <small>{t('Система подсказывает, что делать дальше.')}</small>
-                </figcaption>
-              </figure>
-            </Reveal>
-          </div>
+              ))}
+            </dl>
+          </Reveal>
+          <Reveal className="view-tile view-tile-brand" delay={140}>
+            <p className="view-tile-label">{t('Что сделать сегодня')}</p>
+            <ul>
+              {views.today.map(([count, text]) => (
+                <li key={text}>
+                  <strong>{count}</strong>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </Reveal>
         </div>
+        <p className="views-note">{t('Пример экрана. Цифры показаны для наглядности.')}</p>
       </section>
 
       <section className="stats" aria-labelledby="stats-title">
-        <Eyebrow light>{t('Сроки и суммы')}</Eyebrow>
-        <Stack lines={[t('Система'), t('считает сама')]} id="stats-title" />
+        <SectionHead
+          light
+          eyebrow={t('Сроки и суммы')}
+          title={t('Система считает сама')}
+          lead={t(
+            'Сроки по закону, проценты по ставкам ЦБ, госпошлина по Налоговому кодексу. Без таблиц и ручных расчётов.'
+          )}
+          id="stats-title"
+        />
         <dl className="stats-grid">
           {facts.map(([value, unit, text], index) => (
             <Reveal key={text} className="stat-cell" delay={index * 110}>
@@ -913,8 +945,12 @@ export function Landing() {
       </section>
 
       <section className="start" aria-labelledby="start-title">
-        <Eyebrow>{t('Как начать')}</Eyebrow>
-        <Stack lines={[t('Запуск'), t('за один день')]} id="start-title" />
+        <SectionHead
+          eyebrow={t('Как начать')}
+          title={t('Запуск за один день')}
+          lead={t('Не нужны внедрение и программист: достаточно списка должников в Excel.')}
+          id="start-title"
+        />
         <ol>
           {start.map(([title, text], index) => (
             <li key={title}>

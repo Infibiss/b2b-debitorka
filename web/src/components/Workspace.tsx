@@ -17,7 +17,7 @@ import {
   ScanText,
 } from 'lucide-react';
 import { Brand } from './Brand';
-import { WorkspaceProfile, WorkspaceAdvice } from './WorkspaceProfile';
+import { WorkspaceProfile } from './WorkspaceProfile';
 import { Auth } from './Auth';
 import { useInvitationToken } from './useInvitationToken';
 import { InboxStatus, TeamSettings } from './TeamSettings';
@@ -46,7 +46,7 @@ import { RecoveryHome } from './recovery/RecoveryHome';
 import { DebtorsDesk } from './recovery/DebtorsDesk';
 import { DebtorCard } from './recovery/DebtorCard';
 import { RecognizeDesk } from './recovery/RecognizeDesk';
-import { OrganizationSwitch } from './recovery/Organizations';
+import { OrganizationDialog, OrganizationMenu } from './recovery/Organizations';
 import {
   AutomationForm,
   FinancingDesk,
@@ -98,6 +98,7 @@ export function Workspace() {
   const [contextInvoice] = useRouteField<string>('context', '');
   const [contextCase] = useRouteField<string>('case', '');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [addingOrganization, setAddingOrganization] = useState(false);
   const [intent] = useRouteField<string>('intent', '');
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
@@ -247,7 +248,6 @@ export function Workspace() {
           <div className="sidebar-brand">
             <Brand />
           </div>
-          <OrganizationSwitch notify={notify} />
           <nav className="workspace-nav" aria-label={t('Разделы кабинета')}>
             {navigation.map(({ id, label, icon: Icon }) => (
               <button
@@ -266,16 +266,13 @@ export function Workspace() {
             ))}
           </nav>
           <div className="sidebar-bottom">
-            <WorkspaceAdvice
-              key={session.user.id}
-              userId={session.user.id}
-              onRules={() => goTo('settings:automation')}
-            />
             <WorkspaceProfile
               name={session.user.name}
               company={settings?.company || session.user.company}
               role={session.user.role === 'accountant' ? t('Бухгалтер') : t('Руководитель')}
-              onSettings={() => setTab('settings')}
+              organizations={
+                <OrganizationMenu notify={notify} onAdd={() => setAddingOrganization(true)} />
+              }
               onLogout={() => void logout()}
             />
           </div>
@@ -384,6 +381,9 @@ export function Workspace() {
               />
             ) : settings ? (
               <div className="rc-page">
+                <header className="rc-head">
+                  <h1>{t('Настройки')}</h1>
+                </header>
                 <SettingsNav current="mail" />
                 <SettingsPanel
                   settings={settings}
@@ -404,6 +404,9 @@ export function Workspace() {
           </main>
         </div>
         {helpOpen && <ContextHelp onClose={() => setHelpOpen(false)} />}
+        {addingOrganization && (
+          <OrganizationDialog notify={notify} onClose={() => setAddingOrganization(false)} />
+        )}
         {modal === 'create' && <CreateInvoice onClose={() => setModal(null)} onDone={done} />}{' '}
         {modal === 'import' && <ImportInvoices onClose={() => setModal(null)} onDone={done} />}{' '}
         {selected && (
@@ -468,12 +471,6 @@ function SettingsPanel({
   }
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <h1>{t('Настройки')}</h1>
-          <p>{t('Реквизиты, почта и данные организации.')}</p>
-        </div>
-      </div>
       <form ref={draft.ref} className="settings-form" onSubmit={save}>
         {draft.status && (
           <p className="draft-status" role="status">
@@ -483,7 +480,7 @@ function SettingsPanel({
         <section className="settings-panel">
           <div className="settings-intro">
             <h2>{t('Компания и письма')}</h2>
-            <p>{t('Эти данные используются при подготовке текста покупателю.')}</p>
+            <p>{t('Эти данные подставляются в письма должникам.')}</p>
           </div>
           <div className="form-grid">
             <label className="field full-width">

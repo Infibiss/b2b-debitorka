@@ -19,7 +19,9 @@ export function SupportContact() {
           {t('Написать в поддержку')} <ArrowUpRight size={14} />
         </a>
       ) : (
-        <p>{t('Для помощи со входом обратитесь к администратору вашей компании.')}</p>
+        <p>
+          {t('Не получается войти?')} <a href="mailto:info@mandato.ru">info@mandato.ru</a>
+        </p>
       )}
     </div>
   );

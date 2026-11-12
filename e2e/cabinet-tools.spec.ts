@@ -63,33 +63,46 @@ test('a second company has its own debtors and can be switched back', async ({ p
   await signUp(page);
   await addInvoice(page);
   await page.reload();
-  await page.getByRole('button', { name: 'Добавить организацию' }).click();
+  const profile = page.getByRole('button', { name: 'Профиль и настройки' });
+  await profile.click();
+  await page.getByRole('menuitem', { name: 'Добавить организацию' }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая организация' });
   await dialog.getByLabel('Название').fill('ООО Вторая');
   await dialog.getByRole('button', { name: 'Создать' }).click();
-  const select = page.getByLabel('Организация', { exact: true });
-  await expect(select.locator('option:checked')).toHaveText('ООО Вторая');
+  await profile.click();
+  await expect(page.getByRole('menuitemradio', { name: 'ООО Вторая' })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  );
+  await page.keyboard.press('Escape');
   await navigate(page, 'Должники');
   await expect(page.getByRole('button', { name: 'ООО Север' })).toHaveCount(0);
-  await select.selectOption({ label: 'ООО Поставка' });
-  await expect(select.locator('option:checked')).toHaveText('ООО Поставка');
+  await profile.click();
+  await page.getByRole('menuitemradio', { name: 'ООО Поставка' }).click();
+  await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
   await navigate(page, 'Должники');
   await expect(page.getByRole('button', { name: 'ООО Север' }).first()).toBeVisible();
 });
 
-test('a custom dashboard gains a tile and a report gets a schedule', async ({ page }) => {
+test('home charts change type, gain a chart and a report gets a schedule', async ({ page }) => {
   await signUp(page);
   await addInvoice(page);
   await page.reload();
-  await page.getByRole('button', { name: 'Новая панель' }).click();
-  const board = page.getByRole('region', { name: 'Новая панель' });
-  await expect(board.getByRole('heading', { name: 'В работе' })).toBeVisible();
-  await board.getByRole('button', { name: 'Плитка' }).click();
-  await board.getByLabel('Название', { exact: true }).fill('Просрочка');
-  await board.getByLabel('Что считать').selectOption('overdue');
-  await board.getByRole('button', { name: 'Добавить', exact: true }).click();
-  await expect(board.getByRole('heading', { name: 'Просрочка' })).toBeVisible();
-  await expect(board.locator('.rc-tile-value').last()).toContainText('500');
+  const charts = page.getByRole('region', { name: 'Графики' });
+  await expect(charts.getByRole('heading', { name: 'Долг по сроку просрочки' })).toBeVisible();
+  await page.getByRole('button', { name: 'Настроить графики' }).click();
+  const first = charts.locator('.ch-card').first();
+  await first.getByLabel('Вид').selectOption('line');
+  await expect(first.locator('.ch-line')).toBeVisible();
+  await charts.getByRole('button', { name: 'Добавить график' }).click();
+  const added = charts.locator('.ch-card').last();
+  await added.getByLabel('Вид').selectOption('number');
+  await added.getByLabel('Что считать').selectOption('overdue');
+  await expect(added.locator('.ch-number')).toContainText('500');
+  await page.getByRole('button', { name: 'Готово' }).click();
+  await page.reload();
+  await expect(charts.locator('.ch-card').first().locator('.ch-line')).toBeVisible();
+  await expect(charts.locator('.ch-card')).toHaveCount(5);
   await navigate(page, 'Отчёты');
   await page.getByRole('button', { name: 'Новое расписание' }).click();
   await page.locator('.rc-settings').getByLabel('Название').fill('Для бухгалтерии');

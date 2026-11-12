@@ -336,7 +336,7 @@ test('agent inbox fails safely without a provider and never fabricates payment',
     .getByLabel('Новый ответ покупателя', { exact: true })
     .fill('Оплатили 1000 рублей, проверьте поступление.');
   await dialog.getByRole('button', { name: 'Разобрать сообщение', exact: true }).click();
-  await expect(dialog).toContainText('Обработка сообщений ещё не подключена');
+  await expect(dialog).toContainText('Разбор ответов ещё не включён');
   await expect(
     dialog.getByRole('button', { name: 'Подтвердить действие', exact: true })
   ).toHaveCount(0);

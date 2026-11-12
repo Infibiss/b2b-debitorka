@@ -56,9 +56,11 @@ const intentText = {
 };
 const reasons: Record<string, string> = {
   provider_tenant_denied: t(
-    'Обработка сообщений для вашей организации ещё не подключена. Обратитесь к администратору.'
+    'Разбор ответов для вашей организации ещё не включён. Напишите нам на info@mandato.ru, включим за день.'
   ),
-  provider_unconfigured: t('Обработка сообщений ещё не подключена. Обратитесь к администратору.'),
+  provider_unconfigured: t(
+    'Разбор ответов ещё не включён. Напишите нам на info@mandato.ru, включим за день.'
+  ),
   provider_unavailable: t('Не удалось обработать сообщение. Повторите проверку позже.'),
   invalid_schema: t('Не удалось надёжно определить содержание сообщения.'),
   evidence_mismatch: t('Для одного из выводов не найдено подтверждение в тексте.'),
@@ -169,7 +171,7 @@ export function AgentDesk({ invoices, onChanged, notify }: DeskProps) {
     <>
       <DeskHeading
         eyebrow={t('ВХОДЯЩИЕ СООБЩЕНИЯ')}
-        title={t('Разбор ответов')}
+        title={t('Ответы должников')}
         action={
           <button className="button button-dark" onClick={() => setCompose(true)}>
             <Inbox size={16} />

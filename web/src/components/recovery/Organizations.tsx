@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus } from 'lucide-react';
+import { Check, Plus } from 'lucide-react';
 import { api, money, post } from '../../api';
 import { t } from '../../i18n';
 import type { Notify } from './types';
@@ -7,12 +7,9 @@ import type { Notify } from './types';
 type Org = { id: string; company: string; role: string };
 type Summary = { id: string; company: string; debtors: number; balance: number; overdue: number };
 
-export function OrganizationSwitch({ notify }: { notify: Notify }) {
+export function OrganizationMenu({ notify, onAdd }: { notify: Notify; onAdd: () => void }) {
   const [items, setItems] = useState<Org[]>([]);
   const [active, setActive] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [company, setCompany] = useState('');
-  const [inn, setInn] = useState('');
   useEffect(() => {
     api<{ active: string; items: Org[] }>('/organizations')
       .then((result) => {
@@ -21,6 +18,40 @@ export function OrganizationSwitch({ notify }: { notify: Notify }) {
       })
       .catch((error) => notify(error.message, true));
   }, [notify]);
+  return (
+    <div className="org-menu" role="group" aria-label={t('Организация')}>
+      <p>{t('Организация')}</p>
+      {items.map((item) => (
+        <button
+          key={item.id}
+          role="menuitemradio"
+          aria-checked={item.id === active}
+          onClick={() =>
+            item.id !== active &&
+            void post(`/organizations/${item.id}/switch`)
+              .then(() => location.assign('/app'))
+              .catch((error) => notify(error.message, true))
+          }
+        >
+          <span className="org-mark">
+            {item.id === active && <Check size={14} aria-hidden="true" />}
+          </span>
+          {item.company}
+        </button>
+      ))}
+      <button role="menuitem" onClick={onAdd}>
+        <span className="org-mark">
+          <Plus size={14} aria-hidden="true" />
+        </span>
+        {t('Добавить организацию')}
+      </button>
+    </div>
+  );
+}
+
+export function OrganizationDialog({ notify, onClose }: { notify: Notify; onClose: () => void }) {
+  const [company, setCompany] = useState('');
+  const [inn, setInn] = useState('');
   function submit(event: FormEvent) {
     event.preventDefault();
     post('/organizations', { company, inn })
@@ -28,77 +59,35 @@ export function OrganizationSwitch({ notify }: { notify: Notify }) {
       .catch((error) => notify(error.message, true));
   }
   return (
-    <div className="org-switch">
-      {items.length > 1 ? (
-        <select
-          aria-label={t('Организация')}
-          value={active}
-          onChange={(e) =>
-            void post(`/organizations/${e.target.value}/switch`)
-              .then(() => location.assign('/app'))
-              .catch((error) => notify(error.message, true))
-          }
-        >
-          {items.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.company}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <span className="org-name">{items[0]?.company}</span>
-      )}
-      <button
-        className="org-add"
-        aria-label={t('Добавить организацию')}
-        title={t('Добавить организацию')}
-        onClick={() => setAdding(true)}
-      >
-        <Plus size={15} aria-hidden="true" />
-      </button>
-      {adding && (
-        <div
-          className="org-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('Новая организация')}
-        >
-          <form className="rc-card" onSubmit={submit}>
-            <h2>{t('Новая организация')}</h2>
-            <label>
-              {t('Название')}
-              <input
-                required
-                minLength={2}
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
-            </label>
-            <label>
-              {t('ИНН')}
-              <input
-                inputMode="numeric"
-                pattern="\d{10}|\d{12}"
-                value={inn}
-                onChange={(e) => setInn(e.target.value)}
-              />
-            </label>
-            <p className="rc-muted">
-              {t('У каждой организации свои должники, настройки и тариф.')}
-            </p>
-            <div className="rc-action-buttons">
-              <button className="button button-dark">{t('Создать')}</button>
-              <button
-                type="button"
-                className="button button-outline"
-                onClick={() => setAdding(false)}
-              >
-                {t('Отмена')}
-              </button>
-            </div>
-          </form>
+    <div className="org-dialog" role="dialog" aria-modal="true" aria-label={t('Новая организация')}>
+      <form className="rc-card" onSubmit={submit}>
+        <h2>{t('Новая организация')}</h2>
+        <label>
+          {t('Название')}
+          <input
+            required
+            minLength={2}
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+          />
+        </label>
+        <label>
+          {t('ИНН')}
+          <input
+            inputMode="numeric"
+            pattern="\d{10}|\d{12}"
+            value={inn}
+            onChange={(e) => setInn(e.target.value)}
+          />
+        </label>
+        <p className="rc-muted">{t('У каждой организации свои должники, настройки и тариф.')}</p>
+        <div className="rc-action-buttons">
+          <button className="button button-dark">{t('Создать')}</button>
+          <button type="button" className="button button-outline" onClick={onClose}>
+            {t('Отмена')}
+          </button>
         </div>
-      )}
+      </form>
     </div>
   );
 }

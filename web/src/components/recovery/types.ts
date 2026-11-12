@@ -94,6 +94,7 @@ export type DebtorDetail = Debtor & {
   documents: { id: string; kind: string; title: string; version: number; created_at: string }[];
   custom_templates: { kind: string; title: string; stage: Stage }[];
   register: RegisterEntry[];
+  mail_connected: boolean;
   financing: { items: FinancingOffer[]; has_active_request: boolean; key_rate_percent: string };
   claim_sent_on: string | null;
   claim_reference: string;
