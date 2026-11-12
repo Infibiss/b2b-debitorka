@@ -2227,3 +2227,191 @@
     visibility: hidden;
   }
 }
+
+/* ==== One look for every workspace section ==== */
+/* Page title: the same size, weight and spacing everywhere. */
+.workspace #workspace-main :is(.rc-head h1, .page-heading h1, .ops-heading h1, .wf-heading h1) {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.workspace #workspace-main :is(.page-heading, .ops-heading, .wf-heading) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 0 0 14px;
+}
+/* Pages carry a title only; what to do is said by the screen itself. */
+.workspace #workspace-main :is(.page-heading, .ops-heading, .wf-heading) > div > p {
+  display: none;
+}
+/* Inside Settings the tab already names the page. */
+.workspace #workspace-main .rc-settings-tabs ~ * :is(.page-heading, .ops-heading) h1,
+.workspace #workspace-main .rc-settings-tabs ~ :is(.page-heading, .ops-heading) h1 {
+  display: none;
+}
+.workspace
+  #workspace-main
+  .rc-settings-tabs
+  ~ *
+  :is(.page-heading, .ops-heading):not(:has(button, a)) {
+  display: none;
+}
+
+/* Cards: one surface, one radius, one padding. */
+.workspace
+  #workspace-main
+  :is(
+    .rc-card,
+    .ops-card,
+    .wf-panel,
+    .settings-panel,
+    .ms-card,
+    .mail-setup,
+    .workspace-data,
+    .connections-manual > details,
+    .rc-empty
+  ) {
+  border: 0;
+  border-radius: 20px;
+  background: #f4f4f4;
+  box-shadow: none;
+}
+.workspace
+  #workspace-main
+  :is(.ops-card, .wf-panel, .settings-panel, .ms-card, .mail-setup, .workspace-data) {
+  padding: 20px;
+}
+.workspace
+  #workspace-main
+  :is(.rc-card, .ops-card, .wf-panel, .settings-panel, .ms-card, .mail-setup, .workspace-data)
+  h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.workspace
+  #workspace-main
+  :is(.rc-card, .ops-card, .wf-panel, .settings-panel, .ms-card, .mail-setup, .workspace-data)
+  h3 {
+  font-size: 16px;
+  font-weight: 500;
+}
+.workspace
+  #workspace-main
+  :is(.ops-card-heading, .ms-card-heading, .wf-panel-heading, .settings-intro)
+  p,
+.workspace #workspace-main :is(.rc-muted, .ops-muted, .wf-muted) {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.workspace #workspace-main :is(.ops-card-heading, .ms-card-heading, .settings-intro) {
+  margin-bottom: 14px;
+}
+.workspace #workspace-main :is(.ops-card-heading, .ms-card-heading) > svg:first-child,
+.workspace #workspace-main .wf-panel-heading > svg:first-child {
+  display: none;
+}
+/* Cards inside cards stay white so they read as one block. */
+.workspace
+  #workspace-main
+  :is(.rc-card, .ops-card, .wf-panel, .settings-panel, .ms-card)
+  :is(.ms-card, .ops-context, .wf-member, .rc-details .rc-card) {
+  background: #fff;
+}
+.workspace #workspace-main .ops-context {
+  border: 0;
+  border-radius: 16px;
+  background: #f4f4f4;
+}
+
+/* Tabs: pills on a thin line, the same in Settings, Payments and the debtor card. */
+.workspace #workspace-main :is(.rc-tabs, .ops-tabs, .rc-stage-tabs) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.workspace #workspace-main :is(.rc-tabs, .ops-tabs, .rc-stage-tabs) button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14.5px;
+}
+.workspace #workspace-main :is(.rc-tabs, .ops-tabs, .rc-stage-tabs) button:hover {
+  color: var(--ink);
+}
+.workspace
+  #workspace-main
+  :is(.rc-tabs, .ops-tabs, .rc-stage-tabs)
+  button:is(.active, [aria-selected='true'], [aria-pressed='true'], [aria-current='page']) {
+  background: #183d31;
+  color: #fff;
+}
+
+/* Fields: one label size and one control. */
+.workspace
+  #workspace-main
+  :is(
+    .field,
+    .rc-grid > label,
+    .rc-details > label,
+    .ms-fields label,
+    .settings-form label,
+    .ops-input-group label
+  ) {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.workspace
+  #workspace-main
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea) {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 15px;
+}
+.workspace
+  #workspace-main
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select) {
+  min-height: 42px;
+}
+
+/* Lists of templates and similar side menus look like the main menu. */
+.workspace #workspace-main .rc-template nav button {
+  border-radius: 12px;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+.workspace #workspace-main .rc-template nav button.active {
+  background: #183d31;
+  color: #fff;
+}
+.workspace #workspace-main :is(.button, .ops-button) {
+  font-size: 14.5px;
+}
+@media (max-width: 860px) {
+  .workspace #workspace-main :is(.rc-head h1, .page-heading h1, .ops-heading h1, .wf-heading h1) {
+    font-size: 30px;
+  }
+}
+.workspace #workspace-main details.connections-disclosure {
+  border: 0;
+  border-radius: 20px;
+  background: #f4f4f4;
+}
