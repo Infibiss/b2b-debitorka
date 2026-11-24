@@ -97,7 +97,15 @@ test('home charts change type, gain a chart and a report gets a schedule', async
   await charts.getByRole('button', { name: 'Добавить график' }).click();
   const added = charts.locator('.ch-card').last();
   await added.getByLabel('Вид').selectOption('number');
+  // Saves are queued in order; the last one carries the final layout.
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/recovery/home') &&
+      response.request().method() === 'PUT' &&
+      (response.request().postData() || '').includes('"overdue"')
+  );
   await added.getByLabel('Что считать').selectOption('overdue');
+  await saved;
   await expect(added.locator('.ch-number')).toContainText('500');
   await page.getByRole('button', { name: 'Готово' }).click();
   await page.reload();

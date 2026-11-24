@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { api, del, money, put } from '../../api';
 import { language, t } from '../../i18n';
@@ -301,6 +301,10 @@ export function HomeCharts({
   refreshKey: number;
 }) {
   const [home, setHome] = useState<Home | null>(null);
+  // Saves go one after another: parallel requests could land out of order
+  // and leave an older layout on the server.
+  const saving = useRef<Promise<void>>(Promise.resolve());
+  const latest = useRef(0);
   const fail = useCallback((error: Error) => notify(error.message, true), [notify]);
   useEffect(() => {
     api<Home>('/recovery/home').then(setHome).catch(fail);
@@ -308,13 +312,19 @@ export function HomeCharts({
   if (!home) return null;
   function save(tiles: Tile[], scope = home!.scope) {
     setHome({ ...home!, tiles, scope });
-    put<Home>('/recovery/home', {
+    const request = ++latest.current;
+    const body = {
       name: t('Главная'),
       scope,
       tiles: tiles.map((tile) => ({ ...tile, title: tile.title.trim() || t('График') })),
-    })
-      .then(setHome)
-      .catch(fail);
+    };
+    saving.current = saving.current.then(() =>
+      put<Home>('/recovery/home', body)
+        .then((saved) => {
+          if (request === latest.current) setHome(saved);
+        })
+        .catch(fail)
+    );
   }
   function move(index: number, step: number) {
     const tiles = [...home!.tiles];
@@ -360,11 +370,16 @@ export function HomeCharts({
           <button
             type="button"
             className="wf-text-button"
-            onClick={() =>
-              del<Home>('/recovery/home')
-                .then((result) => result && setHome(result as Home))
-                .catch(fail)
-            }
+            onClick={() => {
+              const request = ++latest.current;
+              saving.current = saving.current.then(() =>
+                del<Home>('/recovery/home')
+                  .then((result) => {
+                    if (result && request === latest.current) setHome(result as Home);
+                  })
+                  .catch(fail)
+              );
+            }}
           >
             <RotateCcw size={14} aria-hidden="true" />
             {t('Вернуть графики по умолчанию')}
