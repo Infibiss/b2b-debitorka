@@ -415,7 +415,7 @@ def create_router(ctx):
     """Keep main import-free; all auth/database operations use the shared context."""
     from . import finance
     from .legal_documents import build_docx
-    from .legal_fees import FEE_FIELDS, calculate_fees, current_model
+    from .legal_fees import FEE_FIELDS, calculate_fees, current_model, included_packages, plan_terms
     from .workflow import require_manager
     router=APIRouter(prefix="/api/legal",tags=["legal"])
 
@@ -493,7 +493,15 @@ def create_router(ctx):
         filing=[dict(item) for item in connection.execute('''SELECT m.*,d.kind FROM legal_milestones m
             JOIN legal_documents d ON d.id=m.document_id AND d.tenant_id=m.tenant_id AND d.case_id=m.case_id
             WHERE m.tenant_id=? AND m.case_id=? AND m.stage='filed' ''',(row['tenant_id'],row['id']))]
-        return calculate_fees(facts,recovery,filing,[item for item in steps if item['stage']=='claim_sent'],paid)
+        plan_id,_=plan_terms(facts)
+        # The subscription's monthly allowance of court packages is shared by
+        # every case of the organisation that is on the same plan.
+        shared=[dict(item) for item in connection.execute('''SELECT m.*,d.kind,c.facts_json FROM legal_milestones m
+            JOIN legal_documents d ON d.id=m.document_id AND d.tenant_id=m.tenant_id AND d.case_id=m.case_id
+            JOIN legal_cases c ON c.id=m.case_id AND c.tenant_id=m.tenant_id
+            WHERE m.tenant_id=? AND m.stage='filed' ''',(row['tenant_id'],))]
+        shared=[item for item in shared if plan_terms(json.loads(item.pop('facts_json')))[0]==plan_id]
+        return calculate_fees(facts,recovery,filing,[item for item in steps if item['stage']=='claim_sent'],paid,included_packages(shared,plan_id))
 
     def case_calculation(connection,row,data):
         ids=case_invoice_ids(connection,row)

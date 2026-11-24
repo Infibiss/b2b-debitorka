@@ -528,7 +528,15 @@ export function DebtorCard({
                   </div>
                   <div>
                     <dt>{t('Подготовка пакета')}</dt>
-                    <dd>{money(debtor.economics.package_amount, true)}</dd>
+                    <dd>
+                      {debtor.economics.package_included
+                        ? debtor.economics.package_allowance === null
+                          ? t('Входит в подписку')
+                          : t('Входит в подписку, до {0} в месяц', [
+                              debtor.economics.package_allowance,
+                            ])
+                        : money(debtor.economics.package_amount, true)}
+                    </dd>
                   </div>
                 </>
               )}

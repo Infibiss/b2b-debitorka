@@ -13,7 +13,7 @@ def sandbox_only(monkeypatch):
     monkeypatch.delenv('COMMERCIAL_PAYMENT_MODE', raising=False)
 
 
-def order(client, plan='start', key='checkout-0001'):
+def order(client, plan='team', key='checkout-0001'):
     response = client.post('/api/commercial/orders', json={'plan_id': plan, 'consent': True, 'idempotency_key': key})
     assert response.status_code == 201, response.text
     return response.json()
@@ -24,8 +24,8 @@ def test_public_catalog_is_authoritative_and_contains_custom(client):
     assert response.status_code == 200
     catalog = response.json()
     assert catalog['trial_days'] == 14 and catalog['payment_mode'] == 'invoice'
-    assert [(p['id'], p['price_monthly'], p['active_invoice_limit'], p['user_limit']) for p in catalog['items']] == [
-        ('start', 990000, 100, 2), ('team', 2490000, 500, 5), ('scale', 4990000, 2000, 15), ('custom', None, None, None)]
+    assert [(p['id'], p['price_monthly'], p['debtor_limit'], p['user_limit'], p['orderable']) for p in catalog['items']] == [
+        ('start', 0, 10, 2, False), ('team', 3290000, 100, 5, True), ('scale', 6990000, 500, 15, True), ('custom', None, None, None, False)]
     assert all(p['currency'] == 'RUB' for p in catalog['items'])
 
 
@@ -77,12 +77,12 @@ def test_trial_starts_once_for_tenant_and_needs_manager_and_csrf(client):
 def test_orders_snapshot_price_idempotency_and_never_call_real_billing(client):
     register(client)
     first = order(client)
-    assert first['amount'] == 990000 and first['status'] == 'pending'
+    assert first['amount'] == 3290000 and first['status'] == 'pending'
     assert first['payment_mode'] == 'invoice' and first['currency'] == 'RUB'
     assert order(client)['id'] == first['id']
-    assert client.post('/api/commercial/orders', json={'plan_id': 'team', 'consent': True, 'idempotency_key': 'checkout-0001'}).status_code == 409
-    for change in ({'plan_id': 'custom'}, {'plan_id': 'unknown'}, {'amount': 1}, {'consent': False}, {'consent': 1}, {'idempotency_key': 'x'}):
-        response = client.post('/api/commercial/orders', json={'plan_id': 'start', 'consent': True, 'idempotency_key': 'checkout-new1'} | change)
+    assert client.post('/api/commercial/orders', json={'plan_id': 'scale', 'consent': True, 'idempotency_key': 'checkout-0001'}).status_code == 409
+    for change in ({'plan_id': 'start'}, {'plan_id': 'custom'}, {'plan_id': 'unknown'}, {'amount': 1}, {'consent': False}, {'consent': 1}, {'idempotency_key': 'x'}):
+        response = client.post('/api/commercial/orders', json={'plan_id': 'team', 'consent': True, 'idempotency_key': 'checkout-new1'} | change)
         assert response.status_code == 422, response.text
     response = client.post(f"/api/commercial/orders/{first['id']}/confirm", json={})
     assert response.status_code == 200, response.text
@@ -102,7 +102,7 @@ def test_order_and_account_tenant_isolation_and_permissions(client):
     first = order(client)
     with database(client.app.state.config, write=True) as c:
         c.execute("UPDATE workflow_memberships SET role='accountant' WHERE user_id=?", (user['user']['id'],))
-    for path, body in (('/orders', {'plan_id': 'start', 'consent': True, 'idempotency_key': 'another-key'}), (f"/orders/{first['id']}/confirm", {}), (f"/orders/{first['id']}/cancel", {}), ('/cancel', {'consent': True}), ('/deletion-request', {'confirmation': 'УДАЛИТЬ', 'consent': True})):
+    for path, body in (('/orders', {'plan_id': 'team', 'consent': True, 'idempotency_key': 'another-key'}), (f"/orders/{first['id']}/confirm", {}), (f"/orders/{first['id']}/cancel", {}), ('/cancel', {'consent': True}), ('/deletion-request', {'confirmation': 'УДАЛИТЬ', 'consent': True})):
         assert client.post('/api/commercial' + path, json=body).status_code == 403
     client.post('/api/auth/logout')
     register(client, 'another@example.ru')
@@ -190,11 +190,11 @@ def test_existing_order_keeps_catalog_snapshot_on_price_change(client, monkeypat
     from server import commercial
     register(client)
     first = order(client)
-    monkeypatch.setitem(commercial.PLANS, 'start', commercial.PLANS['start'] | {'price_monthly': 5000000, 'user_limit': 25})
+    monkeypatch.setitem(commercial.PLANS, 'team', commercial.PLANS['team'] | {'price_monthly': 5000000, 'user_limit': 25})
     assert order(client) == first
     confirmed = client.post(f"/api/commercial/orders/{first['id']}/confirm", json={}).json()
-    assert confirmed['account']['plan']['price_monthly'] == 990000
-    assert confirmed['account']['plan']['user_limit'] == 2
+    assert confirmed['account']['plan']['price_monthly'] == 3290000
+    assert confirmed['account']['plan']['user_limit'] == 5
     assert order(client, key='checkout-new1')['amount'] == 5000000
 
 

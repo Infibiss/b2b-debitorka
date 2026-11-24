@@ -1,16 +1,23 @@
 import { test, expect } from './fixtures';
-test('separate pricing page discloses monthly tiers and additional recovery charges', async ({
+test('pricing page shows three plans, the no-subscription entry and what is paid separately', async ({
   page,
 }, info) => {
   await page.goto('/pricing');
   const pricing = page.getByRole('region', { name: 'Тарифы Mandato' });
   await expect(pricing.locator('article')).toHaveCount(4);
-  for (const amount of ['9\\s?900', '24\\s?900', '49\\s?900'])
+  for (const name of ['Разовый долг', 'Бизнес', 'Объём'])
+    await expect(pricing.getByRole('heading', { name, exact: true })).toBeVisible();
+  for (const amount of ['32\\s?900', '69\\s?900'])
     await expect(pricing).toContainText(new RegExp(amount));
-  await expect(page.getByText('Госпошлина оплачивается отдельно', { exact: false })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '8% от поступлений' })).toBeVisible();
+  await expect(pricing.getByText('7% — только если должник заплатил до суда')).toBeVisible();
+  await expect(pricing.getByText('Без процентов с возвращённых денег')).toHaveCount(3);
+  await expect(page.getByRole('heading', { name: 'Госпошлина' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /9\s?900 \/ 14\s?900 ₽/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Адвокату — 12%' })).toBeVisible();
+  await expect(pricing.getByRole('link', { name: 'Начать бесплатно' })).toHaveAttribute(
+    'href',
+    '/start?plan=trial'
+  );
   await page.screenshot({ path: info.outputPath('pricing.png'), fullPage: true });
 });
 test('home keeps a demo and a free trial within reach', async ({ page }) => {

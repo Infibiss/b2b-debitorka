@@ -1,7 +1,7 @@
 """Money and phase boundaries of the application tariff, without external I/O."""
 import pytest
 
-from server.legal_fees import TARIFF, calculate_fees
+from server.legal_fees import TARIFF, calculate_fees, included_packages
 
 
 def terms(**changes):
@@ -27,7 +27,7 @@ def calculate(recovery=(), filings=(), claims=(), facts=None):
     ('2026-07-31', 'before_start', 0, 0),
     ('2026-10-09', 'before_claim', 0, 0),
     ('2026-10-10', 'ambiguous', 0, 0),
-    ('2026-10-11', 'pretrial', 80_000, 0),
+    ('2026-10-11', 'pretrial', 70_000, 0),
     ('2026-10-20', 'ambiguous', 0, 0),
     ('2026-10-21', 'judicial', 0, 120_000),
 ])
@@ -88,7 +88,7 @@ def test_refunded_allocations_reduce_percentages_but_not_the_price_of_filed_work
     full = calculate([receipt('2026-10-15'), receipt('2026-10-21', key='later')], [filing()], ['2026-10-10'])
     partial = calculate([receipt('2026-10-15', 500_000), receipt('2026-10-21', 500_000, 'later')], [filing()], ['2026-10-10'])
     refunded = calculate([receipt('2026-10-15', 0), receipt('2026-10-21', 0, 'later')], [filing()], ['2026-10-10'])
-    assert (full['pretrial_fee_amount'], partial['pretrial_fee_amount'], refunded['pretrial_fee_amount']) == (80_000, 40_000, 0)
+    assert (full['pretrial_fee_amount'], partial['pretrial_fee_amount'], refunded['pretrial_fee_amount']) == (70_000, 35_000, 0)
     assert (full['lawyer_fee_amount'], partial['lawyer_fee_amount'], refunded['lawyer_fee_amount']) == (120_000, 60_000, 0)
     assert all(result['judicial_package_amount'] == 990_000 for result in [full, partial, refunded])
 
@@ -100,3 +100,30 @@ def test_each_payee_is_rounded_independently_without_floats():
     assert result['pretrial_fee_amount'] == result['lawyer_fee_amount'] == 1
     assert result['rounding_difference'] == -1 and result['lawyer_rounding_difference'] == 1
     assert result['fee_amount'] == 990_001
+
+
+def test_subscription_plans_take_no_pretrial_percentage_and_cover_included_packages():
+    facts = terms(fee_plan_id='team')
+    first = filing()
+    result = calculate_fees(facts, [receipt('2026-10-11')], [first], [dict(occurred_on='2026-10-10')], 1_000_000,
+                            included_packages([dict(first, case_id='case')], 'team'))
+    assert result['plan_id'] == 'team' and result['pretrial_percent'] == 0
+    assert result['pretrial_fee_amount'] == 0
+    assert result['package_items'][0]['included_in_subscription'] is True
+    assert result['fee_amount'] == 0
+
+
+def test_business_allowance_is_two_packages_a_month_across_cases_and_resets_monthly():
+    rows = [dict(filing(key=f'n{i}', day=day), case_id=f'case{i}') for i, day in enumerate(
+        ['2026-10-03', '2026-10-05', '2026-10-09', '2026-11-01'])]
+    rows.append(dict(filing(key='revision', day='2026-10-04'), case_id='case0'))  # same kind, same case: not a new package
+    assert included_packages(rows, 'team') == {'n0', 'n1', 'n3'}
+    assert included_packages(rows, 'scale') == {'n0', 'n1', 'n2', 'n3'}
+    assert included_packages(rows, 'start') == frozenset()
+
+
+def test_package_beyond_the_allowance_is_billed_at_the_package_price():
+    facts = terms(fee_plan_id='team')
+    result = calculate_fees(facts, [], [filing()], [], 0, frozenset())
+    assert result['package_items'][0]['included_in_subscription'] is False
+    assert result['fee_amount'] == 990_000

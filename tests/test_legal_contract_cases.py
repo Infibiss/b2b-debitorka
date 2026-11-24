@@ -41,7 +41,7 @@ def test_contract_claim_totals_payment_fees_and_second_invoice_staleness(client,
     assert review(client,doc['id']).status_code==200
     file_package(client,item['id'],doc)
     fee=client.get(f"/api/legal/cases/{item['id']}/fee").json()
-    assert fee['pretrial_fee_amount']==400000
+    assert fee['pretrial_fee_amount']==350000
     assert fee['judicial_package_amount']==990000 and len(fee['package_items'])==1
     bank_allocate(client,second['id'],'CONTRACT-SECOND',1000000,'2026-10-25')
     changed=client.get(f"/api/legal/cases/{item['id']}").json()

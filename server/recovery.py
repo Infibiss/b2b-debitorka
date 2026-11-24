@@ -792,6 +792,8 @@ def create_router(ctx):
         from .financing import offers
         tenant = user['tenant_id']
         with ctx.database(ctx.config) as c:
+            from .commercial import current_plan
+            plan_id = current_plan(c, tenant, ctx.now())
             view, context = load_view(c, tenant, debtor_id, case_id)
             case_id = view.get('case_id')
             state = view['_state']
@@ -805,7 +807,7 @@ def create_router(ctx):
         recommendation = rules.recommend_route(view['balance'], disputed=view['status'] == 'dispute', order_cancelled=bool(state.get('order_cancelled')))
         fields = {key: state.get(key) for key in ('claim_sent_on', 'claim_reference', 'duty_amount', 'duty_reference', 'filed_on', 'court_reference', 'case_number', 'act_on', 'writ_number', 'writ_on', 'enforcement_reference', 'promise_amount', 'note')}
         return public(view) | dict(invoices=view['_invoices'], evidence=view['_evidence'], solvency=solvency, deadlines=rules.deadlines(state if state.get('status') else view['_state'] | dict(status=view['status']), view['oldest_due_on'], context['today']),
-                                   economics=rules.economics(view['balance'], route, TARIFF) if view['balance'] else None, recommendation=recommendation,
+                                   economics=rules.economics(view['balance'], route, TARIFF, plan_id) if view['balance'] else None, recommendation=recommendation,
                                    details=json.loads(state.get('details_json') or '{}'), actions=[] if view.get('read_only') or view.get('legacy_review_required') else rules.available_actions(view['status'], route=view['route']), log=logs,
                                    documents=[row | dict(title=document_title(row['kind'], custom)) for row in documents], custom_templates=[dict(kind='custom:' + key, title=value['title'], stage=value['stage']) for key, value in custom.items()],
                                    register=register, financing=financing, mail_connected=mail_ready(tenant), **fields)

@@ -95,6 +95,8 @@ export type DebtorDetail = Debtor & {
     route: string;
     duty_amount: number;
     package_amount: number;
+    package_included: boolean;
+    package_allowance: number | null;
     upfront_amount: number;
     upfront_percent: number;
     warnings: string[];

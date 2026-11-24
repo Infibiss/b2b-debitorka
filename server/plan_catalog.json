@@ -4,44 +4,47 @@
   "items": [
     {
       "id": "start",
-      "name": "Старт",
-      "price_monthly": 990000,
+      "name": "Разовый долг",
+      "price_monthly": 0,
       "currency": "RUB",
       "billing_period": "month",
-      "active_invoice_limit": 100,
+      "orderable": false,
+      "debtor_limit": 10,
       "user_limit": 2,
       "features": [
-        "Реестр должников и документы",
-        "Сверка оплат и частичных поступлений",
-        "Напоминания и история общения"
+        "Напоминания и претензия",
+        "ИИ читает ответы должника",
+        "Судебный пакет 9\u00a0900 / 14\u00a0900\u00a0₽"
       ]
     },
     {
       "id": "team",
-      "name": "Команда",
-      "price_monthly": 2490000,
+      "name": "Бизнес",
+      "price_monthly": 3290000,
       "currency": "RUB",
       "billing_period": "month",
-      "active_invoice_limit": 500,
+      "orderable": true,
+      "debtor_limit": 100,
       "user_limit": 5,
       "features": [
-        "Всё из тарифа «Старт»",
-        "Роли и согласование условий",
-        "Договорённости и рассрочки"
+        "Досудебная работа и заказные письма",
+        "До 2 судебных пакетов в месяц",
+        "Аналитика, отчёты и роли"
       ]
     },
     {
       "id": "scale",
-      "name": "Масштаб",
-      "price_monthly": 4990000,
+      "name": "Объём",
+      "price_monthly": 6990000,
       "currency": "RUB",
       "billing_period": "month",
-      "active_invoice_limit": 2000,
+      "orderable": true,
+      "debtor_limit": 500,
       "user_limit": 15,
       "features": [
-        "Всё из тарифа «Команда»",
-        "Юридические дела и расчёт требований",
-        "Претензии и судебные пакеты"
+        "Всё из тарифа «Бизнес»",
+        "Судебные пакеты и письма без лимита",
+        "Несколько организаций и отчёты по расписанию"
       ]
     },
     {
@@ -50,12 +53,13 @@
       "price_monthly": null,
       "currency": "RUB",
       "billing_period": "month",
-      "active_invoice_limit": null,
+      "orderable": false,
+      "debtor_limit": null,
       "user_limit": null,
       "features": [
-        "Всё из тарифа «Масштаб»",
-        "Индивидуальный объём портфеля и команда",
-        "Особые требования к внедрению по договору"
+        "Всё из тарифа «Объём»",
+        "Объём портфеля и команда по договору",
+        "Развёртывание в контуре компании или банка"
       ]
     }
   ]

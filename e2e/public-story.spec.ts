@@ -28,12 +28,16 @@ test('public pages ship real html, meta tags and a sitemap', async ({ request })
   expect(await (await request.get('/app')).text()).not.toContain('hero-title');
   expect((await request.get('/nope')).status()).toBe(404);
 });
-test('subscription comparison adds capabilities with each tier', async ({ page }) => {
+test('plan comparison shows pre-trial terms and court packages per plan', async ({ page }) => {
   await page.goto('/pricing');
-  const table = page.getByRole('table', { name: 'Состав подписки по тарифам' });
-  await expect(table.getByRole('row', { name: /Юридические дела/ })).toContainText('—');
-  await expect(table.getByRole('row', { name: /Подготовка претензии/ })).toContainText('Включено');
-  await expect(table.getByRole('row')).toHaveCount(11);
+  const table = page.getByRole('table', { name: 'Состав тарифов' });
+  const pretrial = table.getByRole('row', { name: /Досудебная работа/ });
+  await expect(pretrial).toContainText('7% от поступлений');
+  await expect(pretrial).toContainText('Включено');
+  const packages = table.getByRole('row', { name: /Судебные пакеты/ });
+  await expect(packages).toContainText('2 в месяц');
+  await expect(packages).toContainText('Без лимита');
+  await expect(table.getByRole('row')).toHaveCount(9);
 });
 
 test('workspace screens can be explored with buttons and keyboard at every width', async ({

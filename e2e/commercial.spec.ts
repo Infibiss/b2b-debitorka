@@ -43,7 +43,7 @@ test('free trial survives signup and reload and leads into the workspace', async
 test('all paid tiers retain a pending order, explicitly bypass payment and support account cancellation', async ({
   page,
 }, info) => {
-  for (const [i, plan] of ['start', 'team', 'scale'].entries()) {
+  for (const [i, plan] of ['team', 'scale'].entries()) {
     await page.goto(`/start?plan=${plan}`);
     if (i === 0) await signup(page, `paid-${info.project.name}`);
     await expect(page.getByRole('heading', { name: /Подключить «/ })).toBeVisible();

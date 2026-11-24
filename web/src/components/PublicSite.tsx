@@ -14,7 +14,8 @@ type Plan = {
   id: string;
   name: string;
   price_monthly: number | null;
-  active_invoice_limit: number | null;
+  orderable: boolean;
+  debtor_limit: number | null;
   user_limit: number | null;
   features: string[];
 };
@@ -75,42 +76,62 @@ function CookieNotice() {
   ) : null;
 }
 function Pricing() {
+  const fee = (id: string) => tariff.plans[id as keyof typeof tariff.plans];
+  const packages = `${(tariff.court_order_amount / 100).toLocaleString(locale)} / ${(
+    tariff.statement_of_claim_amount / 100
+  ).toLocaleString(locale)} ₽`;
+  const included = (id: string) => {
+    const limit = fee(id).included_court_packages_monthly;
+    return limit === null ? t('Без лимита') : limit ? t('{0} в месяц', [limit]) : packages;
+  };
   return (
     <>
       <section className="pub-page-hero pub-pricing-hero">
-        <h1>{t('Тарифы для вашей команды')}</h1>
+        <h1>{t('Тарифы под размер вашей дебиторки')}</h1>
         <p className="pub-lead">
           {t(
-            'Ежемесячная подписка для вашей команды. Начните с 14 дней бесплатно — без карты и автоматического списания.'
+            'Начните без подписки: платите {0}%, только если должник заплатил до суда. Когда долгов станет больше, «Бизнес» обойдётся дешевле.',
+            [fee('start').pretrial_percent]
           )}
         </p>
-        <Button href="/start?plan=trial">{t('Начать бесплатный период')}</Button>
+        <Button href="/start?plan=trial">{t('Начать бесплатно')}</Button>
       </section>
       <section className="pub-pricing-grid" aria-label={t('Тарифы Mandato')}>
         {plans.map((plan, i) => (
           <article className={i === 1 ? 'is-featured' : ''} key={plan.id}>
             <div className="pub-plan-name">
               <h2>{plan.name}</h2>
-              {i === 1 && <span>{t('Для совместной работы')}</span>}
+              {i === 1 && <span>{t('Основной тариф')}</span>}
             </div>
             <p className="pub-plan-price">
               {plan.price_monthly === null ? t('По договору') : money(plan.price_monthly)}
-              {plan.price_monthly !== null && <span>{t('в месяц за организацию')}</span>}
+              {plan.price_monthly === 0 ? (
+                <span>{t('без подписки')}</span>
+              ) : (
+                plan.price_monthly !== null && <span>{t('в месяц за организацию')}</span>
+              )}
             </p>
             <p>
               {
                 [
-                  t('Для небольшого портфеля и одного ответственного.'),
-                  t('Для бухгалтерии и руководителя с общей очередью дел.'),
-                  t('Для большой команды и регулярной работы с задолженностью.'),
-                  t('Для группы компаний и особых требований к подключению.'),
+                  t('Попробовать на одном долге. Потом — «Бизнес» со всей историей.'),
+                  t(
+                    'Для поставщиков, которые продают с отсрочкой платежа и видят просрочку каждый месяц.'
+                  ),
+                  t('Для компаний со своим юристом и большим потоком дел.'),
+                  t('Для группы компаний, банков и особых требований к подключению.'),
                 ][i]
               }
             </p>
+            <p className="pub-plan-fee">
+              {fee(plan.id).pretrial_percent
+                ? t('{0}% — только если должник заплатил до суда', [fee(plan.id).pretrial_percent])
+                : t('Без процентов с возвращённых денег')}
+            </p>
             <p className="pub-plan-capacity">
-              {plan.active_invoice_limit
-                ? t('До {0} активных счетов · {1} {2}', [
-                    plan.active_invoice_limit.toLocaleString(locale),
+              {plan.debtor_limit
+                ? t('До {0} должников в работе · {1} {2}', [
+                    plan.debtor_limit.toLocaleString(locale),
                     plan.user_limit,
                     plan.user_limit === 2 ? 'участника' : 'участников',
                   ])
@@ -125,10 +146,20 @@ function Pricing() {
               ))}
             </ul>
             <Button
-              href={plan.id === 'custom' ? '/demo?kind=custom' : `/start?plan=${plan.id}`}
+              href={
+                plan.id === 'custom'
+                  ? '/demo?kind=custom'
+                  : plan.orderable
+                    ? `/start?plan=${plan.id}`
+                    : '/start?plan=trial'
+              }
               secondary={i !== 1}
             >
-              {plan.id === 'custom' ? t('Обсудить условия') : t('Выбрать «{0}»', [plan.name])}
+              {plan.id === 'custom'
+                ? t('Обсудить условия')
+                : plan.orderable
+                  ? t('Выбрать «{0}»', [plan.name])
+                  : t('Начать бесплатно')}
             </Button>
           </article>
         ))}
@@ -138,13 +169,13 @@ function Pricing() {
           <h2>{t('Сравните условия')}</h2>
           <p>
             {t(
-              'В пробном периоде доступны все инструменты. Одна организация — одна подписка. Каждый следующий тариф включает предыдущий. Подключение внешних систем и услуги взыскания согласуются отдельно до начала работы.'
+              'Первые 14 дней доступен тариф «Бизнес». Потом, пока вы не подключите подписку, действуют условия «Разового долга». Одна организация — один тариф.'
             )}
           </p>
         </div>
         <div className="pub-table-scroll">
           <table className="pub-compare">
-            <caption>{t('Состав подписки по тарифам')}</caption>
+            <caption>{t('Состав тарифов')}</caption>
             <thead>
               <tr>
                 <th scope="col">{t('Возможности')}</th>
@@ -158,53 +189,38 @@ function Pricing() {
             <tbody>
               {[
                 [
-                  t('Активные счета'),
-                  ...plans.map(
-                    (p) => p.active_invoice_limit?.toLocaleString(locale) || t('По договору')
-                  ),
+                  t('Должники в работе'),
+                  ...plans.map((p) => p.debtor_limit?.toLocaleString(locale) || t('По договору')),
                 ],
                 [
                   t('Участники команды'),
                   ...plans.map((p) => String(p.user_limit || t('По договору'))),
                 ],
                 [
-                  t('Реестр должников и документы'),
+                  t('Досудебная работа: напоминания и претензии'),
+                  ...plans.map((p) =>
+                    fee(p.id).pretrial_percent
+                      ? t('{0}% от поступлений', [fee(p.id).pretrial_percent])
+                      : t('Включено')
+                  ),
+                ],
+                [t('Судебные пакеты: приказ / иск'), ...plans.map((p) => included(p.id))],
+                [
+                  t('Реестр, сверка оплат, ответы должников'),
                   t('Включено'),
                   t('Включено'),
                   t('Включено'),
                   t('Включено'),
                 ],
+                [t('Аналитика и отчёты'), '—', t('Включено'), t('Включено'), t('Включено')],
                 [
-                  t('Оплаты, частичные платежи и сверка'),
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                ],
-                [
-                  t('Напоминания и история общения'),
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                ],
-                [
-                  t('Роли и согласование условий'),
-                  '—',
-                  t('Включено'),
-                  t('Включено'),
-                  t('Включено'),
-                ],
-                [t('Договорённости и рассрочки'), '—', t('Включено'), t('Включено'), t('Включено')],
-                [t('Юридические дела и расчёт требований'), '—', '—', t('Включено'), t('Включено')],
-                [
-                  t('Подготовка претензии и судебного пакета'),
+                  t('Несколько организаций, отчёты по расписанию'),
                   '—',
                   '—',
                   t('Включено'),
                   t('Включено'),
                 ],
-                [t('Особые требования к внедрению'), '—', '—', '—', t('По договору')],
+                [t('Развёртывание в контуре компании'), '—', '—', '—', t('По договору')],
               ].map(([name, ...values]) => (
                 <tr key={name}>
                   <th scope="row">{name}</th>
@@ -218,39 +234,36 @@ function Pricing() {
         </div>
       </section>
       <section className="pub-section pub-extra">
-        <h2>{t('Услуги взыскания — отдельно')}</h2>
+        <h2>{t('Отдельно во всех тарифах')}</h2>
         <div className="pub-three">
           <article>
-            <h3>{t('{0}% от поступлений', [tariff.pretrial_percent])}</h3>
+            <h3>{t('Госпошлина')}</h3>
             <p>
               {t(
-                'После направления претензии и до подачи заявления в суд. Оплата с фактически поступивших денег.'
+                'Оплачивает компания при подаче в суд. Её возмещение с должника не гарантируется.'
               )}
             </p>
           </article>
           <article>
-            <h3>
-              {(tariff.court_order_amount / 100).toLocaleString(locale)} /{' '}
-              {(tariff.statement_of_claim_amount / 100).toLocaleString(locale)} ₽
-            </h3>
+            <h3>{t('Адвокату — {0}%', [tariff.lawyer_percent])}</h3>
             <p>
               {t(
-                'За подготовленный и поданный пакет судебного приказа или иска, независимо от результата взыскания.'
+                'От поступлений после подачи в суд, по прямому соглашению с клиентом. Эта сумма не входит в оплату Mandato.'
               )}
             </p>
           </article>
           <article>
-            <h3>{t('Адвокату — 12%')}</h3>
+            <h3>{packages}</h3>
             <p>
               {t(
-                'От поступлений после подачи в суд, по прямому соглашению с клиентом. Эта сумма не входит в вознаграждение Mandato.'
+                'Судебный пакет приказа или иска без подписки или сверх лимита тарифа — за поданный пакет, независимо от результата.'
               )}
             </p>
           </article>
         </div>
         <p>
           {t(
-            'Госпошлина оплачивается отдельно; её возмещение с должника не гарантируется. Заявление в банк по исполнительному листу бесплатно. Условия и лимиты голосовых минут фиксируются в договоре. Деньги должника поступают напрямую вам.'
+            'Деньги должника поступают напрямую вам. Заявление в банк по исполнительному листу бесплатно.'
           )}
         </p>
         <a href="/refunds" className="pub-text-link">
@@ -449,7 +462,10 @@ type Account = {
 function Access() {
   const query = new URLSearchParams(location.search),
     accountPage = location.pathname.replace(/\/$/, '') === '/account',
-    planId = query.get('plan') || 'trial',
+    requestedPlan = query.get('plan') || 'trial',
+    // «Разовый долг» needs no order: it starts like the free period.
+    planId =
+      plans.find((p) => p.id === requestedPlan)?.orderable === false ? 'trial' : requestedPlan,
     plan = plans.find((p) => p.id === planId);
   const [session, setSession] = useState<Session | null>(null),
     [checking, setChecking] = useState(true),
@@ -649,7 +665,7 @@ function Access() {
               {money(plan.price_monthly || 0)} <span>{t('/ месяц')}</span>
             </strong>
             <p>
-              {t('До')} {plan.active_invoice_limit} {t('активных счетов · до')} {plan.user_limit}{' '}
+              {t('До')} {plan.debtor_limit} {t('должников в работе · до')} {plan.user_limit}{' '}
               {t('участников')}
             </p>
             <a href="/pricing">{t('Сравнить тарифы')}</a>

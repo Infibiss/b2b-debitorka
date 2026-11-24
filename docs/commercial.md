@@ -6,9 +6,11 @@ charge money, send email, issue fiscal receipts, delete organizational data or
 record subscription orders in the customer's receivables ledger.
 
 `server/plan_catalog.json` is the shared frontend/backend source. Prices are
-integer **kopeks**, currency `RUB`: Старт 990,000 (9,900 ₽), Команда 1,990,000
-(19,900 ₽), Масштаб 3,990,000 (39,900 ₽). Custom conditions require a request,
-not an order. Monthly active-invoice/user limits are 100/2, 500/5 and 2,000/15.
+integer **kopeks**, currency `RUB`: «Разовый долг» 0 (no subscription, not
+orderable), «Бизнес» 3,290,000 (32,900 ₽), «Объём» 6,990,000 (69,900 ₽); registered letters are included. Custom
+conditions require a request, not an order. Debtor/user limits are 10/2, 100/5
+and 500/15. Fee terms per plan live in `server/fee_tariff.json`; without an
+active trial or subscription the organisation is on «Разовый долг».
 The catalog limits are recorded in entitlement snapshots; this release does not
 enforce product quotas or restrict existing receivables access.
 
@@ -27,8 +29,8 @@ role. Reads are tenant-scoped. Origin checks apply when `APP_URL` is configured.
 | `GET /api/commercial/plans` | — | `{trial_days:14,payment_mode:"invoice",items:[...]}` |
 | `POST /api/commercial/requests` | `{kind:"demo"\|"custom",name,email,company?:"",note?:"",consent:true}` | `201 {id,kind,status:"requested",created_at}`; no contact information is echoed |
 | `GET /api/commercial/account` | — | Current plan snapshot, trial/subscription state, orders and deletion ticket |
-| `POST /api/commercial/trial` | `{}` | Account with 14-day Команда trial; `409` if previously used or a plan was connected |
-| `POST /api/commercial/orders` | `{plan_id:"start"\|"team"\|"scale",consent:true,idempotency_key}` | `201` order with server-selected amount and `pending` state |
+| `POST /api/commercial/trial` | `{}` | Account with 14-day «Бизнес» trial; `409` if previously used or a plan was connected |
+| `POST /api/commercial/orders` | `{plan_id:"team"\|"scale",consent:true,idempotency_key}` | `201` order with server-selected amount and `pending` state |
 | `POST /api/commercial/orders/{id}/confirm` | `{}` | `{order,account}`; only simulated confirmation, no actual payment |
 | `POST /api/commercial/orders/{id}/cancel` | `{}` | Cancel a pending order; confirmed orders require account cancellation |
 | `POST /api/commercial/cancel` | `{consent:true}` | End current trial/simulated subscription and cancel pending orders; preserve records |

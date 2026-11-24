@@ -1,10 +1,14 @@
 {
-  "version": "mandato-2026-11-08",
+  "version": "mandato-2026-11-13",
   "unit": "kopeks",
-  "pretrial_percent": 8,
   "court_order_amount": 990000,
   "statement_of_claim_amount": 1490000,
   "lawyer_percent": 12,
-  "subscription_monthly_amount": 990000,
-  "subscription_terms_version": "mandato-subscription-2026-11-08"
+  "default_plan": "start",
+  "plans": {
+    "start": {"pretrial_percent": 7, "included_court_packages_monthly": 0},
+    "team": {"pretrial_percent": 0, "included_court_packages_monthly": 2},
+    "scale": {"pretrial_percent": 0, "included_court_packages_monthly": null},
+    "custom": {"pretrial_percent": 0, "included_court_packages_monthly": null}
+  }
 }

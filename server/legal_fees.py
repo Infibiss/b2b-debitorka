@@ -2,13 +2,18 @@
 
 This is a read-only calculation over evidenced filings and net bank allocations.
 Existing agreement JSON is never migrated or repriced as a side effect of a read.
+
+The plan in the case terms decides the pre-trial percentage (7% without a
+subscription, 0% on «Бизнес» and «Объём») and whether a filed court package is
+covered by the subscription. The monthly allowance is counted across the whole
+organisation by the caller and passed in as `included_milestones`.
 """
 import json
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 TARIFF = json.loads(Path(__file__).with_name('fee_tariff.json').read_text(encoding='utf-8'))
-FEE_FIELDS = ('fee_model_version', 'fee_agreement_reference', 'fee_start_on', 'lawyer_agreement_reference')
+FEE_FIELDS = ('fee_model_version', 'fee_plan_id', 'fee_agreement_reference', 'fee_start_on', 'lawyer_agreement_reference')
 
 
 def current_model(facts):
@@ -16,12 +21,18 @@ def current_model(facts):
             and not {'pretrial_fee_percent', 'judicial_fee_percent'}.intersection(facts))
 
 
+def plan_terms(facts):
+    plan_id = facts.get('fee_plan_id') or TARIFF['default_plan']
+    return plan_id, TARIFF['plans'].get(plan_id, TARIFF['plans'][TARIFF['default_plan']])
+
+
 def kopeks(value):
     return int(value.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
 
-def calculate_fees(facts, recovery, filings, claims, paid_amount):
+def calculate_fees(facts, recovery, filings, claims, paid_amount, included_milestones=frozenset()):
     confirmed = current_model(facts)
+    plan_id, terms = plan_terms(facts)
     start = facts.get('fee_start_on')
     configured = bool(confirmed and start and facts.get('fee_agreement_reference'))
     lawyer_configured = bool(configured and facts.get('lawyer_agreement_reference'))
@@ -60,7 +71,7 @@ def calculate_fees(facts, recovery, filings, claims, paid_amount):
                 excluded['before_claim'] += amount
             else:
                 stage = 'pretrial'
-                recipient, rate = 'mandato', TARIFF['pretrial_percent']
+                recipient, rate = 'mandato', terms['pretrial_percent']
         part = Decimal(amount) * rate / 100 if rate is not None else Decimal(0)
         if recipient:
             exact[recipient] += part
@@ -79,15 +90,16 @@ def calculate_fees(facts, recovery, filings, claims, paid_amount):
             continue
         seen.add(kind)
         billable = bool(configured and row['occurred_on'] >= start)
+        included = billable and row['id'] in included_milestones
         packages.append(dict(kind=kind, document_id=row['document_id'], milestone_id=row['id'],
                              filed_on=row['occurred_on'], reference=row['reference'],
                              tariff_amount=TARIFF[kind + '_amount'],
-                             fee_amount=TARIFF[kind + '_amount'] if billable else 0,
-                             billable=billable))
+                             fee_amount=TARIFF[kind + '_amount'] if billable and not included else 0,
+                             billable=billable, included_in_subscription=included))
     pretrial = kopeks(exact['mandato'])
     package_total = sum(row['fee_amount'] for row in packages)
     lawyer = kopeks(exact['lawyer'])
-    return dict(tariff=dict(TARIFF), configured=configured, lawyer_configured=lawyer_configured,
+    return dict(tariff=dict(TARIFF), plan_id=plan_id, pretrial_percent=terms['pretrial_percent'], configured=configured, lawyer_configured=lawyer_configured,
                 requires_fee_model_confirmation=not confirmed,
                 agreement_reference=facts.get('fee_agreement_reference', ''),
                 lawyer_agreement_reference=facts.get('lawyer_agreement_reference', ''),
@@ -103,3 +115,32 @@ def calculate_fees(facts, recovery, filings, claims, paid_amount):
                 rounding_difference=pretrial - sum(row['fee_amount'] for row in items if row['recipient'] == 'mandato'),
                 lawyer_rounding_difference=lawyer - sum(row['fee_amount'] for row in items if row['recipient'] == 'lawyer'),
                 requires_contract_verification=True)
+
+
+def first_packages(filings):
+    """First filing of each package kind per case, the one that is billed."""
+    first = {}
+    order = lambda item: (str(item['occurred_on']), str(item['created_at']), item['id'])
+    for row in sorted(filings, key=order):
+        if row['kind'] in ('court_order', 'statement_of_claim'):
+            first.setdefault((row['case_id'], row['kind']), row)
+    return sorted(first.values(), key=order)
+
+
+def included_packages(filings, plan_id):
+    """Milestone ids covered by the plan's monthly allowance of court packages.
+
+    `filings` are all filed package milestones of the organisation. The
+    allowance is spent in filing order within each calendar month.
+    """
+    allowance = TARIFF['plans'].get(plan_id, {}).get('included_court_packages_monthly', 0)
+    packages = first_packages(filings)
+    if allowance is None:
+        return frozenset(row['id'] for row in packages)
+    used, included = {}, set()
+    for row in packages:
+        month = str(row['occurred_on'])[:7]
+        if used.get(month, 0) < allowance:
+            used[month] = used.get(month, 0) + 1
+            included.add(row['id'])
+    return frozenset(included)

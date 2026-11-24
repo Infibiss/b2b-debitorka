@@ -1189,6 +1189,17 @@ html {
   font-size: 13px;
   font-weight: 550;
 }
+.public-site .pub-pricing-grid .pub-plan-fee {
+  min-height: 0;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #e6f2ea;
+  color: #183d31;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
 
 /* Public motion: content enters once, no scroll interception or decorative loops. */
 .pub-reveal {

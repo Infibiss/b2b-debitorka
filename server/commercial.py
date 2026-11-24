@@ -19,6 +19,17 @@ from .models import Input, single_line, valid_email
 CATALOG = json.loads(Path(__file__).with_name('plan_catalog.json').read_text(encoding='utf-8'))
 PLANS = {item['id']: item for item in CATALOG['items']}
 TRIAL_PLAN = 'team'
+FREE_PLAN = 'start'
+
+
+def current_plan(connection, tenant_id, now):
+    """Plan whose fee terms apply today: an active trial or subscription, otherwise «Разовый долг»."""
+    row = connection.execute('SELECT state,plan_id,trial_ends_at,subscription_ends_at FROM commercial_accounts WHERE tenant_id=?', (tenant_id,)).fetchone()
+    if row and row['state'] == 'trial' and row['trial_ends_at'] and row['trial_ends_at'] > now:
+        return row['plan_id'] or TRIAL_PLAN
+    if row and row['state'] == 'sandbox_active' and row['subscription_ends_at'] and row['subscription_ends_at'] > now:
+        return row['plan_id'] or FREE_PLAN
+    return FREE_PLAN
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS registration_acceptances (
@@ -102,7 +113,7 @@ class CommercialRequest(Consent):
 
 
 class OrderRequest(Consent):
-    plan_id: Literal['start', 'team', 'scale']
+    plan_id: Literal['team', 'scale']  # «Разовый долг» is free and needs no order
     idempotency_key: str = Field(min_length=8, max_length=100, pattern=r'^[A-Za-z0-9_.:-]+$')
 
 
@@ -181,6 +192,7 @@ def create_router(ctx):
         deletion = c.execute('SELECT id,status,created_at FROM commercial_deletion_requests WHERE tenant_id=?', (user['tenant_id'],)).fetchone()
         return {'payment_mode': 'invoice', 'can_manage': user['role'] == 'manager',
                 'plan': json.loads(row['plan_snapshot']) if row and row['plan_snapshot'] else None,
+                'fee_plan_id': current_plan(c, user['tenant_id'], stamp),
                 'status': public_status(status),
                 'trial': {'days': CATALOG['trial_days'], 'started_at': row['trial_started_at'] if row else None,
                           'ends_at': row['trial_ends_at'] if row else None,

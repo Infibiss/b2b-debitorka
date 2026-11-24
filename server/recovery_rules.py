@@ -203,15 +203,24 @@ def duty_amount(claim_amount, route):
     return arbitration_fee(claim_amount, 'court_order' if route == COURT_ORDER else 'claim')
 
 
-def economics(claim_amount, route, tariff):
-    """Upfront money for going to court, without any promise of recovery."""
+def economics(claim_amount, route, tariff, plan_id=None):
+    """Upfront money for going to court, without any promise of recovery.
+
+    On «Бизнес» and «Объём» the court package is part of the subscription
+    (within the monthly allowance), so only the state duty is paid upfront.
+    """
     duty = duty_amount(claim_amount, route)
     package = tariff['court_order_amount' if route == COURT_ORDER else 'statement_of_claim_amount']
+    allowance = tariff.get('plans', {}).get(plan_id or tariff.get('default_plan'), {}).get('included_court_packages_monthly', 0)
+    package_included = allowance is None or allowance > 0
+    if package_included:
+        package = 0
     upfront = duty + package
     warnings = []
     if claim_amount < MIN_COURT_WORTHWHILE:
         warnings.append('Долг меньше 50 000 ₽: судебные расходы могут превысить результат.')
-    return dict(route=route, duty_amount=duty, package_amount=package, upfront_amount=upfront,
+    return dict(route=route, duty_amount=duty, package_amount=package, package_included=package_included,
+                package_allowance=allowance, upfront_amount=upfront,
                 upfront_percent=round(100 * upfront / claim_amount, 1) if claim_amount else 0,
                 duty_recoverable=True, warnings=warnings)
 
