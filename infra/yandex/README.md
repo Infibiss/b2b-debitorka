@@ -118,7 +118,7 @@ Compose-конфигурация/генераторы/права/SSH guard пр�
 
 ## CD из публичного GitHub без входящего SSH
 
-Согласованная схема: `infra/yandex/pull_cd.py` проверяет публичный `Infibiss/b2b-debitorka` и успешный push-CI `.github/workflows/ci.yml` точного текущего `main`. PR, fork, ошибочный/незавершённый CI и сменившийся main не разрешают deploy. Код выгружается как git archive полного SHA. Контроллер не является GitHub Actions runner, не содержит GitHub-токенов и не требует доступа к firewall. При переводе репозитория в private он безопасно прекратит обновления.
+Согласованная схема: `infra/yandex/pull_cd.py` проверяет публичный `Infibiss/b2b-debitorka` и успешный push-CI `.github/workflows/ci.yml` точного текущего `main`. PR, fork, ошибочный/незавершённый CI и сменившийся main не разрешают deploy. Код выгружается как git archive полного SHA. Контроллер не является GitHub Actions runner, не содержит GitHub-токенов и не требует доступа к firewall. При переводе репозитория в private он безопасно прекратит обновления. Имя репозитория зашито в установленной копии контроллера (`/usr/local/lib/agentpay-cd/pull_cd.py`), и она не обновляется с релизами: после переименования репозитория деплой молча остановится на `awaiting_ci`. Перед переименованием поправьте `REPOSITORY` на сервере и в `infra/yandex/pull_cd.py`.
 
 CI остаётся на GitHub-hosted runners. Старый `.github/workflows/deploy-yandex.yml` не включать (`YANDEX_VM_DEPLOY_ENABLED` оставить выключенным): одновременно работает только pull-CD. Доступ на запись в main даёт возможность обновлять production; правила review ветки должны соответствовать этому доступу.
 
