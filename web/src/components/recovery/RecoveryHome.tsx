@@ -20,7 +20,7 @@ export function RecoveryHome({
   refreshKey,
   notify,
 }: {
-  onOpenDebtor: (id: string) => void;
+  onOpenDebtor: (id: string, caseId?: string | null) => void;
   onGo: (target: string) => void;
   onImport: () => void;
   refreshKey: number;
@@ -163,8 +163,8 @@ export function RecoveryHome({
           {data.tasks.length === 0 && <p className="rc-muted">{t('Срочных задач нет.')}</p>}
           <ul className="rc-tasks">
             {data.tasks.map((item) => (
-              <li key={item.id}>
-                <button onClick={() => onOpenDebtor(item.id)}>
+              <li key={item.case_id ?? item.id}>
+                <button onClick={() => onOpenDebtor(item.id, item.case_id)}>
                   <div>
                     <strong>{item.name}</strong>
                     <small>{t(item.next_step?.reason ?? '')}</small>
@@ -183,8 +183,8 @@ export function RecoveryHome({
           )}
           <ul className="rc-deadlines">
             {data.deadlines.map((item) => (
-              <li key={`${item.debtor_id}-${item.key}`}>
-                <button onClick={() => onOpenDebtor(item.debtor_id)}>
+              <li key={`${item.debtor_id}-${item.case_id}-${item.key}`}>
+                <button onClick={() => onOpenDebtor(item.debtor_id, item.case_id)}>
                   <strong>{item.name}</strong>
                   <small>
                     {t(item.label)} · {dateText(item.on)}

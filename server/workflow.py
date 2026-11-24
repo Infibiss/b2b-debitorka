@@ -299,6 +299,10 @@ def _calendar(policy, instant=None):
 
 
 def _blocking(c, tenant, item, policy):
+    from .recovery import contact_block_reason
+    recovery_reason = contact_block_reason(c, tenant, item)
+    if recovery_reason:
+        return recovery_reason
     if not policy['enabled']: return 'policy_disabled'
     state = c.execute('SELECT * FROM workflow_cases WHERE tenant_id=? AND case_id=?', (tenant, item['id'])).fetchone()
     if not state or not state['active'] or state['paused']: return 'case_paused'

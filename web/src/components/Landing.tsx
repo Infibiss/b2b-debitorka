@@ -1,7 +1,8 @@
+import { ProductCarousel } from './ProductCarousel';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Gavel, Landmark, MailCheck, Check, X } from 'lucide-react';
-import { t } from '../i18n';
+import { publicText as t } from '../publicTypography';
 import { post } from '../api';
 import { LanguageSwitch } from './LanguageSwitch';
 import { legalEntityLine } from './PublicLegal';
@@ -414,13 +415,20 @@ function Reveal({
   children,
   delay = 0,
   className = '',
+  label,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  label?: string;
 }) {
   return (
-    <div className={`reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
+    <div
+      className={`reveal ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+      role={label ? 'group' : undefined}
+      aria-label={label}
+    >
       {children}
     </div>
   );
@@ -620,9 +628,7 @@ function Trust() {
             ))}
           </h2>
           <p className="trust-lead">
-            {t(
-              'Договор, письма, оплаты и документы суда лежат в одной карточке и переходят с этапа на этап вместе с долгом.'
-            )}
+            {t('Документы, письма и оплаты — в карточке долга на каждом этапе.')}
           </p>
           <div className="trust-controls">
             <button
@@ -697,21 +703,6 @@ const rows = [
     '/product#analytics',
   ],
 ];
-const views = {
-  summary: [
-    [t('В работе'), '8,4 млн ₽', t('25 должников')],
-    [t('Просрочено'), '6,1 млн ₽', t('в среднем 47 дней')],
-    [t('Обещали оплатить'), '1,2 млн ₽', t('в ближайшие 30 дней')],
-    [t('Получено'), '2,3 млн ₽', t('+18% к прошлому месяцу')],
-  ],
-  today: [
-    ['4', t('должника нарушили обещание оплатить')],
-    ['3', t('можно передавать в суд: срок ответа на претензию истёк')],
-    ['2', t('у должников срок давности истекает в ближайшие 40 дней')],
-    ['1', t('новый ответ должника ждёт вашей проверки')],
-  ],
-};
-
 const facts = [
   ['30', t('дней'), t('на ответ по претензии, прежде чем идти в суд')],
   ['750', t('тыс. ₽'), t('предел для судебного приказа')],
@@ -798,7 +789,7 @@ export function Landing() {
       <section className="hero">
         <div className="hero-plate" ref={plate}>
           <img
-            src="/hero.webp"
+            src="/hero-optimized.webp"
             alt=""
             width={1672}
             height={941}
@@ -884,39 +875,10 @@ export function Landing() {
         <SectionHead
           eyebrow={t('Кабинет')}
           title={t('Ситуация понятна с первого экрана')}
-          lead={t(
-            'Главная страница отвечает на три вопроса: сколько вам должны, сколько уже вернулось и что сделать сегодня.'
-          )}
+          lead={t('Видно, сколько вам должны, сколько уже вернулось и где задержалась оплата.')}
           id="views-title"
         />
-        <div className="views-cards">
-          <Reveal className="view-tile view-tile-deep">
-            <p className="view-tile-label">{t('Сводка за месяц')}</p>
-            <dl>
-              {views.summary.map(([label, value, note]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>
-                    {value}
-                    {note && <small>{note}</small>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </Reveal>
-          <Reveal className="view-tile view-tile-brand" delay={140}>
-            <p className="view-tile-label">{t('Что сделать сегодня')}</p>
-            <ul>
-              {views.today.map(([count, text]) => (
-                <li key={text}>
-                  <strong>{count}</strong>
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-        </div>
-        <p className="views-note">{t('Пример экрана. Цифры показаны для наглядности.')}</p>
+        <ProductCarousel />
       </section>
 
       <section className="stats" aria-labelledby="stats-title">
@@ -948,7 +910,7 @@ export function Landing() {
         <SectionHead
           eyebrow={t('Как начать')}
           title={t('Запуск за один день')}
-          lead={t('Не нужны внедрение и программист: достаточно списка должников в Excel.')}
+          lead={t('Начните со списка должников в Excel.')}
           id="start-title"
         />
         <ol>

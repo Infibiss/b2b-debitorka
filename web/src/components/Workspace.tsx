@@ -89,7 +89,7 @@ export function Workspace() {
   const invitation = useInvitationToken();
   const [routeTab, setTab] = useRouteField<Tab>('section', 'home');
   const tab = navigation.some((item) => item.id === routeTab) ? routeTab : 'home';
-  const [debtorId, setDebtorId] = useRouteField<string | null>('debtor', null);
+  const [debtorId] = useRouteField<string | null>('debtor', null);
   const [stage] = useRouteField<Stage>('stage', 'pretrial');
   const [settingsTab] = useRouteField<SettingsTab>('settingsTab', 'organization');
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -301,7 +301,7 @@ export function Workspace() {
                 id={debtorId}
                 meta={meta}
                 isManager={session.user.role !== 'accountant'}
-                onBack={() => setDebtorId(null)}
+                onBack={() => navigate({ debtor: null, recoveryCase: null })}
                 onChanged={() => void refresh()}
                 onOpenInvoice={setSelected}
                 onReply={(id) => navigate({ debtor: null, section: 'agent', context: id })}
@@ -309,7 +309,9 @@ export function Workspace() {
               />
             ) : tab === 'home' ? (
               <RecoveryHome
-                onOpenDebtor={setDebtorId}
+                onOpenDebtor={(id, caseId) =>
+                  navigate({ debtor: id, recoveryCase: caseId ?? null })
+                }
                 onGo={goTo}
                 onImport={() => setModal('import')}
                 refreshKey={refreshKey}
@@ -320,7 +322,7 @@ export function Workspace() {
                 initialStage={stage}
                 meta={meta}
                 isManager={session.user.role !== 'accountant'}
-                onOpen={setDebtorId}
+                onOpen={(id, caseId) => navigate({ debtor: id, recoveryCase: caseId ?? null })}
                 onImport={() => setModal('import')}
                 onCreate={() => setModal('create')}
                 refreshKey={refreshKey}

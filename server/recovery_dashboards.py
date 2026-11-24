@@ -108,7 +108,7 @@ def normalize(tile):
 
 def measure_value(item, measure):
     return {'debt': item['balance'], 'overdue': item['overdue_amount'], 'count': 1, 'duty': item['duty_amount'] or 0,
-            'promised': item['balance'] if item['status'] == 'promise' else 0}.get(measure, 0)
+            'promised': min(item['balance'], (item.get('_state') or {}).get('promise_amount') or item['balance']) if item['status'] == 'promise' else 0}.get(measure, 0)
 
 
 def tile_data(tile, debtors, connection, tenants, today, names):
@@ -123,16 +123,20 @@ def tile_data(tile, debtors, connection, tenants, today, names):
             return dict(unit='money', value=monthly[-1]['amount'], note='В этом месяце')
         return dict(unit='money', rows=[dict(label=row['month'], value=row['amount']) for row in monthly], months=True)
     if tile['chart'] == 'number':
-        return dict(unit=unit, value=sum(measure_value(item, tile['measure']) for item in chosen))
+        return dict(unit=unit, value=len({item['id'] for item in chosen}) if tile['measure'] == 'count' else sum(measure_value(item, tile['measure']) for item in chosen))
     if tile['group'] == 'aging' and tile['measure'] != 'promised':
         field = 'count' if tile['measure'] == 'count' else 'amount'
         return dict(unit=unit, rows=[dict(label=row['label'], value=row[field]) for row in aging_rows(chosen)])
     totals = {}
     if tile['group'] == 'stage':
         totals = {STAGE_TITLES[key]: 0 for key in (rules.PRETRIAL, rules.COURT, rules.ENFORCEMENT) if not tile['stage'] or key == tile['stage']}
+    counted = set()
     for item in chosen:
         label = {'stage': STAGE_TITLES[item['stage']], 'status': item['status_label'], 'aging': next(row[1] for row in AGING if row[0] == bucket(item['days_overdue'])),
                  'assignee': names.get(item['assignee_id']) or 'Не назначен', 'organization': item['_company']}[tile['group']]
+        if tile['measure'] == 'count' and (label, item['id']) in counted:
+            continue
+        counted.add((label, item['id']))
         totals[label] = totals.get(label, 0) + measure_value(item, tile['measure'])
     ordered = list(totals.items()) if tile['group'] == 'stage' else sorted(totals.items(), key=lambda pair: -pair[1])
     return dict(unit=unit, rows=[dict(label=key, value=value) for key, value in ordered][:10])
@@ -175,7 +179,7 @@ def member_emails(connection, tenant, ids):
 
 
 def deliver(connection, schedule, today):
-    from .recovery import all_debtors
+    from .recovery import all_cases as all_debtors
     tenant = schedule['tenant_id']
     if not (os.getenv('SMTP_HOST') and os.getenv('SMTP_FROM')):
         return 'Почта сервиса не настроена'
@@ -211,7 +215,7 @@ def run_report_schedules(config, send=deliver):
 
 def add_routes(router, ctx):
     from .organizations import memberships
-    from .recovery import all_debtors
+    from .recovery import all_cases as all_debtors
 
     def manager(user):
         if user['role'] != 'manager':

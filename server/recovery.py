@@ -27,6 +27,19 @@ from .legal_fees import TARIFF
 from .models import Input, single_line
 
 SCHEMA = '''
+CREATE TABLE IF NOT EXISTS recovery_case_states (
+ tenant_id TEXT NOT NULL REFERENCES tenants(id), case_id TEXT NOT NULL, counterparty_id TEXT NOT NULL, data_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(tenant_id,case_id)
+);
+CREATE TABLE IF NOT EXISTS recovery_case_links (
+ tenant_id TEXT NOT NULL REFERENCES tenants(id), kind TEXT NOT NULL, record_id TEXT NOT NULL, case_id TEXT NOT NULL, PRIMARY KEY(tenant_id,kind,record_id)
+);
+CREATE TABLE IF NOT EXISTS recovery_legacy_assignments (
+ tenant_id TEXT NOT NULL REFERENCES tenants(id), counterparty_id TEXT NOT NULL, case_id TEXT NOT NULL, assigned_by TEXT NOT NULL, assigned_at TEXT NOT NULL, PRIMARY KEY(tenant_id,counterparty_id)
+);
+CREATE TABLE IF NOT EXISTS recovery_case_archives (
+ tenant_id TEXT NOT NULL REFERENCES tenants(id), case_id TEXT NOT NULL, archived_at TEXT NOT NULL, PRIMARY KEY(tenant_id,case_id)
+);
+
 CREATE TABLE IF NOT EXISTS recovery_debtors (
  tenant_id TEXT NOT NULL REFERENCES tenants(id), counterparty_id TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'new', custom_status TEXT NOT NULL DEFAULT '', assignee_id TEXT,
@@ -217,7 +230,15 @@ def get_organization(connection, tenant):
     return json.loads(row['data_json']) if row else {}
 
 
-def state_row(connection, tenant, debtor_id):
+def state_row(connection, tenant, debtor_id, case_id=None):
+    if case_id:
+        row = connection.execute('SELECT data_json FROM recovery_case_states WHERE tenant_id=? AND case_id=? AND counterparty_id=?', (tenant, case_id, debtor_id)).fetchone()
+        if row:
+            return state_row(connection, tenant, debtor_id) | json.loads(row['data_json'])
+        scopes = case_groups(connection, tenant, debtor_id)
+        if len(scopes) != 1:
+            return state_row_default()
+
     row = connection.execute('SELECT * FROM recovery_debtors WHERE tenant_id=? AND counterparty_id=?', (tenant, debtor_id)).fetchone()
     return dict(row) if row else dict(status='new', custom_status='', assignee_id=None, route=None, promise_date=None, promise_amount=None,
                                       note='', claim_sent_on=None, claim_reference='', pretrial_days=rules.DEFAULT_PRETRIAL_DAYS, duty_amount=None,
@@ -234,12 +255,111 @@ def debtor_rows(connection, tenant):
     return groups
 
 
+def case_groups(connection, tenant, debtor_id):
+    from .workflow import case_items
+    return [item for item in case_items(connection, tenant) if item['counterparty_id'] == debtor_id]
+
+
+def case_link(connection, tenant, kind, record_id, case_id):
+    if case_id:
+        connection.execute('INSERT INTO recovery_case_links VALUES(?,?,?,?) ON CONFLICT(tenant_id,kind,record_id) DO NOTHING',
+                           (tenant, kind, record_id, case_id))
+
+
+def scoped_records(connection, tenant, debtor_id, table, columns='*', case_id=None):
+    # Tables and column sets are internal constants, never request text.
+    kind = {'recovery_log': 'log', 'recovery_documents': 'document', 'recovery_register': 'register'}[table]
+    query = f'SELECT {columns} FROM {table} WHERE tenant_id=? AND counterparty_id=?'
+    args = [tenant, debtor_id]
+    if case_id:
+        if len(case_groups(connection, tenant, debtor_id)) == 1:
+            query += " AND (id IN (SELECT record_id FROM recovery_case_links WHERE tenant_id=? AND kind=? AND case_id=?) OR id NOT IN (SELECT record_id FROM recovery_case_links WHERE tenant_id=? AND kind=?))"
+            args += [tenant, kind, case_id, tenant, kind]
+        else:
+            query += " AND id IN (SELECT record_id FROM recovery_case_links WHERE tenant_id=? AND kind=? AND case_id=?)"
+            args += [tenant, kind, case_id]
+    return [dict(row) for row in connection.execute(query + ' ORDER BY created_at DESC,id', tuple(args))]
+
+
+def legacy_required(context, debtor_id):
+    state = context['states'].get(debtor_id)
+    return bool(state and state['status'] != 'new' and debtor_id not in context['legacy_assigned'])
+
+
+def case_views(connection, tenant, debtor_id, context=None):
+    context = context or tenant_context(connection, tenant)
+    invoices = {item['id']: item for item in debtor_rows(connection, tenant).get(debtor_id, [])}
+    groups = case_groups(connection, tenant, debtor_id)
+    result = []
+    for case in groups:
+        subset = [invoices[key] for key in case['invoice_ids']]
+        state = state_row(connection, tenant, debtor_id, case['id'])
+        if case['contract_number']:
+            state = state | dict(details_json=json.dumps(json.loads(state.get('details_json') or '{}') | dict(contract=case['contract_number']), ensure_ascii=False))
+        view = summarize(debtor_id, subset, context, state=state)
+        view.update(case_id=case['id'], contract_id=case['contract_id'], contract_number=case['contract_number'],
+                    invoice_ids=case['invoice_ids'], invoice_numbers=[item['number'] for item in subset], counterparty_id=debtor_id, read_only=False, selected_case_id=case['id'],
+                    archived=debtor_id in context['archived'] or case['id'] in context['case_archived'])
+        view['legacy_review_required'] = len(groups) > 1 and legacy_required(context, debtor_id)
+        view['contract'] = case['contract_number'] or view['contract']
+        result.append(view)
+    return result
+
+
+def load_view(connection, tenant, debtor_id, case_id=None, *, mutate=False):
+    context = tenant_context(connection, tenant)
+    invoices = debtor_rows(connection, tenant).get(debtor_id)
+    if invoices is None:
+        f.fail(404, 'Должник не найден')
+    cases = case_views(connection, tenant, debtor_id, context)
+    if case_id:
+        view = next((item for item in cases if item['case_id'] == case_id), None)
+        if view is None:
+            f.fail(404, 'Дело не найдено')
+    elif len(cases) == 1:
+        view = cases[0]
+    else:
+        if mutate:
+            f.fail(409, 'Выберите договор или отдельный счёт')
+        view = summarize(debtor_id, invoices, context)
+        view.update(read_only=True, selected_case_id=None, case_id=None, status_label='Несколько дел', next_step=None,
+                    legacy_review_required=legacy_required(context, debtor_id))
+    if mutate and view.get('legacy_review_required'):
+        f.fail(409, 'Руководителю нужно отнести прежнюю историю взыскания к одному из дел')
+    view['cases'] = [public(item) for item in cases]
+    if view.get('read_only'):
+        view['archived'] = bool(cases) and all(item['archived'] for item in cases)
+    return view, context
+
+
+def contact_block_reason(connection, tenant, workflow_case):
+    """Rechecked both when preparing and dispatching, under the ledger write lock."""
+    debtor_id = workflow_case['counterparty_id']
+    context = tenant_context(connection, tenant)
+    if debtor_id in context['archived']:
+        return 'recovery_archived'
+    scopes = case_groups(connection, tenant, debtor_id)
+    if len(scopes) > 1 and legacy_required(context, debtor_id):
+        return 'recovery_legacy_review'
+    case_id = workflow_case['id']
+    if case_id in context['case_archived']:
+        return 'recovery_archived'
+    state = state_row(connection, tenant, debtor_id, case_id)
+    status = state['status']
+    if rules.stage_of(status) != rules.PRETRIAL:
+        return 'recovery_case_stopped'
+    if status == 'promise' and state.get('promise_date') and state['promise_date'] >= str(business_today()):
+        return 'promise_not_due'
+    return None
+
+
 def tenant_context(connection, tenant):
     from .integrations import latest_registry_checks
     evidence = {}
     for row in connection.execute('SELECT invoice_id,kind FROM portfolio_evidence WHERE tenant_id=?', (tenant,)):
         evidence.setdefault(row['invoice_id'], []).append(dict(invoice_id=row['invoice_id'], kind=row['kind']))
-    return dict(evidence=evidence, checks=latest_registry_checks(connection, tenant), automation=get_automation(connection, tenant),
+    return dict(legacy_assigned={row['counterparty_id'] for row in connection.execute('SELECT counterparty_id FROM recovery_legacy_assignments WHERE tenant_id=?', (tenant,))},
+                case_archived={row['case_id'] for row in connection.execute('SELECT case_id FROM recovery_case_archives WHERE tenant_id=?', (tenant,))}, evidence=evidence, checks=latest_registry_checks(connection, tenant), automation=get_automation(connection, tenant),
                 organization=get_organization(connection, tenant), today=business_today(),
                 states={row['counterparty_id']: dict(row) for row in connection.execute('SELECT * FROM recovery_debtors WHERE tenant_id=?', (tenant,))},
                 counterparties={row['id']: dict(row) for row in connection.execute('SELECT * FROM finance_counterparties WHERE tenant_id=?', (tenant,))},
@@ -250,9 +370,9 @@ def has_poa(organization):
     return bool(organization.get('poa_number'))
 
 
-def summarize(debtor_id, invoices, context):
+def summarize(debtor_id, invoices, context, *, state=None):
     counterparty = context['counterparties'][debtor_id]
-    state = context['states'].get(debtor_id) or state_row_default()
+    state = state if state is not None else (context['states'].get(debtor_id) or state_row_default())
     open_invoices = [item for item in invoices if item['balance'] > 0]
     balance = sum(item['balance'] for item in open_invoices)
     overdue = sum(item['balance'] for item in open_invoices if item['days_overdue'] > 0)
@@ -274,8 +394,11 @@ def summarize(debtor_id, invoices, context):
 
 
 def state_row_default():
-    return dict(status='new', custom_status='', assignee_id=None, route=None, promise_date=None, claim_sent_on=None, claim_reference='',
-                pretrial_days=rules.DEFAULT_PRETRIAL_DAYS, updated_at=None)
+    return dict(status='new', custom_status='', assignee_id=None, route=None, promise_date=None, promise_amount=None,
+                note='', claim_sent_on=None, claim_reference='', pretrial_days=rules.DEFAULT_PRETRIAL_DAYS, duty_amount=None,
+                duty_reference='', claim_amount=None, filed_on=None, court_reference='', case_number='', act_on=None,
+                writ_number='', writ_on=None, enforcement_reference='', order_cancelled=0, has_court_act=0, details_json='{}',
+                stage_changed_at=None, updated_at=None)
 
 
 def public(view):
@@ -284,7 +407,14 @@ def public(view):
 
 def all_debtors(connection, tenant, context=None):
     context = context or tenant_context(connection, tenant)
-    return [summarize(debtor_id, items, context) for debtor_id, items in debtor_rows(connection, tenant).items()]
+    return [load_view(connection, tenant, debtor_id)[0] for debtor_id in debtor_rows(connection, tenant)]
+
+
+def all_cases(connection, tenant, context=None):
+    """Operational amounts and stages belong to cases, never the debtor overview."""
+    context = context or tenant_context(connection, tenant)
+    return [view for debtor_id in debtor_rows(connection, tenant)
+            for view in case_views(connection, tenant, debtor_id, context)]
 
 
 def interest(invoices, today):
@@ -366,10 +496,21 @@ def generate_document(connection, tenant, view, kind, actor_id, organization):
     document_id = f.uid()
     connection.execute('INSERT INTO recovery_documents VALUES(?,?,?,?,?,?,?,?,?)',
                        (document_id, tenant, view['id'], kind, version, hashlib.sha256(content).hexdigest(), base64.b64encode(content).decode(), actor_id, f.timestamp()))
+    case_link(connection, tenant, 'document', document_id, view.get('case_id'))
     return document_id
 
 
-def upsert_state(connection, tenant, debtor_id, status, values):
+def upsert_state(connection, tenant, debtor_id, status, values, case_id=None, *, force_case=False):
+    if case_id and not force_case and len(case_groups(connection, tenant, debtor_id)) == 1 and not connection.execute('SELECT case_id FROM recovery_case_states WHERE tenant_id=? AND counterparty_id=?', (tenant, debtor_id)).fetchone():
+        case_id = None
+    if case_id:
+        current = state_row(connection, tenant, debtor_id, case_id)
+        state = current | values | dict(status=status, updated_at=f.timestamp())
+        if rules.stage_of(status) != rules.stage_of(current['status']) or not current['updated_at']:
+            state['stage_changed_at'] = state['updated_at']
+        connection.execute('INSERT INTO recovery_case_states VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,case_id) DO UPDATE SET data_json=excluded.data_json,updated_at=excluded.updated_at',
+                           (tenant, case_id, debtor_id, json.dumps(state, ensure_ascii=False), state['updated_at']))
+        return
     stamp = f.timestamp()
     current = connection.execute('SELECT status FROM recovery_debtors WHERE tenant_id=? AND counterparty_id=?', (tenant, debtor_id)).fetchone()
     previous_stage = rules.stage_of(current['status']) if current else rules.PRETRIAL
@@ -382,8 +523,10 @@ def upsert_state(connection, tenant, debtor_id, status, values):
     connection.execute(f'UPDATE recovery_debtors SET {assignments} WHERE tenant_id=? AND counterparty_id=?', (*fields.values(), tenant, debtor_id))
 
 
-def log(connection, tenant, debtor_id, action, before, after, detail, actor_id, actor_name):
-    connection.execute('INSERT INTO recovery_log VALUES(?,?,?,?,?,?,?,?,?,?)', (f.uid(), tenant, debtor_id, action, before, after, detail, actor_id, actor_name, f.timestamp()))
+def log(connection, tenant, debtor_id, action, before, after, detail, actor_id, actor_name, case_id=None):
+    key = f.uid()
+    case_link(connection, tenant, 'log', key, case_id)
+    connection.execute('INSERT INTO recovery_log VALUES(?,?,?,?,?,?,?,?,?,?)', (key, tenant, debtor_id, action, before, after, detail, actor_id, actor_name, f.timestamp()))
 
 
 def set_reminders(connection, tenant, view, *, active):
@@ -402,12 +545,9 @@ def set_reminders(connection, tenant, view, *, active):
     return active
 
 
-def apply_action(connection, tenant, debtor_id, data: ActionInput, actor_id, actor_name, role):
-    context = tenant_context(connection, tenant)
-    invoices = debtor_rows(connection, tenant).get(debtor_id)
-    if invoices is None:
-        f.fail(404, 'Должник не найден')
-    view = summarize(debtor_id, invoices, context)
+def apply_action(connection, tenant, debtor_id, data: ActionInput, actor_id, actor_name, role, case_id=None):
+    view, context = load_view(connection, tenant, debtor_id, case_id, mutate=True)
+    case_id = view['case_id']
     status, action = view['status'], data.action
     allowed, target, manager_only, required = rules.ACTIONS[action]
     if status not in allowed:
@@ -428,6 +568,8 @@ def apply_action(connection, tenant, debtor_id, data: ActionInput, actor_id, act
     reason = rules.guard(action, status, facts=facts)
     if reason:
         f.fail(409, reason)
+    if action == 'promise' and (data.promise_date < business_today() or (data.promise_amount or 0) > view['balance']):
+        f.fail(422, 'Проверьте дату и сумму обещания')
     if action == 'reopen' and view['balance'] <= 0:
         f.fail(409, 'Долг полностью оплачен')
 
@@ -485,8 +627,12 @@ def apply_action(connection, tenant, debtor_id, data: ActionInput, actor_id, act
     elif action == 'bankruptcy_intent':
         values = dict(act_on=str(data.act_on))
 
-    upsert_state(connection, tenant, debtor_id, target, values)
-    log(connection, tenant, debtor_id, action, status, target, detail, actor_id, actor_name)
+    if action in ('settle', 'write_off', 'withdraw', 'decision_lost'):
+        set_reminders(connection, tenant, view, active=False)
+    elif action == 'reopen':
+        stored = set_reminders(connection, tenant, view, active=True)
+    upsert_state(connection, tenant, debtor_id, target, values, case_id=case_id)
+    log(connection, tenant, debtor_id, action, status, target, detail, actor_id, actor_name, case_id=case_id)
     return dict(status=target, reminders_active=stored)
 
 
@@ -531,11 +677,12 @@ def run_automation(config):
             month_days = context['automation'].get('month_days') or []
             if month_days and context['today'].day not in month_days:
                 continue
-            for view in all_debtors(connection, tenant, context):
+            views = [view for debtor_id in debtor_rows(connection, tenant) for view in case_views(connection, tenant, debtor_id, context)]
+            for view in views:
                 if view['archived']:
                     continue
                 if view['stage'] == rules.CLOSED and context['automation'].get('auto_archive_paid') and view['balance'] <= 0:
-                    connection.execute('INSERT INTO recovery_archive VALUES(?,?,?) ON CONFLICT(tenant_id,counterparty_id) DO NOTHING', (tenant, view['id'], f.timestamp()))
+                    connection.execute('INSERT INTO recovery_case_archives VALUES(?,?,?) ON CONFLICT(tenant_id,case_id) DO NOTHING', (tenant, view['case_id'], f.timestamp()))
                     continue
                 action = rules.automation_decision(view['status'], balance=view['balance'], days_overdue=view['days_overdue'],
                                                    contact_allowed=view['contact_allowed'] and not view['hold'], automation=context['automation'],
@@ -543,7 +690,7 @@ def run_automation(config):
                 if not action:
                     continue
                 try:
-                    apply_action(connection, tenant, view['id'], ActionInput(action=action), 'automation', 'Mandato', 'manager')
+                    apply_action(connection, tenant, view['id'], ActionInput(action=action), 'automation', 'Mandato', 'manager', case_id=view['case_id'])
                     moved += 1
                 except HTTPException:
                     continue  # Missing details stay visible as this debtor's next step.
@@ -553,7 +700,7 @@ def run_automation(config):
 def promised_amount(debtor):
     """Money promised on invoices, or the whole balance when the debtor as a whole promised to pay."""
     by_invoice = sum(item.get('promised_amount') or 0 for item in debtor['_invoices'] if item['balance'] > 0)
-    return max(by_invoice, debtor['balance'] if debtor['status'] == 'promise' else 0)
+    return min(debtor['balance'], max(by_invoice, (debtor['_state'].get('promise_amount') or debtor['balance']) if debtor['status'] == 'promise' else 0))
 
 
 def mail_ready(tenant):
@@ -574,16 +721,16 @@ def bulk_one(connection, data, debtor_id, user):
     if data.action in ('hold', 'unhold'):
         connection.execute('UPDATE finance_counterparties SET hold=? WHERE id=? AND tenant_id=?', (int(data.action == 'hold'), debtor_id, tenant))
     elif data.action in ('assign', 'custom_status'):
-        state = state_row(connection, tenant, debtor_id)
+        view, _ = load_view(connection, tenant, debtor_id, mutate=True)
+        state = view['_state']
         field = dict(assignee_id=data.assignee_id) if data.action == 'assign' else dict(custom_status=single_line(data.custom_status))
-        upsert_state(connection, tenant, debtor_id, state['status'], field)
+        upsert_state(connection, tenant, debtor_id, state['status'], field, case_id=view['case_id'])
     elif data.action == 'archive':
         connection.execute('INSERT INTO recovery_archive VALUES(?,?,?) ON CONFLICT(tenant_id,counterparty_id) DO NOTHING', (tenant, debtor_id, stamp))
     elif data.action == 'unarchive':
         connection.execute('DELETE FROM recovery_archive WHERE tenant_id=? AND counterparty_id=?', (tenant, debtor_id))
     elif data.action == 'document':
-        context = tenant_context(connection, tenant)
-        view = summarize(debtor_id, debtor_rows(connection, tenant)[debtor_id], context)
+        view, context = load_view(connection, tenant, debtor_id, mutate=True)
         generate_document(connection, tenant, view, data.kind, user['id'], context['organization'])
     else:
         apply_action(connection, tenant, debtor_id, ActionInput(action=data.action), user['id'], user['name'], user['role'])
@@ -619,18 +766,19 @@ def create_router(ctx):
             context = tenant_context(c, user['tenant_id'])
             debtors = [item for item in all_debtors(c, user['tenant_id'], context) if not item['archived']]
             setup = onboarding(c, user['tenant_id'], context, debtors)
+            scopes = [item for item in all_cases(c, user['tenant_id'], context) if not item['archived']]
         order = {'today': 0, 'soon': 1, 'later': 2}
-        tasks = sorted((item for item in debtors if item['stage'] != rules.CLOSED and item['next_step'] and item['next_step']['action']),
+        tasks = sorted((item for item in scopes if not item.get('legacy_review_required') and item['stage'] != rules.CLOSED and item['next_step'] and item['next_step']['action']),
                        key=lambda item: (order[item['next_step']['urgency']], -item['balance']))
-        closing = [dict(debtor_id=item['id'], name=item['name'], **deadline) for item in debtors if item['stage'] != rules.CLOSED
+        closing = [dict(debtor_id=item['id'], case_id=item.get('case_id'), name=item['name'], **deadline) for item in scopes if item['stage'] != rules.CLOSED
                    for deadline in rules.deadlines(item['_state'], item['oldest_due_on'], context['today']) if deadline['days_left'] <= 30]
-        open_debtors = [item for item in debtors if item['stage'] != rules.CLOSED]
+        open_debtors = [item for item in scopes if item['stage'] != rules.CLOSED]
         from .recovery_ops import analytics
         with ctx.database(ctx.config) as c:
             insight = analytics(c, user['tenant_id'], debtors, context['today'])
-        return dict(analytics=insight, onboarding=setup, stages=report_rows(debtors), tasks=[public(item) for item in tasks[:10]], task_count=len(tasks),
+        return dict(analytics=insight, onboarding=setup, stages=report_rows(scopes), tasks=[public(item) for item in tasks[:10]], task_count=len(tasks),
                     deadlines=sorted(closing, key=lambda item: item['days_left'])[:10],
-                    totals=dict(debtors=len(open_debtors), balance=sum(item['balance'] for item in open_debtors), overdue=sum(item['overdue_amount'] for item in open_debtors),
+                    totals=dict(debtors=len({item['id'] for item in open_debtors}), balance=sum(item['balance'] for item in open_debtors), overdue=sum(item['overdue_amount'] for item in open_debtors),
                                 promised=sum(promised_amount(item) for item in open_debtors)))
 
     @router.get('/debtors')
@@ -640,48 +788,66 @@ def create_router(ctx):
         return dict(items=[public(item) for item in sorted(items, key=lambda item: -item['balance'])])
 
     @router.get('/debtors/{debtor_id}')
-    def debtor(debtor_id: str, user=Depends(ctx.get_user)):
+    def debtor(debtor_id: str, case_id: str | None = None, user=Depends(ctx.get_user)):
         from .financing import offers
         tenant = user['tenant_id']
         with ctx.database(ctx.config) as c:
-            context = tenant_context(c, tenant)
-            invoices = debtor_rows(c, tenant).get(debtor_id)
-            if invoices is None:
-                ctx.problem(404, 'Должник не найден')
-            view = summarize(debtor_id, invoices, context)
+            view, context = load_view(c, tenant, debtor_id, case_id)
+            case_id = view.get('case_id')
             state = view['_state']
             solvency = rules.solvency_report(context['checks'].get(view['inn']))
-            logs = [dict(row) for row in c.execute('SELECT * FROM recovery_log WHERE tenant_id=? AND counterparty_id=? ORDER BY created_at DESC,id', (tenant, debtor_id))]
-            documents = [dict(row) for row in c.execute('SELECT id,kind,version,created_at FROM recovery_documents WHERE tenant_id=? AND counterparty_id=? ORDER BY created_at DESC,id', (tenant, debtor_id))]
+            logs = scoped_records(c, tenant, debtor_id, 'recovery_log', case_id=case_id)
+            documents = scoped_records(c, tenant, debtor_id, 'recovery_documents', 'id,kind,version,created_at', case_id=case_id)
             financing = offers(c, tenant, view, solvency, context['today'])
             custom = {row['id']: dict(row) for row in c.execute('SELECT id,title,stage FROM recovery_custom_templates WHERE tenant_id=?', (tenant,))}
-            register = [dict(row) for row in c.execute('SELECT * FROM recovery_register WHERE tenant_id=? AND counterparty_id=? ORDER BY on_date DESC,created_at DESC', (tenant, debtor_id))]
+            register = scoped_records(c, tenant, debtor_id, 'recovery_register', case_id=case_id)
         route = view['route'] or rules.recommend_route(view['balance'], disputed=view['status'] == 'dispute', order_cancelled=bool(state.get('order_cancelled')))['route']
         recommendation = rules.recommend_route(view['balance'], disputed=view['status'] == 'dispute', order_cancelled=bool(state.get('order_cancelled')))
         fields = {key: state.get(key) for key in ('claim_sent_on', 'claim_reference', 'duty_amount', 'duty_reference', 'filed_on', 'court_reference', 'case_number', 'act_on', 'writ_number', 'writ_on', 'enforcement_reference', 'promise_amount', 'note')}
         return public(view) | dict(invoices=view['_invoices'], evidence=view['_evidence'], solvency=solvency, deadlines=rules.deadlines(state if state.get('status') else view['_state'] | dict(status=view['status']), view['oldest_due_on'], context['today']),
                                    economics=rules.economics(view['balance'], route, TARIFF) if view['balance'] else None, recommendation=recommendation,
-                                   details=json.loads(state.get('details_json') or '{}'), actions=rules.available_actions(view['status'], route=view['route']), log=logs,
+                                   details=json.loads(state.get('details_json') or '{}'), actions=[] if view.get('read_only') or view.get('legacy_review_required') else rules.available_actions(view['status'], route=view['route']), log=logs,
                                    documents=[row | dict(title=document_title(row['kind'], custom)) for row in documents], custom_templates=[dict(kind='custom:' + key, title=value['title'], stage=value['stage']) for key, value in custom.items()],
                                    register=register, financing=financing, mail_connected=mail_ready(tenant), **fields)
 
-    @router.patch('/debtors/{debtor_id}')
-    def patch_debtor(debtor_id: str, data: DebtorPatch, user=Depends(ctx.get_user)):
+    @router.post('/debtors/{debtor_id}/legacy-assignment')
+    def assign_legacy(debtor_id: str, case_id: str, user=Depends(ctx.get_user)):
+        manager(user)
         tenant = user['tenant_id']
         with ctx.database(ctx.config, write=True) as c:
-            if debtor_id not in debtor_rows(c, tenant):
-                ctx.problem(404, 'Должник не найден')
-            state = state_row(c, tenant, debtor_id)
+            view, context = load_view(c, tenant, debtor_id, case_id)
+            if not legacy_required(context, debtor_id):
+                ctx.problem(409, 'Прежняя история уже распределена или отсутствует')
+            if c.execute('SELECT case_id FROM recovery_case_states WHERE tenant_id=? AND case_id=?', (tenant, case_id)).fetchone():
+                ctx.problem(409, 'В выбранном деле уже есть своя история')
+            legacy = state_row(c, tenant, debtor_id)
+            upsert_state(c, tenant, debtor_id, legacy['status'], legacy, case_id=case_id, force_case=True)
+            for table, kind in (('recovery_log','log'), ('recovery_documents','document'), ('recovery_register','register')):
+                for row in c.execute(f'SELECT id FROM {table} WHERE tenant_id=? AND counterparty_id=? AND id NOT IN (SELECT record_id FROM recovery_case_links WHERE tenant_id=? AND kind=?)', (tenant, debtor_id, tenant, kind)).fetchall():
+                    case_link(c, tenant, kind, row['id'], case_id)
+            c.execute('INSERT INTO recovery_legacy_assignments VALUES(?,?,?,?,?)', (tenant, debtor_id, case_id, user['id'], ctx.now()))
+            # Human reviews contact authority again after assigning the old aggregate.
+            for item in case_views(c, tenant, debtor_id):
+                set_reminders(c, tenant, item, active=False)
+            log(c, tenant, debtor_id, 'legacy_assigned', legacy['status'], legacy['status'], 'Прежняя история отнесена к делу ' + case_id, user['id'], user['name'], case_id=case_id)
+        return dict(ok=True, case_id=case_id)
+
+    @router.patch('/debtors/{debtor_id}')
+    def patch_debtor(debtor_id: str, data: DebtorPatch, case_id: str | None = None, user=Depends(ctx.get_user)):
+        tenant = user['tenant_id']
+        with ctx.database(ctx.config, write=True) as c:
+            view, _ = load_view(c, tenant, debtor_id, case_id, mutate=True)
+            state, case_id = view['_state'], view['case_id']
             details = {key: value for key, value in data.model_dump(exclude={'custom_status', 'assignee_id'}).items()}
-            upsert_state(c, tenant, debtor_id, state['status'], dict(custom_status=single_line(data.custom_status), assignee_id=data.assignee_id, details_json=json.dumps(details, ensure_ascii=False)))
+            upsert_state(c, tenant, debtor_id, state['status'], dict(custom_status=single_line(data.custom_status), assignee_id=data.assignee_id, details_json=json.dumps(details, ensure_ascii=False)), case_id=case_id)
         return dict(ok=True)
 
     @router.post('/debtors/{debtor_id}/actions')
-    def action(debtor_id: str, data: ActionInput, user=Depends(ctx.get_user)):
+    def action(debtor_id: str, data: ActionInput, case_id: str | None = None, user=Depends(ctx.get_user)):
         if data.action in ('prepare_claim', 'set_route', 'send_to_lawyer', 'to_court'):
             refresh_rates()
         with ctx.database(ctx.config, write=True) as c:
-            return apply_action(c, user['tenant_id'], debtor_id, data, user['id'], user['name'], user['role'])
+            return apply_action(c, user['tenant_id'], debtor_id, data, user['id'], user['name'], user['role'], case_id=case_id)
 
     @router.post('/debtors/bulk')
     def bulk(data: BulkInput, user=Depends(ctx.get_user)):
@@ -697,15 +863,12 @@ def create_router(ctx):
         return dict(items=results, done=sum(item['ok'] for item in results))
 
     @router.post('/debtors/{debtor_id}/documents', status_code=201)
-    def create_document(debtor_id: str, data: DocumentInput, user=Depends(ctx.get_user)):
+    def create_document(debtor_id: str, data: DocumentInput, case_id: str | None = None, user=Depends(ctx.get_user)):
         refresh_rates()
         tenant = user['tenant_id']
         with ctx.database(ctx.config, write=True) as c:
-            context = tenant_context(c, tenant)
-            invoices = debtor_rows(c, tenant).get(debtor_id)
-            if invoices is None:
-                ctx.problem(404, 'Должник не найден')
-            return dict(id=generate_document(c, tenant, summarize(debtor_id, invoices, context), data.kind, user['id'], context['organization']))
+            view, context = load_view(c, tenant, debtor_id, case_id, mutate=True)
+            return dict(id=generate_document(c, tenant, view, data.kind, user['id'], context['organization']))
 
     @router.get('/documents/{document_id}/download')
     def download(document_id: str, user=Depends(ctx.get_user)):
@@ -778,16 +941,16 @@ def create_router(ctx):
     @router.get('/report')
     def report(user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
-            debtors = all_debtors(c, user['tenant_id'])
+            debtors = all_cases(c, user['tenant_id'])
             recovered = c.execute('SELECT COALESCE(SUM(p.amount-p.reversed_amount),0) AS amount FROM payments p WHERE p.tenant_id=?', (user['tenant_id'],)).fetchone()['amount']
-            duties = c.execute('SELECT COALESCE(SUM(duty_amount),0) AS amount FROM recovery_debtors WHERE tenant_id=? AND duty_reference<>?', (user['tenant_id'], '')).fetchone()['amount']
+            duties = sum(item['_state'].get('duty_amount') or 0 for item in debtors if item['_state'].get('duty_reference'))
         return dict(stages=report_rows(debtors), recovered_amount=recovered, duties_paid_amount=duties,
                     by_status=[dict(status=status, label=rules.STATUSES[status][1], count=sum(item['status'] == status for item in debtors), amount=sum(item['balance'] for item in debtors if item['status'] == status)) for status in rules.STATUSES if any(item['status'] == status for item in debtors)])
 
     @router.get('/report.csv')
     def report_csv(user=Depends(ctx.get_user)):
         with ctx.database(ctx.config) as c:
-            debtors = all_debtors(c, user['tenant_id'])
+            debtors = all_cases(c, user['tenant_id'])
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';')
         writer.writerow(['Должник', 'ИНН', 'Этап', 'Статус', 'Мой статус', 'Остаток, ₽', 'Просрочка, дней', 'Документы, %'])

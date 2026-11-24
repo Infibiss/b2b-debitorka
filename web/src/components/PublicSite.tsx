@@ -1,5 +1,6 @@
 import { tariff } from '../pricing';
-import { locale, t } from '../i18n';
+import { locale } from '../i18n';
+import { publicText as t } from '../publicTypography';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowRight, Check, ArrowUpRight } from 'lucide-react';
 import { api, post, setCsrf, money, ApiError, type Session } from '../api';

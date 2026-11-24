@@ -40,7 +40,7 @@ def test_bulk_generates_documents(client):
     assert client.get(f"/api/recovery/documents/{documents[0]['id']}/download").status_code == 200
 
 
-def test_register_keeps_court_and_enforcement_records_per_tenant(client):
+def test_register_creates_and_removes_court_and_enforcement_records(client):
     key, _ = ready(client)
     payload = dict(kind='bank_account', on_date=str(business_today()), title='АО Банк', reference='40702810000000000002', amount=100_000)
     response = client.post(f'/api/recovery/debtors/{key}/register', json=payload)

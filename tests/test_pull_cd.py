@@ -4,11 +4,11 @@ import pytest
 from infra.yandex import pull_cd as cd
 
 SHA='a'*40
-REPO='Infibiss/b2b-debitorka'
+REPO='Infibiss/mandato'
 def run(**changes):
     return dict(id=10,workflow_id=11,path='.github/workflows/ci.yml',head_sha=SHA,head_branch='main',event='push',status='completed',conclusion='success',head_repository={'full_name':REPO},**changes)
 
-@pytest.mark.parametrize('field,value', [('head_sha','b'*40),('event','pull_request'),('head_branch','feature'),('conclusion','failure'),('status','in_progress'),('workflow_id',12),('path','.github/workflows/other.yml'),('head_repository',{'full_name':'evil/fork'})])
+@pytest.mark.parametrize('field,value', [('head_sha','b'*40),('event','pull_request'),('head_branch','feature'),('conclusion','failure'),('status','in_progress'),('workflow_id',12),('path','.github/workflows/other.yml'),('head_repository',{'full_name':'evil/fork'}),('head_repository',{'full_name':'Infibiss/b2b-debitorka'})])
 def test_provenance(field,value):
     good=run();assert cd.approved(good,SHA,11)
     good[field]=value;assert not cd.approved(good,SHA,11)

@@ -244,7 +244,7 @@ def test_financing_refused_for_dispute_and_bankrupt(client):
     assert financing.assess(financing.PRODUCTS['judgment_advance'], dict(view, stage='court'), solvency_state='active', has_court_act=False) == ['Нужен вступивший в силу судебный акт']
 
 
-def test_repayment_tracks_bank_receipts_after_funding(client):
+def test_financing_without_allocated_receipts_starts_unpaid(client):
     key, item = ready(client)
     with database(client.app.state.config, write=True) as connection:
         tenant = connection.execute('SELECT tenant_id FROM invoices WHERE id=?', (item['id'],)).fetchone()['tenant_id']

@@ -1,3 +1,4 @@
+import { caseQuery } from './CaseScope';
 import { useState, type FormEvent } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { dateText, del, money, post, today, toKopeks } from '../../api';
@@ -73,7 +74,7 @@ export function RegisterPanel({
   function submit(event: FormEvent, kind: Kind) {
     event.preventDefault();
     const { amount, ...rest } = form;
-    post(`/recovery/debtors/${debtor.id}/register`, {
+    post(`/recovery/debtors/${debtor.id}/register${caseQuery(debtor)}`, {
       kind,
       ...rest,
       ...(amount ? { amount: toKopeks(amount) } : {}),

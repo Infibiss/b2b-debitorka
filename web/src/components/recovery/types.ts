@@ -12,6 +12,9 @@ export type NextStep = {
 };
 export type Debtor = {
   id: string;
+  case_id?: string | null;
+  cases?: RecoveryCase[];
+  read_only?: boolean;
   name: string;
   inn: string;
   email: string;
@@ -58,7 +61,24 @@ export type FinancingOffer = {
   amount_to: number;
   annual_rate_percent: string | null;
 };
+export type RecoveryCase = {
+  id: string;
+  case_id: string;
+  stage: Stage;
+  archived: boolean;
+  contract_id: string | null;
+  contract_number: string | null;
+  invoice_ids: string[];
+  invoice_numbers?: string[];
+  balance: number;
+  status: string;
+  status_label: string;
+};
 export type DebtorDetail = Debtor & {
+  cases?: RecoveryCase[];
+  selected_case_id?: string | null;
+  read_only?: boolean;
+  legacy_review_required?: boolean;
   invoices: {
     id: string;
     number: string;
@@ -150,6 +170,7 @@ export type Dashboard = {
   task_count: number;
   deadlines: {
     debtor_id: string;
+    case_id?: string | null;
     name: string;
     key: string;
     label: string;

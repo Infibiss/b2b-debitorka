@@ -69,7 +69,9 @@ def collected_by_month(connection, tenant, today):
 
 def analytics(connection, tenant, debtors, today):
     """The owner's picture of the portfolio: where the money is and what blocks it."""
-    active = [item for item in debtors if item['stage'] != rules.CLOSED]
+    from .recovery import all_cases
+    scopes = all_cases(connection, tenant)
+    active = [item for item in scopes if item['stage'] != rules.CLOSED and not item['archived']]
     monthly = collected_by_month(connection, tenant, today)
     collected_total = connection.execute('SELECT COALESCE(SUM(amount-reversed_amount),0) AS amount FROM payments WHERE tenant_id=?', (tenant,)).fetchone()['amount']
     open_total = sum(item['balance'] for item in active)
@@ -77,7 +79,7 @@ def analytics(connection, tenant, debtors, today):
     for item in active:
         promise = item['promise_date']
         if item['status'] == 'promise' and promise and 0 <= (date.fromisoformat(promise) - today).days <= 30:
-            promised_soon += item['_state'].get('promise_amount') or item['balance']
+            promised_soon += min(item['balance'], item['_state'].get('promise_amount') or item['balance'])
     limitation = [deadline for item in active for deadline in rules.deadlines(item['_state'], item['oldest_due_on'], today) if deadline['key'] == 'limitation' and deadline['days_left'] <= 90]
     attention = [
         dict(key='promise_broken', label='Нарушили обещание', count=sum(item['status'] == 'promise_broken' for item in active), target='debtors:pretrial'),
@@ -92,7 +94,7 @@ def analytics(connection, tenant, debtors, today):
         row = statuses.setdefault(item['status'], dict(status=item['status'], label=item['status_label'], stage=item['stage'], count=0, amount=0))
         row['count'] += 1
         row['amount'] += item['balance']
-    top = sorted(active, key=lambda item: -item['balance'])[:5]
+    top = sorted((item for item in debtors if item['balance'] > 0 and not item['archived']), key=lambda item: -item['balance'])[:5]
     return dict(
         aging=aging_rows(active), monthly=monthly, collected_total=collected_total, open_total=open_total,
         recovery_percent=round(100 * collected_total / (collected_total + open_total), 1) if collected_total + open_total else 0,
@@ -150,7 +152,7 @@ class CustomTemplateInput(Input):
 
 def add_routes(router, ctx):
     from . import recovery_dashboards, recovery_recognition
-    from .recovery import all_debtors, csv_safe, debtor_rows
+    from .recovery import all_cases as all_debtors, csv_safe, debtor_rows
     recovery_dashboards.add_routes(router, ctx)
     recovery_recognition.add_routes(router, ctx)
 
@@ -191,12 +193,13 @@ def add_routes(router, ctx):
         return csv_response(rows, 'mandato-duty-register.csv')
 
     @router.post('/debtors/{debtor_id}/register', status_code=201)
-    def register_add(debtor_id: str, data: RegisterInput, user=Depends(ctx.get_user)):
+    def register_add(debtor_id: str, data: RegisterInput, case_id: str | None = None, user=Depends(ctx.get_user)):
         tenant = user['tenant_id']
         with ctx.database(ctx.config, write=True) as c:
-            if debtor_id not in debtor_rows(c, tenant):
-                ctx.problem(404, 'Должник не найден')
+            from .recovery import load_view, case_link
+            view, _ = load_view(c, tenant, debtor_id, case_id, mutate=True)
             key = f.uid()
+            case_link(c, tenant, 'register', key, view['case_id'])
             c.execute('INSERT INTO recovery_register VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
                       (key, tenant, debtor_id, data.kind, str(data.on_date), data.title, data.reference, data.amount, data.status, data.note, user['id'], ctx.now()))
         return dict(id=key)

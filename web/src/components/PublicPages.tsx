@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { t } from '../i18n';
+import { publicText as t } from '../publicTypography';
 import './public-pages.css';
 
 export type PublicPageKind = 'product' | 'solutions' | 'integrations';

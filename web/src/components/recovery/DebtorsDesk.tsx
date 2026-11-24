@@ -51,7 +51,9 @@ function savedColumns(): ColumnKey[] {
 function matches(item: Debtor, f: Filters) {
   const rubles = item.balance / 100;
   return (
-    (!f.status || item.status === f.status) &&
+    (!f.status ||
+      item.status === f.status ||
+      item.cases?.some((scope) => scope.status === f.status)) &&
     (!f.assignee || item.assignee_id === f.assignee) &&
     (!f.amountFrom || rubles >= Number(f.amountFrom)) &&
     (!f.amountTo || rubles <= Number(f.amountTo)) &&
@@ -82,7 +84,7 @@ export function DebtorsDesk({
   initialStage: Stage;
   meta: Meta | null;
   isManager: boolean;
-  onOpen: (id: string) => void;
+  onOpen: (id: string, caseId?: string | null) => void;
   onImport: () => void;
   onCreate: () => void;
   refreshKey: number;
@@ -111,12 +113,23 @@ export function DebtorsDesk({
   }, []);
   useEffect(() => setView(initialStage), [initialStage]);
   const inView = (item: Debtor, key: View) =>
-    key === 'archive' ? item.archived : !item.archived && item.stage === key;
+    key === 'archive'
+      ? item.archived
+      : !item.archived &&
+        (item.cases?.length
+          ? item.cases.some((scope) => !scope.archived && scope.stage === key)
+          : item.stage === key);
   const statuses = useMemo(() => {
     const found = new Map<string, string>();
     (items ?? [])
       .filter((i) => inView(i, view))
-      .forEach((i) => found.set(i.status, i.status_label));
+      .forEach((i) => {
+        if (i.cases?.length)
+          i.cases
+            .filter((scope) => view === 'archive' || scope.stage === view)
+            .forEach((scope) => found.set(scope.status, scope.status_label));
+        else found.set(i.status, i.status_label);
+      });
     return [...found];
   }, [items, view]);
   if (!items) return <div className="rc-empty">{t('Загружаем…')}</div>;
@@ -130,6 +143,7 @@ export function DebtorsDesk({
           item.name,
           item.inn,
           item.contract,
+          ...(item.cases?.map((scope) => scope.contract_number) ?? []),
           item.case_number,
           item.writ_number,
           item.email,
@@ -455,7 +469,15 @@ export function DebtorsDesk({
                     />
                   </td>
                   <td>
-                    <button className="rc-link" onClick={() => onOpen(item.id)}>
+                    <button
+                      className="rc-link"
+                      onClick={() => {
+                        const scopes =
+                          item.cases?.filter((scope) => scope.stage === view && !scope.archived) ??
+                          [];
+                        onOpen(item.id, scopes.length === 1 ? scopes[0].case_id : null);
+                      }}
+                    >
                       {item.name}
                     </button>
                     <small>

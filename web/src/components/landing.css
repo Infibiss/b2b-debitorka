@@ -419,9 +419,6 @@ html.js .words.is-in span {
     transform: translateX(8px);
     opacity: 1;
   }
-  .view-tile:hover .view-tile-inner {
-    transform: scale(1.03);
-  }
   .start-card:hover {
     transform: translateY(-8px) !important;
   }
@@ -1152,48 +1149,6 @@ html.js .words.is-in span {
   line-height: 1.45;
   color: var(--ink-soft);
 }
-.views-cards {
-  display: flex;
-  align-items: flex-end;
-  gap: 1.25rem;
-}
-.view-tile-wrap {
-  min-width: 0;
-  flex: 1;
-}
-.view-tile-second {
-  margin-bottom: 2rem;
-}
-.view-tile {
-  position: relative;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: var(--radius-card);
-  color: #fff;
-}
-.view-tile-deep {
-  background: var(--brand-deep);
-}
-.view-tile-brand {
-  background: var(--brand);
-}
-.view-tile-inner {
-  height: 100%;
-  padding: 1.5rem 1.25rem 6.5rem;
-  transition: transform 0.45s var(--spring);
-}
-.view-tile-inner > small {
-  display: block;
-  font-size: max(13px, 0.8125rem);
-  opacity: 0.8;
-}
-.view-tile-inner > strong {
-  display: block;
-  margin-top: 0.4rem;
-  font-size: clamp(20px, 1.75rem, 34px);
-  font-weight: 500;
-  line-height: 1.12;
-}
 .view-bars {
   display: flex;
   align-items: flex-end;
@@ -1205,40 +1160,6 @@ html.js .words.is-in span {
   flex: 1;
   border-radius: 0.25rem 0.25rem 0 0;
   background: var(--brand-light);
-}
-.view-tile-inner ul {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-}
-.view-tile-inner li {
-  padding: 0.55rem 0.75rem;
-  border-radius: 0.75rem;
-  background: rgb(255 255 255 / 16%);
-  font-size: max(13px, 0.8125rem);
-}
-.view-tile figcaption {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  left: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  backdrop-filter: blur(10px);
-}
-.view-tile figcaption strong,
-.view-tile figcaption small {
-  display: block;
-}
-.view-tile figcaption strong {
-  font-size: max(14px, 0.875rem);
-  font-weight: 500;
-}
-.view-tile figcaption small {
-  margin-top: 0.15rem;
-  font-size: max(12px, 0.72rem);
-  line-height: 1.25;
-  opacity: 0.88;
 }
 .caption-deep {
   background: rgb(255 255 255 / 12%);
@@ -1455,9 +1376,6 @@ main:has(.landing) + .site-footer {
   .views-copy {
     max-width: 34rem;
   }
-  .views-cards {
-    max-width: 40rem;
-  }
   .hero-bottom {
     gap: 1rem;
   }
@@ -1538,17 +1456,6 @@ main:has(.landing) + .site-footer {
   }
   .program-text strong {
     font-size: 1.375rem;
-  }
-  .views-cards {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-  .view-tile-second {
-    margin-bottom: 0;
-  }
-  .view-tile {
-    aspect-ratio: 1 / 1;
   }
   .start ol {
     grid-template-columns: 1fr;
@@ -1707,84 +1614,10 @@ main:has(.landing) + .site-footer {
   opacity: 0.88;
 }
 
-/* Two cards of the workspace's first screen, sized by their content. */
-.landing .views-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 1.25rem;
-  max-width: none;
-}
-.landing .view-tile {
-  aspect-ratio: auto;
-  padding: 1.75rem;
-  border-radius: var(--radius-card);
-  color: #fff;
-}
-.view-tile-label {
-  font-size: max(12px, 0.75rem);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.75;
-}
-.landing .view-tile dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem 1.25rem;
-  margin-top: 1.5rem;
-}
-.landing .view-tile dt {
-  font-size: max(13px, 0.8125rem);
-  opacity: 0.75;
-}
-.landing .view-tile dd {
-  margin-top: 0.3rem;
-  font-size: clamp(24px, 2rem, 40px);
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
-}
-.landing .view-tile dd small {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: max(12.5px, 0.78rem);
-  font-weight: 400;
-  letter-spacing: 0;
-  opacity: 0.75;
-}
-.landing .view-tile ul {
-  display: grid;
-  gap: 0.6rem;
-  margin-top: 1.5rem;
-}
-.landing .view-tile li {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.9rem;
-  background: rgb(255 255 255 / 12%);
-  font-size: max(14px, 0.9rem);
-  line-height: 1.3;
-}
-.landing .view-tile li strong {
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  min-width: 32px;
-  min-height: 32px;
-  flex: none;
-  place-items: center;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--brand-deep);
-  font-weight: 500;
-}
-.landing .views-note {
-  margin-top: -1.75rem;
-  font-size: max(12.5px, 0.78rem);
-  color: var(--ink-soft);
+.landing p,
+.public-page p,
+.public-site p {
+  text-wrap: pretty;
 }
 
 @media (max-width: 1080px) {
@@ -1818,9 +1651,6 @@ main:has(.landing) + .site-footer {
   .landing .ghost {
     font-size: 9vw;
   }
-  .landing .views-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 @media (max-width: 640px) {
   .landing .trust {
@@ -1829,18 +1659,23 @@ main:has(.landing) + .site-footer {
   .landing .section-head .stack {
     font-size: 2.25rem;
   }
-  .landing .view-tile {
-    padding: 1.25rem;
-  }
   .landing .hero-cluster {
     width: 100%;
-  }
-  .landing .views-note {
-    margin-top: -2rem;
   }
 }
 @media (max-width: 768px) {
   .landing .hero-cluster .hero-slider {
     display: none;
   }
+}
+
+/* White labels retain contrast on the green stage cards. */
+.landing .trust-card figcaption small,
+.landing .trust-card-rows span,
+.landing .trust-card-rows strong {
+  opacity: 1;
+  color: #fff;
+}
+.landing .trust-card-rows p {
+  background: rgb(0 0 0 / 12%);
 }

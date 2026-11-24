@@ -81,7 +81,7 @@ for (const [path, [title, description]] of Object.entries(pages)) {
     `<meta property="og:image" content="${site}/og.png" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     path === '/' ? `<script type="application/ld+json">${organization}</script>` : '',
-    path === '/' ? '<link rel="preload" as="image" href="/hero.webp" fetchpriority="high" />' : '',
+    path === '/' ? '<link rel="preload" as="image" href="/hero-optimized.webp" fetchpriority="high" />' : '',
   ].join('');
   let html = shell.replace(/<title>[\s\S]*?<\/title>/, '').replace(/<meta name="description"[\s\S]*?\/>/, '').replace('</head>', head + '</head>');
   html = html.replace('<div id="root"></div>', `<div id="root">${render()}</div>`);

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { CaseScope, caseQuery } from './CaseScope';
+import { useRouteField } from '../../navigation';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, Check, Download } from 'lucide-react';
 import { api, dateText, money, patch, post, today, toKopeks } from '../../api';
 import { t } from '../../i18n';
@@ -153,7 +155,7 @@ function DetailsForm({
       className="rc-details"
       onSubmit={(event) => {
         event.preventDefault();
-        patch('/recovery/debtors/' + debtor.id, form)
+        patch('/recovery/debtors/' + debtor.id + caseQuery(debtor), form)
           .then(() => {
             notify(t('Данные сохранены'));
             onSaved();
@@ -303,24 +305,66 @@ export function DebtorCard({
   const [debtor, setDebtor] = useState<DebtorDetail | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [pending, setPending] = useState<string | null>(null);
-  const load = useCallback(
-    () =>
-      api<DebtorDetail>(`/recovery/debtors/${id}`)
-        .then(setDebtor)
-        .catch((error) => notify(error.message, true)),
-    [id, notify]
-  );
+  const [caseId, setCaseId] = useRouteField<string | null>('recoveryCase', null);
+  const requestVersion = useRef(0);
+  const [loadError, setLoadError] = useState('');
+  const [mutating, setMutating] = useState(false);
+  const load = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setLoadError('');
+    try {
+      const result = await api<DebtorDetail>(
+        `/recovery/debtors/${id}${caseId ? `?case_id=${encodeURIComponent(caseId)}` : ''}`
+      );
+      if (requestVersion.current === version) setDebtor(result);
+    } catch (error) {
+      if (requestVersion.current === version) {
+        setDebtor(null);
+        setLoadError((error as Error).message);
+      }
+    }
+  }, [id, caseId]);
   useEffect(() => {
+    setDebtor(null);
+    setPending(null);
     void load();
+    return () => {
+      requestVersion.current++;
+    };
   }, [load]);
-  if (!debtor) return <div className="rc-empty">{t('Загружаем…')}</div>;
+  if (!debtor)
+    return (
+      <div className="rc-empty">
+        {loadError ? (
+          <>
+            <p role="alert">{loadError}</p>
+            <button
+              className="button button-outline"
+              onClick={() => {
+                setCaseId(null);
+                void load();
+              }}
+            >
+              {t('К должнику')}
+            </button>
+          </>
+        ) : (
+          t('Загружаем…')
+        )}
+      </div>
+    );
   async function run(action: string, values: Record<string, string> = {}) {
+    if (mutating) return;
+    setMutating(true);
     try {
       const body = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-      const result = await post<{ reminders_active?: boolean }>(`/recovery/debtors/${id}/actions`, {
-        action,
-        ...body,
-      });
+      const result = await post<{ reminders_active?: boolean }>(
+        `/recovery/debtors/${id}/actions${caseQuery(debtor)}`,
+        {
+          action,
+          ...body,
+        }
+      );
       setPending(null);
       await load();
       onChanged();
@@ -331,6 +375,8 @@ export function DebtorCard({
       );
     } catch (error) {
       notify((error as Error).message, true);
+    } finally {
+      setMutating(false);
     }
   }
   const click = (action: string) =>
@@ -360,7 +406,9 @@ export function DebtorCard({
           <h1>{debtor.name}</h1>
           <p>
             {debtor.inn ? t('ИНН {0}', [debtor.inn]) : t('ИНН не указан')} ·{' '}
-            {stageNames[debtor.stage]} · {t(debtor.status_label)}
+            {debtor.read_only
+              ? t('Все договоры и счета')
+              : `${stageNames[debtor.stage]} · ${t(debtor.status_label)}`}
           </p>
         </div>
         <div className="rc-amount">
@@ -369,7 +417,22 @@ export function DebtorCard({
         </div>
       </header>
 
-      {debtor.steps.length > 0 && (
+      <CaseScope
+        disabled={mutating}
+        key={debtor.selected_case_id ?? id}
+        isManager={isManager}
+        debtor={debtor}
+        onSelect={(key) => {
+          setPending(null);
+          setCaseId(key);
+        }}
+        onCreated={() => {
+          onChanged();
+          void load();
+        }}
+        notify={notify}
+      />
+      {debtor.steps.length > 0 && !debtor.read_only && !debtor.legacy_review_required && (
         <ol className="rc-steps">
           {debtor.steps.map((step) => (
             <li key={step.key} className={`rc-step-${step.state}`}>
@@ -380,7 +443,7 @@ export function DebtorCard({
         </ol>
       )}
 
-      {debtor.next_step && (
+      {debtor.next_step && !debtor.read_only && !debtor.legacy_review_required && (
         <section className="rc-next-card">
           <div>
             <small>{t('Следующий шаг')}</small>
@@ -388,7 +451,11 @@ export function DebtorCard({
           </div>
           {primary &&
             (canRun(primary) ? (
-              <button className="button button-dark" onClick={() => click(primary)}>
+              <button
+                className="button button-dark"
+                disabled={mutating}
+                onClick={() => click(primary)}
+              >
                 {t(meta.action_labels[primary])}
               </button>
             ) : (
@@ -414,14 +481,16 @@ export function DebtorCard({
       )}
 
       <nav className="rc-tabs" aria-label={t('Разделы карточки')}>
-        {tabs.map(([key, label]) => (
-          <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
-            {label}
-          </button>
-        ))}
+        {tabs
+          .filter(([key]) => !debtor.read_only || ['overview', 'invoices', 'history'].includes(key))
+          .map(([key, label]) => (
+            <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+              {label}
+            </button>
+          ))}
       </nav>
 
-      {tab === 'overview' && (
+      {tab === 'overview' && !debtor.read_only && !debtor.legacy_review_required && (
         <div className="rc-columns">
           <section className="rc-card">
             <h2>{t('Готовность к суду: {0}%', [debtor.evidence.score])}</h2>
@@ -504,6 +573,7 @@ export function DebtorCard({
                 {[...secondary, ...closing].filter(canRun).map((action) => (
                   <button
                     key={action}
+                    disabled={mutating}
                     className="button button-outline"
                     onClick={() => setPending(action)}
                   >
@@ -554,11 +624,16 @@ export function DebtorCard({
         />
       )}
 
-      {tab === 'documents' && (
-        <EvidencePanel debtor={debtor} notify={notify} onSaved={() => void load()} />
+      {tab === 'documents' && !debtor.read_only && !debtor.legacy_review_required && (
+        <EvidencePanel
+          key={debtor.selected_case_id ?? id}
+          debtor={debtor}
+          notify={notify}
+          onSaved={() => void load()}
+        />
       )}
 
-      {tab === 'documents' && (
+      {tab === 'documents' && !debtor.read_only && !debtor.legacy_review_required && (
         <div className="rc-card">
           <h2>{t('Претензии и заявления')}</h2>
           {kinds.length > 0 && (
@@ -568,7 +643,7 @@ export function DebtorCard({
                   key={kind}
                   className="button button-outline"
                   onClick={() =>
-                    post(`/recovery/debtors/${id}/documents`, { kind })
+                    post(`/recovery/debtors/${id}/documents${caseQuery(debtor)}`, { kind })
                       .then(() => load())
                       .catch((error) => notify(error.message, true))
                   }
@@ -597,8 +672,13 @@ export function DebtorCard({
         </div>
       )}
 
-      {tab === 'cases' && (
-        <RegisterPanel debtor={debtor} notify={notify} onSaved={() => void load()} />
+      {tab === 'cases' && !debtor.read_only && !debtor.legacy_review_required && (
+        <RegisterPanel
+          key={debtor.selected_case_id ?? id}
+          debtor={debtor}
+          notify={notify}
+          onSaved={() => void load()}
+        />
       )}
 
       {tab === 'financing' && (

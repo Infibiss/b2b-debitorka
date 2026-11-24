@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-REPOSITORY = 'Infibiss/b2b-debitorka'
+REPOSITORY = 'Infibiss/mandato'
 API = 'https://api.github.com/repos/' + REPOSITORY
 WORKFLOW = '.github/workflows/ci.yml'
 
