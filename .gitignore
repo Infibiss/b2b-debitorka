@@ -20,7 +20,12 @@ var/
 *.key
 id_rsa
 id_ed25519
-/lawyers/
+/lawyers/*
+!/lawyers/vtb_data/
+/lawyers/vtb_data/*
+!/lawyers/vtb_data/QA_Финтех_без_границ_транскрипт.md
+!/lawyers/vtb_data/Воркшоп_Защита_данных_20.11.2026_транскрипт.md
+!/lawyers/vtb_data/_Воркшоп «Данные, безопасность и комплаенс»_20.11.2026.pdf
 playwright-report/
 test-results/
 .DS_Store
