@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 from tests.test_api import client, invoice, register
+from server.business_time import business_today
 from server.database import database
 
 
@@ -30,7 +31,8 @@ def test_unknown_contracts_are_separate_and_paid_stage_is_derived(client):
     assert len(items) == 2
     assert {item['invoice_ids'][0] for item in items} == {first['id'], second['id']}
     assert all(item['contract_id'] is None and item['contract_known'] is False for item in items)
-    client.post(f"/api/invoices/{first['id']}/payments", json={'amount': first['balance'], 'paid_on': '2026-10-26', 'reference': 'manual'})
+    payment = client.post(f"/api/invoices/{first['id']}/payments", json={'amount': first['balance'], 'paid_on': str(business_today()), 'reference': 'manual'})
+    assert payment.status_code == 200, payment.text
     result = next(item for item in cases(client) if first['id'] in item['invoice_ids'])
     assert result['stage'] == 'paid' and result['queue'] == 'results'
 
@@ -163,7 +165,8 @@ def test_partial_payment_invalidates_snapshot_before_send(client, monkeypatch):
     from server import workflow
     inv, case, tenant = configure(client, monkeypatch)
     assert workflow.schedule_jobs(client.app.state.config) == 1
-    assert client.post('/api/invoices/' + inv['id'] + '/payments', json={'amount': 100, 'paid_on': '2026-10-26', 'reference': 'partial'}).status_code == 200
+    payment = client.post('/api/invoices/' + inv['id'] + '/payments', json={'amount': 100, 'paid_on': str(business_today()), 'reference': 'partial'})
+    assert payment.status_code == 200, payment.text
     calls = []
     monkeypatch.setattr(workflow, 'send_email', lambda *args: calls.append(args))
     workflow.dispatch_jobs(client.app.state.config)
