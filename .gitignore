@@ -24,6 +24,7 @@ id_ed25519
 !/lawyers/vtb_data/
 /lawyers/vtb_data/*
 !/lawyers/vtb_data/QA_Финтех_без_границ_транскрипт.md
+!/lawyers/vtb_data/VTB-workshops-materials.zip
 !/lawyers/vtb_data/Воркшоп_Защита_данных_20.11.2026_транскрипт.md
 !/lawyers/vtb_data/_Воркшоп «Данные, безопасность и комплаенс»_20.11.2026.pdf
 playwright-report/
